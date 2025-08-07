@@ -1,0 +1,51 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36" version="26.2.14">
+  <diagram name="Page-1" id="smAVL36OgFzz2g1aztnR">
+    <mxGraphModel dx="925" dy="607" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="V2Rdgbi4u1NGDS27lLpa-4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="V2Rdgbi4u1NGDS27lLpa-1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="305" y="170" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="V2Rdgbi4u1NGDS27lLpa-13" style="edgeStyle=none;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;fontSize=12;startSize=8;endSize=8;" edge="1" parent="1" source="V2Rdgbi4u1NGDS27lLpa-1" target="V2Rdgbi4u1NGDS27lLpa-12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="V2Rdgbi4u1NGDS27lLpa-1" value="Admin" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="90" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="V2Rdgbi4u1NGDS27lLpa-2" value="System" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="90" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="V2Rdgbi4u1NGDS27lLpa-8" value="Admin" style="swimlane;whiteSpace=wrap;html=1;startSize=23;" vertex="1" parent="1">
+          <mxGeometry x="190" y="250" width="290" height="390" as="geometry" />
+        </mxCell>
+        <mxCell id="V2Rdgbi4u1NGDS27lLpa-7" value="Select Action (Add/Update/Delete User" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="V2Rdgbi4u1NGDS27lLpa-8">
+          <mxGeometry x="35" y="100" width="220" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="V2Rdgbi4u1NGDS27lLpa-15" value="" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.start_2;whiteSpace=wrap;" vertex="1" parent="V2Rdgbi4u1NGDS27lLpa-8">
+          <mxGeometry x="135" y="40" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="V2Rdgbi4u1NGDS27lLpa-16" value="" style="endArrow=classic;html=1;rounded=0;fontSize=12;startSize=8;endSize=8;curved=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="V2Rdgbi4u1NGDS27lLpa-8" source="V2Rdgbi4u1NGDS27lLpa-15" target="V2Rdgbi4u1NGDS27lLpa-7">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="240" y="220" as="sourcePoint" />
+            <mxPoint x="290" y="170" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="V2Rdgbi4u1NGDS27lLpa-9" value="System" style="swimlane;whiteSpace=wrap;html=1;startSize=23;" vertex="1" parent="1">
+          <mxGeometry x="480" y="250" width="290" height="390" as="geometry" />
+        </mxCell>
+        <mxCell id="V2Rdgbi4u1NGDS27lLpa-11" value="" style="ellipse;shape=doubleEllipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="290" y="180" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="V2Rdgbi4u1NGDS27lLpa-12" value="Admin" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="185" y="90" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="V2Rdgbi4u1NGDS27lLpa-14" value="" style="ellipse;html=1;shape=endState;fillColor=#000000;strokeColor=#ff0000;" vertex="1" parent="1">
+          <mxGeometry x="440" y="430" width="30" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
