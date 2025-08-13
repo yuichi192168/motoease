@@ -9,7 +9,7 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
             <div class="col-md-4">
                 <h3 class="text-muted">Filters</h3>
                 <hr>
-                <!-- <div class="card card-outline shadow card-primary rounded-0">
+                <div class="card card-outline shadow card-primary rounded-0">
                     <div class="card-header">
                         <h3 class="card-title"><b>Brands</b></h3>
                     </div>
@@ -34,7 +34,7 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                             <?php endwhile; ?>
                         </ul>
                     </div>
-                </div> -->
+                </div>
                 <div class="card card-outline shadow card-primary rounded-0">
                     <div class="card-header">
                         <h3 class="card-title"><b>Categories</b></h3>
@@ -94,7 +94,7 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                             <div class="card rounded-0 shadow">
                                 <div class="product-img-holder overflow-hidden position-relative">
                                     <img src="<?= validate_image($row['image_path']) ?>" alt="Product Image" class="img-top"/>
-                                    <span class="position-absolute price-tag rounded-pill bg-gradient-primary text-light px-3">
+                                    <span class="position-absolute price-tag rounded-pill bg-success elevation-1text-light px-3">
                                         <i class="fa fa-tags"></i> <b><?= number_format($row['price'],2) ?></b>
                                     </span>
                                 </div>

@@ -21,7 +21,7 @@
                     <div class="card rounded-0 shadow">
                         <div class="product-img-holder overflow-hidden position-relative">
                             <img src="<?= validate_image($row['image_path']) ?>" alt="Product Image" class="img-top"/>
-                            <span class="position-absolute price-tag rounded-pill bg-gradient-primary text-light px-3">
+                            <span class="position-absolute price-tag rounded-pill bg-success elevation-1 text-light px-3">
                                 <i class="fa fa-tags"></i> <b><?= number_format($row['price'],2) ?></b>
                             </span>
                         </div>
