@@ -1,4 +1,4 @@
-  <?php require_once('./config.php') ?>
+<?php require_once('./config.php') ?>
 <!DOCTYPE html>
 <html lang="en">
   <?php require_once('inc/header.php') ?>
@@ -10,6 +10,7 @@
         height: 100%;
         margin: 0;
         padding: 0;
+        font-family: "Segoe UI", sans-serif;
       }
 
       body {
@@ -21,15 +22,15 @@
       }
 
       .overlay {
-        background: rgba(0, 0, 0, 0.6);
+        background: rgba(0,0,0,0.6);
         position: absolute;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        z-index: 0;
+        top:0; left:0;
+        width:100%; height:100%;
+        z-index:0;
       }
 
       .register-wrapper {
-        z-index: 1;
+        z-index:1;
         position: relative;
         min-height: 100vh;
       }
@@ -38,6 +39,8 @@
         width: 120px;
         height: 120px;
         object-fit: contain;
+        border: 3px solid #fff;
+        padding: 5px;
       }
 
       .pass_type {
@@ -58,69 +61,96 @@
         margin-bottom: 1rem;
       }
 
+      .card {
+        border-radius: 10px;
+      }
+
+      .input-group-text {
+        cursor: pointer;
+      }
+
+      .error-msg {
+        font-size: 0.85rem;
+        color: #dc3545;
+        margin-top: 0.25rem;
+      }
+
+      @media(max-width:767px){
+        .register-wrapper .row { flex-direction: column; }
+        .card { margin-top: 20px; }
+      }
     </style>
 
     <div class="overlay"></div>
     <div class="container-fluid d-flex align-items-center justify-content-center register-wrapper">
       <div class="row w-100">
+        <!-- Left Info Panel -->
         <div class="col-lg-5 text-center text-white mb-4 mb-lg-0 d-flex flex-column justify-content-center align-items-center">
           <img src="<?= validate_image($_settings->info('logo')) ?>" alt="System Logo" class="img-thumbnail rounded-circle mb-3" id="logo-img">
           <h3 class="text-light">Welcome to <?= $_settings->info('name') ?></h3>
+          <p class="text-light small">Register to get started. All fields with * are required.</p>
         </div>
 
+        <!-- Registration Form -->
         <div class="col-lg-7 d-flex align-items-center justify-content-center">
           <div class="card shadow rounded-lg w-100" style="max-width: 650px;">
             <div class="card-header bg-primary text-white text-center">
               <h5 class="mb-0">Create an Account</h5>
             </div>
             <div class="card-body">
-              <form id="register-frm" method="post">
+              <form id="register-frm" method="post" novalidate>
                 <input type="hidden" name="id">
 
                 <div class="row">
                   <div class="form-group col-md-6">
-                    <label for="firstname" class="small">First Name</label>
+                    <label for="firstname" class="small">First Name *</label>
                     <input type="text" name="firstname" id="firstname" class="form-control form-control-sm" placeholder="Enter First Name" required>
+                    <div class="error-msg" id="firstname-error"></div>
                   </div>
                   <div class="form-group col-md-6">
                     <label for="middlename" class="small">Middle Name</label>
                     <input type="text" name="middlename" id="middlename" class="form-control form-control-sm" placeholder="Middle Name (Optional)">
                   </div>
                   <div class="form-group col-md-6">
-                    <label for="lastname" class="small">Last Name</label>
+                    <label for="lastname" class="small">Last Name *</label>
                     <input type="text" name="lastname" id="lastname" class="form-control form-control-sm" placeholder="Enter Last Name" required>
+                    <div class="error-msg" id="lastname-error"></div>
                   </div>
                   <div class="form-group col-md-6">
-                    <label for="gender" class="small">Gender</label>
+                    <label for="gender" class="small">Gender *</label>
                     <select name="gender" id="gender" class="custom-select custom-select-sm" required>
                       <option selected disabled>-- Select Gender --</option>
                       <option>Male</option>
                       <option>Female</option>
                     </select>
+                    <div class="error-msg" id="gender-error"></div>
                   </div>
                   <div class="form-group col-md-6">
-                    <label for="contact" class="small">Contact #</label>
-                    <input type="text" name="contact" id="contact" class="form-control form-control-sm" placeholder="09xxxxxxxxx" required>
+                    <label for="contact" class="small">Contact # *</label>
+                    <input type="text" name="contact" id="contact" class="form-control form-control-sm" placeholder="09xxxxxxxxx" pattern="09[0-9]{9}" required>
+                    <div class="error-msg" id="contact-error"></div>
                   </div>
                   <div class="form-group col-md-12">
                     <label for="address" class="small">Address</label>
                     <textarea name="address" id="address" rows="2" class="form-control form-control-sm" placeholder="Blk 8 Lot 88, Mabuhay Mamatid, Cabuyao City, Laguna, 4025"></textarea>
                   </div>
                   <div class="form-group col-md-6">
-                    <label for="email" class="small">Email</label>
+                    <label for="email" class="small">Email *</label>
                     <input type="email" name="email" id="email" class="form-control form-control-sm" placeholder="jsmith@sample.com" required>
+                    <div class="error-msg" id="email-error"></div>
                   </div>
                   <div class="form-group col-md-6">
-                    <label for="password" class="small">Password</label>
+                    <label for="password" class="small">Password *</label>
                     <div class="input-group">
                       <input type="password" name="password" id="password" class="form-control form-control-sm" required>
                       <div class="input-group-append">
                         <span class="input-group-text"><i class="fa fa-eye-slash pass_type" data-type="password"></i></span>
                       </div>
                     </div>
+                    <small>Password must be at least 6 characters</small>
                   </div>
                   <div class="form-group col-md-6">
-                    <label for="cpassword" class="small">Confirm Password</label>
+                    <label for="cpassword" class="small">Confirm Password *</label>
                     <div class="input-group">
                       <input type="password" id="cpassword" class="form-control form-control-sm" required>
                       <div class="input-group-append">
@@ -146,71 +176,125 @@
       </div>
     </div>
 
-    <!-- Scripts remain the same -->
     <script src="<?= base_url ?>plugins/jquery/jquery.min.js"></script>
     <script src="<?= base_url ?>plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
 
     <script>
-      $(document).ready(function(){
+$(document).ready(function(){
+
+  // End loader
+  end_loader();
+
+  // Password toggle
+  $('.pass_type').click(function(){
+    var type = $(this).attr('data-type');
+    var input = $(this).closest('.input-group').find('input');
+    if(type === 'password'){
+      $(this).attr('data-type','text');
+      input.attr('type','text');
+      $(this).removeClass('fa-eye-slash').addClass('fa-eye');
+    } else {
+      $(this).attr('data-type','password');
+      input.attr('type','password');
+      $(this).removeClass('fa-eye').addClass('fa-eye-slash');
+    }
+  });
+
+  // Real-time validation functions
+  function validateField(id, condition, msg){
+    var input = $(id);
+    if(!condition(input.val())){
+      input.addClass('is-invalid').removeClass('is-valid');
+      input.next('.error-msg').text(msg);
+      return false;
+    } else {
+      input.addClass('is-valid').removeClass('is-invalid');
+      input.next('.error-msg').text('');
+      return true;
+    }
+  }
+
+  $('#firstname').on('input', function(){
+    validateField('#firstname', val => val.trim().length > 0, 'First name is required.');
+  });
+
+  $('#lastname').on('input', function(){
+    validateField('#lastname', val => val.trim().length > 0, 'Last name is required.');
+  });
+
+  $('#gender').on('change', function(){
+    validateField('#gender', val => val != null && val != '', 'Select gender.');
+  });
+
+  $('#contact').on('input', function(){
+    validateField('#contact', val => /^09[0-9]{9}$/.test(val), 'Enter a valid 11-digit mobile number starting with 09.');
+  });
+
+  $('#email').on('input', function(){
+    validateField('#email', val => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), 'Enter a valid email.');
+  });
+
+  $('#password').on('input', function(){
+    validateField('#password', val => val.length >= 6, 'Password must be at least 6 characters.');
+  });
+
+  $('#cpassword').on('input', function(){
+    validateField('#cpassword', val => val === $('#password').val(), 'Passwords do not match.');
+  });
+
+  // Submit form
+  $('#register-frm').submit(function(e){
+    e.preventDefault();
+    var _this = $(this);
+    $('.error-msg').text('');
+
+    // Check all fields
+    var valid = true;
+    valid &= validateField('#firstname', val => val.trim().length > 0, 'First name is required.');
+    valid &= validateField('#lastname', val => val.trim().length > 0, 'Last name is required.');
+    valid &= validateField('#gender', val => val != null && val != '', 'Select gender.');
+    valid &= validateField('#contact', val => /^09[0-9]{9}$/.test(val), 'Enter a valid 11-digit mobile number starting with 09.');
+    valid &= validateField('#email', val => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), 'Enter a valid email.');
+    valid &= validateField('#password', val => val.length >= 6, 'Password must be at least 6 characters.');
+    valid &= validateField('#cpassword', val => val === $('#password').val(), 'Passwords do not match.');
+
+    if(!valid) return false;
+
+    start_loader();
+    $.ajax({
+      url: _base_url_ + "classes/Users.php?f=save_client",
+      data: new FormData($(this)[0]),
+      cache: false,
+      contentType: false,
+      processData: false,
+      method: 'POST',
+      type: 'POST',
+      dataType: 'json',
+      error: err => {
+        console.log(err);
+        alert_toast("An error occurred", 'error');
         end_loader();
-        $('.pass_type').click(function(){
-          var type = $(this).attr('data-type');
-          var input = $(this).closest('.input-group').find('input');
-          if(type === 'password'){
-            $(this).attr('data-type', 'text');
-            input.attr('type', 'text');
-            $(this).removeClass('fa-eye-slash').addClass('fa-eye');
-          } else {
-            $(this).attr('data-type', 'password');
-            input.attr('type', 'password');
-            $(this).removeClass('fa-eye').addClass('fa-eye-slash');
-          }
-        });
+      },
+      success: function(resp){
+        if(typeof resp === 'object' && resp.status === 'success'){
+          location.href = "./login.php";
+        } else if(resp.status == 'failed' && !!resp.msg){
+          var el = $('<div>').addClass("alert alert-danger err-msg").text(resp.msg);
+          _this.prepend(el);
+          el.show('slow');
+          end_loader();
+        } else {
+          alert_toast("An error occurred", 'error');
+          end_loader();
+        }
+        $('html, body').scrollTop(0);
+      }
+    });
 
-        $('#register-frm').submit(function(e){
-          e.preventDefault();
-          var _this = $(this);
-          $('.err-msg').remove();
-          var el = $('<div>').hide();
+  });
 
-          if($('#password').val() != $('#cpassword').val()){
-            el.addClass('alert alert-danger err-msg').text('Password does not match.');
-            _this.prepend(el);
-            el.show('slow');
-            return false;
-          }
+});
+</script>
 
-          start_loader();
-          $.ajax({
-            url: _base_url_ + "classes/Users.php?f=save_client",
-            data: new FormData($(this)[0]),
-            cache: false,
-            contentType: false,
-            processData: false,
-            method: 'POST',
-            type: 'POST',
-            dataType: 'json',
-            error: err => {
-              console.log(err);
-              alert_toast("An error occurred", 'error');
-              end_loader();
-            },
-            success: function(resp){
-              if(typeof resp === 'object' && resp.status === 'success'){
-                location.href = "./login.php";
-              } else if(resp.status === 'failed' && !!resp.msg){
-                el.addClass("alert alert-danger err-msg").text(resp.msg);
-                _this.prepend(el);
-                el.show('slow');
-              } else {
-                alert_toast("An error occurred", 'error');
-                end_loader();
-              }
-              $('html, body').scrollTop(0);
-            }
-          });
-        });
-      });
-    </script>
   </body>
 </html>
