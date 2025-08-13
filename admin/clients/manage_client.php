@@ -67,7 +67,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 	</div>
 	<div class="card-footer">
 		<button class="btn btn-flat btn-primary" form="client-form">Save</button>
-		<a class="btn btn-flat btn-default" href="?page=client">Cancel</a>
+		<a class="btn btn-flat btn-default" href="./?page=clients">Cancel</a>
 	</div>
 </div>
 <script>

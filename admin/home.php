@@ -4,13 +4,13 @@
   <!-- Total Brands -->
   <div class="col-12 col-sm-6 col-md-3">
     <div class="info-box">
-      <span class="info-box-icon bg-gradient-dark elevation-1"><i class="fas fa-copyright"></i></span>
+      <span class="info-box-icon bg-dark elevation-1"><i class="fas fa-copyright"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">Total Brands</span>
         <span class="info-box-number">
           <?php 
-            $inv = $conn->query("SELECT count(id) as total FROM brand_list where delete_flag = 0 ")->fetch_assoc()['total'];
-            echo number_format($inv);
+            $brands = $conn->query("SELECT COUNT(id) as total FROM brand_list WHERE delete_flag = 0")->fetch_assoc()['total'];
+            echo number_format($brands);
           ?>
         </span>
       </div>
@@ -25,8 +25,8 @@
         <span class="info-box-text">Total Category</span>
         <span class="info-box-number">
           <?php 
-            $inv = $conn->query("SELECT count(id) as total FROM categories where delete_flag = 0 ")->fetch_assoc()['total'];
-            echo number_format($inv);
+            $categories = $conn->query("SELECT COUNT(id) as total FROM categories WHERE delete_flag = 0")->fetch_assoc()['total'];
+            echo number_format($categories);
           ?>
         </span>
       </div>
@@ -36,12 +36,12 @@
   <!-- Mechanics -->
   <div class="col-12 col-sm-6 col-md-3">
     <div class="shadow info-box mb-3">
-      <span class="info-box-icon bg-info elevation-1"><i class="fas fa-users-cog"></i></span>
+      <span class="info-box-icon bg-gray elevation-1"><i class="fas fa-users-cog"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">Mechanics</span>
         <span class="info-box-number">
           <?php 
-            $mechanics = $conn->query("SELECT sum(id) as total FROM `mechanics_list` where status = '1' ")->fetch_assoc()['total'];
+            $mechanics = $conn->query("SELECT COUNT(id) as total FROM mechanics_list WHERE status = 1")->fetch_assoc()['total'];
             echo number_format($mechanics);
           ?>
         </span>
@@ -57,7 +57,7 @@
         <span class="info-box-text">Services</span>
         <span class="info-box-number">
           <?php 
-            $services = $conn->query("SELECT sum(id) as total FROM `service_list` where status = 1 ")->fetch_assoc()['total'];
+            $services = $conn->query("SELECT COUNT(id) as total FROM service_list WHERE status = 1")->fetch_assoc()['total'];
             echo number_format($services);
           ?>
         </span>
@@ -68,13 +68,13 @@
   <!-- Registered Clients -->
   <div class="col-12 col-sm-6 col-md-3">
     <div class="shadow info-box mb-3">
-      <span class="info-box-icon bg-gradient-primary elevation-1"><i class="fas fa-users"></i></span>
+      <span class="info-box-icon bg-white elevation-1"><i class="fas fa-users"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">Registered Clients</span>
         <span class="info-box-number">
           <?php 
-            $services = $conn->query("SELECT sum(id) as total FROM `client_list` where status = 1 and delete_flag = 0 ")->fetch_assoc()['total'];
-            echo number_format($services);
+            $clients = $conn->query("SELECT COUNT(id) as total FROM client_list WHERE status = 1 AND delete_flag = 0")->fetch_assoc()['total'];
+            echo number_format($clients);
           ?>
         </span>
       </div>
@@ -84,13 +84,13 @@
   <!-- Pending Orders -->
   <div class="col-12 col-sm-6 col-md-3">
     <div class="shadow info-box mb-3">
-      <span class="info-box-icon bg-gradient-secondary elevation-1"><i class="fas fa-tasks"></i></span>
+      <span class="info-box-icon bg-yellow elevation-1"><i class="fas fa-tasks"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">Pending Orders</span>
         <span class="info-box-number">
           <?php 
-            $services = $conn->query("SELECT sum(id) as total FROM `order_list` where status = 0 ")->fetch_assoc()['total'];
-            echo number_format($services);
+            $pending_orders = $conn->query("SELECT COUNT(id) as total FROM order_list WHERE status = 0")->fetch_assoc()['total'];
+            echo number_format($pending_orders);
           ?>
         </span>
       </div>
@@ -100,13 +100,13 @@
   <!-- Confirmed Orders -->
   <div class="col-12 col-sm-6 col-md-3">
     <div class="shadow info-box mb-3">
-      <span class="info-box-icon bg-gradient-primary elevation-1"><i class="fas fa-tasks"></i></span>
+      <span class="info-box-icon bg-green elevation-1"><i class="fas fa-tasks"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">Confirmed Orders</span>
         <span class="info-box-number">
           <?php 
-            $services = $conn->query("SELECT sum(id) as total FROM `order_list` where status = 1 ")->fetch_assoc()['total'];
-            echo number_format($services);
+            $confirmed_orders = $conn->query("SELECT COUNT(id) as total FROM order_list WHERE status = 1")->fetch_assoc()['total'];
+            echo number_format($confirmed_orders);
           ?>
         </span>
       </div>
@@ -116,13 +116,13 @@
   <!-- Cancelled Orders -->
   <div class="col-12 col-sm-6 col-md-3">
     <div class="shadow info-box mb-3">
-      <span class="info-box-icon bg-gradient-danger elevation-1"><i class="fas fa-tasks"></i></span>
+      <span class="info-box-icon bg-red elevation-1"><i class="fas fa-tasks"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">Cancelled Orders</span>
         <span class="info-box-number">
           <?php 
-            $services = $conn->query("SELECT sum(id) as total FROM `order_list` where status = 5 ")->fetch_assoc()['total'];
-            echo number_format($services);
+            $cancelled_orders = $conn->query("SELECT COUNT(id) as total FROM order_list WHERE status = 5")->fetch_assoc()['total'];
+            echo number_format($cancelled_orders);
           ?>
         </span>
       </div>
@@ -132,13 +132,13 @@
   <!-- Finished Requests -->
   <div class="col-12 col-sm-6 col-md-3">
     <div class="shadow info-box mb-3">
-      <span class="info-box-icon bg-warning elevation-1"><i class="fas fa-file-invoice"></i></span>
+      <span class="info-box-icon bg-yellow elevation-1"><i class="fas fa-file-invoice"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">Finished Requests</span>
         <span class="info-box-number">
           <?php 
-            $services = $conn->query("SELECT sum(id) as total FROM `service_requests` where status = 3 ")->fetch_assoc()['total'];
-            echo number_format($services);
+            $finished_requests = $conn->query("SELECT COUNT(id) as total FROM service_requests WHERE status = 3")->fetch_assoc()['total'];
+            echo number_format($finished_requests);
           ?>
         </span>
       </div>
