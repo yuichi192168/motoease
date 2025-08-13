@@ -6,10 +6,16 @@ class DBConnection{
 
     private $host = DB_SERVER;
     private $username = DB_USERNAME;
+    
     private $password = DB_PASSWORD;
-    private $database = DB_NAME;    
-    //private $port = DB_PORT;
-    private $port = 3307; 
+    private $database = DB_NAME;
+    private $port = DB_PORT;
+
+    
+//     private $password = DB_PASSWORD;
+//    private $database = DB_NAME;    
+//     private $port = DB_PORT;
+//     private $port = 3307; 
     public $conn;
     
     public function __construct(){

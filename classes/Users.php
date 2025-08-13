@@ -1,4 +1,4 @@
-<?php
+	<?php
 require_once('../config.php');
 Class Users extends DBConnection {
 	private $settings;

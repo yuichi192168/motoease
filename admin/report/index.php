@@ -151,7 +151,7 @@ $date_end = isset($_GET['date_end']) ? $_GET['date_end'] :  date("Y-m-d") ;
                 setTimeout(function(){
                     nw.close()
                     end_loader()
-                },500)
+                },5000)
         })
     })
 </script>
