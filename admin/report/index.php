@@ -66,8 +66,8 @@ $date_end = isset($_GET['date_end']) ? $_GET['date_end'] :  date("Y-m-d") ;
                         $mechanic = $conn->query("SELECT * FROM mechanics_list");
                         $result = $mechanic->fetch_all(MYSQLI_ASSOC);
                         $mech_arr = array_column($result,'name','id');
-                        $where = "where date(date_created) between '{$date_start}' and '{$date_end}'";
-                        $qry = $conn->query("SELECT * from service_requests {$where} order by unix_timestamp(date_created) desc");
+                        $where = "where date(s.date_created) between '{$date_start}' and '{$date_end}'";
+                        $qry = $conn->query("SELECT s.*, CONCAT(c.lastname, ', ', c.firstname, ' ', c.middlename) as customer_name from service_requests s INNER JOIN client_list c ON s.client_id = c.id {$where} order by unix_timestamp(s.date_created) desc");
                         while($row = $qry->fetch_assoc()):
                         $meta = $conn->query("SELECT * FROM request_meta where request_id = '{$row['id']}'");
                         while($mrow = $meta->fetch_assoc()){
@@ -81,7 +81,7 @@ $date_end = isset($_GET['date_end']) ? $_GET['date_end'] :  date("Y-m-d") ;
                     <tr>
                         <td class="text-center"><?php echo $i++ ?></td>
                         <td><?php echo $row['date_created'] ?></td>
-                        <td><?php echo $row['owner_name'] ?></td>
+                        <td><?php echo $row['customer_name'] ?></td>
                         <td><?php echo $row['vehicle_name'] ?></td>
                         <td><?php echo $row['vehicle_registration_number'] ?></td>
                         <td><?php echo !empty($row['mechanic_id']) && isset($mech_arr[$row['mechanic_id']]) ? $mech_arr[$row['mechanic_id']] : "N/A" ?></td>

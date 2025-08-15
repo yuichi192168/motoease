@@ -127,31 +127,36 @@
             <a href="#" class="dropdown-item dropdown-footer">See All Messages</a>
           </div>
         </li>
+        <!-- Cart -->
+        <li class="nav-item">
+          <a class="nav-link" href="./?p=cart">
+            <i class="fas fa-shopping-cart"></i>
+            <span class="badge badge-warning navbar-badge" id="cart-count">0</span>
+          </a>
+        </li>
+        <!-- Wishlist -->
+        <li class="nav-item">
+          <a class="nav-link" href="./?p=wishlist">
+            <i class="fas fa-heart"></i>
+            <span class="badge badge-danger navbar-badge" id="wishlist-count">0</span>
+          </a>
+        </li>
         <!-- Notifications Dropdown Menu -->
         <li class="nav-item dropdown">
-          <a class="nav-link" data-toggle="dropdown" href="#">
+          <a class="nav-link" data-toggle="dropdown" href="#" id="notifications-dropdown">
             <i class="far fa-bell"></i>
-            <span class="badge badge-warning navbar-badge">15</span>
+            <span class="badge badge-warning navbar-badge" id="notifications-count">0</span>
           </a>
-          <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
-            <span class="dropdown-header">15 Notifications</span>
+          <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" id="notifications-list">
+            <span class="dropdown-header">Notifications</span>
             <div class="dropdown-divider"></div>
-            <a href="#" class="dropdown-item">
-              <i class="fas fa-envelope mr-2"></i> 4 new messages
-              <span class="float-right text-muted text-sm">3 mins</span>
-            </a>
+            <div id="notifications-content">
+              <div class="text-center p-3">
+                <i class="fas fa-spinner fa-spin"></i> Loading...
+              </div>
+            </div>
             <div class="dropdown-divider"></div>
-            <a href="#" class="dropdown-item">
-              <i class="fas fa-users mr-2"></i> 8 friend requests
-              <span class="float-right text-muted text-sm">12 hours</span>
-            </a>
-            <div class="dropdown-divider"></div>
-            <a href="#" class="dropdown-item">
-              <i class="fas fa-file mr-2"></i> 3 new reports
-              <span class="float-right text-muted text-sm">2 days</span>
-            </a>
-            <div class="dropdown-divider"></div>
-            <a href="#" class="dropdown-item dropdown-footer">See All Notifications</a>
+            <a href="#" class="dropdown-item dropdown-footer" onclick="loadAllNotifications()">See All Notifications</a>
           </div>
         </li>
         <li class="nav-item">
@@ -162,3 +167,124 @@
       </ul>
     </div>
   </nav>
+
+<script>
+$(document).ready(function(){
+    // Load cart count
+    loadCartCount();
+    
+    // Load wishlist count
+    loadWishlistCount();
+    
+    // Load notifications count
+    loadNotificationsCount();
+    
+    // Load notifications when dropdown is opened
+    $('#notifications-dropdown').on('click', function(){
+        loadNotifications();
+    });
+    
+    // Auto-refresh counts every 30 seconds
+    setInterval(function(){
+        loadCartCount();
+        loadWishlistCount();
+        loadNotificationsCount();
+    }, 30000);
+});
+
+function loadCartCount(){
+    $.ajax({
+        url: _base_url_ + "classes/Master.php?f=get_cart_count",
+        method: "POST",
+        dataType: "json",
+        success: function(resp){
+            if(resp.status == 'success'){
+                $('#cart-count').text(resp.cart_count);
+            }
+        }
+    });
+}
+
+function loadWishlistCount(){
+    $.ajax({
+        url: _base_url_ + "classes/Master.php?f=get_wishlist_count",
+        method: "POST",
+        dataType: "json",
+        success: function(resp){
+            if(resp.status == 'success'){
+                $('#wishlist-count').text(resp.wishlist_count);
+            }
+        }
+    });
+}
+
+function loadNotificationsCount(){
+    $.ajax({
+        url: _base_url_ + "classes/Master.php?f=get_notifications_count",
+        method: "POST",
+        dataType: "json",
+        success: function(resp){
+            if(resp.status == 'success'){
+                $('#notifications-count').text(resp.count);
+            }
+        }
+    });
+}
+
+function loadNotifications(){
+    $.ajax({
+        url: _base_url_ + "classes/Master.php?f=get_notifications",
+        method: "POST",
+        data: {limit: 5},
+        dataType: "json",
+        success: function(resp){
+            if(resp.status == 'success'){
+                var html = '';
+                if(resp.data.length > 0){
+                    resp.data.forEach(function(notification){
+                        html += '<a href="#" class="dropdown-item" onclick="markNotificationRead(' + notification.id + ')">';
+                        html += '<i class="fas fa-bell mr-2"></i> ' + notification.title;
+                        html += '<span class="float-right text-muted text-sm">' + formatTimeAgo(notification.date_created) + '</span>';
+                        html += '</a>';
+                        html += '<div class="dropdown-divider"></div>';
+                    });
+                } else {
+                    html = '<div class="text-center p-3"><i class="far fa-bell"></i> No notifications</div>';
+                }
+                $('#notifications-content').html(html);
+            }
+        }
+    });
+}
+
+function markNotificationRead(notificationId){
+    $.ajax({
+        url: _base_url_ + "classes/Master.php?f=mark_notification_read",
+        method: "POST",
+        data: {notification_id: notificationId},
+        dataType: "json",
+        success: function(resp){
+            if(resp.status == 'success'){
+                loadNotificationsCount();
+                loadNotifications();
+            }
+        }
+    });
+}
+
+function formatTimeAgo(dateString){
+    var date = new Date(dateString);
+    var now = new Date();
+    var diff = Math.floor((now - date) / 1000); // difference in seconds
+    
+    if(diff < 60) return 'Just now';
+    if(diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if(diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    return Math.floor(diff / 86400) + 'd ago';
+}
+
+function loadAllNotifications(){
+    // Redirect to notifications page or show all notifications
+    window.location.href = './?p=notifications';
+}
+</script>
