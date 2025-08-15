@@ -33,7 +33,9 @@
                         $cart_count = $conn->query("SELECT SUM(quantity) from cart_list where client_id = '{$_settings->userdata('id')}'")->fetch_array()[0];
                         $cart_count = $cart_count > 0 ? number_format($cart_count) : 0;
                         ?>
-                        <a href="./?p=cart" class="nav-link"><span id="cart_count" class="badge badge-danger rounded-circle"><?= $cart_count ?></span> Cart</a>
+                        <a href="./?p=cart" class="nav-link">
+                            <span id="cart_count" class="badge badge-danger rounded-circle" <?= $cart_count == 0 ? 'style="display:none;"' : '' ?>><?= $cart_count ?></span> Cart
+                        </a>
                       </div>
                       <div class="navbar-nav nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">

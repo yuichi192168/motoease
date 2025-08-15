@@ -440,62 +440,184 @@ Class Master extends DBConnection {
 	function save_to_cart(){
 		$_POST['client_id'] = $this->settings->userdata('id');
 		extract($_POST);
-		$check = $this->conn->query("SELECT * FROM `cart_list` where client_id = '{$client_id}' and product_id = '{$product_id}'")->num_rows;
-		if($check > 0){
-			$sql = "UPDATE `cart_list` set quantity = quantity + {$quantity}  where product_id = '{$product_id}' and client_id = '{$client_id}'";
-		}else{
-			$sql = "INSERT INTO `cart_list` set quantity = quantity + {$quantity}, product_id = '{$product_id}', client_id = '{$client_id}'";
+		
+		// Validate inputs
+		if(empty($client_id) || empty($product_id) || empty($quantity) || $quantity <= 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Invalid input parameters.";
+			return json_encode($resp);
 		}
+		
+		// Sanitize inputs
+		$client_id = $this->conn->real_escape_string($client_id);
+		$product_id = $this->conn->real_escape_string($product_id);
+		$quantity = $this->conn->real_escape_string($quantity);
+		
+		// Check if product exists and is active
+		$product_check = $this->conn->query("SELECT id, name, price FROM `product_list` WHERE id = '{$product_id}' AND delete_flag = 0 AND status = 1");
+		if($product_check->num_rows == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Product not found or unavailable.";
+			return json_encode($resp);
+		}
+		
+		// Check stock availability
+		$stocks = $this->conn->query("SELECT SUM(quantity) as total_stock FROM stock_list WHERE product_id = '{$product_id}' AND type = 1")->fetch_assoc()['total_stock'];
+		$out = $this->conn->query("SELECT SUM(oi.quantity) as total_out FROM order_items oi 
+								  INNER JOIN order_list ol ON oi.order_id = ol.id 
+								  WHERE oi.product_id = '{$product_id}' AND ol.status != 5")->fetch_assoc()['total_out'];
+		
+		$stocks = $stocks > 0 ? $stocks : 0;
+		$out = $out > 0 ? $out : 0;
+		$available = $stocks - $out;
+		
+		// Check if product is already in cart
+		$cart_check = $this->conn->query("SELECT id, quantity FROM `cart_list` WHERE client_id = '{$client_id}' AND product_id = '{$product_id}'");
+		
+		if($cart_check->num_rows > 0){
+			// Product already in cart, update quantity
+			$cart_item = $cart_check->fetch_assoc();
+			$new_quantity = $cart_item['quantity'] + $quantity;
+			
+			// Check if new quantity exceeds available stock
+			if($new_quantity > $available){
+				$resp['status'] = 'failed';
+				$resp['msg'] = "Cannot add more items. Only {$available} units available in stock.";
+				return json_encode($resp);
+			}
+			
+			$sql = "UPDATE `cart_list` SET quantity = '{$new_quantity}' WHERE id = '{$cart_item['id']}'";
+		} else {
+			// New product in cart
+			if($quantity > $available){
+				$resp['status'] = 'failed';
+				$resp['msg'] = "Cannot add to cart. Only {$available} units available in stock.";
+				return json_encode($resp);
+			}
+			
+			$sql = "INSERT INTO `cart_list` (client_id, product_id, quantity) VALUES ('{$client_id}', '{$product_id}', '{$quantity}')";
+		}
+		
 		$save = $this->conn->query($sql);
 		if($save){
 			$resp['status'] = 'success';
-			$resp['cart_count'] = $this->conn->query("SELECT SUM(quantity) from cart_list where client_id = '{$client_id}'")->fetch_array()[0];
+			$resp['cart_count'] = $this->conn->query("SELECT SUM(quantity) as total from cart_list where client_id = '{$client_id}'")->fetch_assoc()['total'];
+			$resp['msg'] = "Product has been added to cart successfully.";
 		}else{
 			$resp['status'] = 'failed';
-			$resp['msg'] = " Product has failed to add in the cart list.";
+			$resp['msg'] = "Failed to add product to cart.";
 			$resp['error'] = $this->conn->error;
 		}
 		return json_encode($resp);
 	}
 	function update_cart_quantity(){
 		extract($_POST);
-		$get = $this->conn->query("SELECT * FROM `cart_list` where id = '{$cart_id}'")->fetch_array();
-		$pid = $get['product_id'];
-		$stocks = $this->conn->query("SELECT SUM(quantity) FROM stock_list where product_id = '$pid'")->fetch_array()[0];
-        $out = $this->conn->query("SELECT SUM(quantity) FROM order_items where product_id = '{$pid}' and order_id in (SELECT id FROM order_list where `status` != 5) ")->fetch_array()[0];
-        $stocks = $stocks > 0 ? $stocks : 0;
-        $out = $out > 0 ? $out : 0;
-        $available = $stocks - $out;
-		if($available < 1){
+		
+		// Validate inputs
+		if(empty($cart_id) || empty($quantity)){
 			$resp['status'] = 'failed';
-			$resp['msg'] = " Product doesn't have stock available.";
-			$save = $this->conn->query("UPDATE cart_list set quantity = '0' where id = '{$cart_id}'");
-
-		}elseif(eval("return ".$get['quantity']." ".$quantity.";") < 1 && $available > 0){
-			$resp['status'] = 'failed';
-			$save = $this->conn->query("UPDATE cart_list set quantity = '1' where id = '{$cart_id}'");
-			$resp['msg'] = " You are at the lowest quantity.";
-		}elseif(eval("return ".$get['quantity']." ".$quantity.";") > $available){
-			$resp['status'] = 'failed';
-			$save = $this->conn->query("UPDATE cart_list set quantity = '{$available}' where id = '{$cart_id}'");
-			$resp['msg'] = " Product has only [{$available}] available stock";
-		}else{
-			$resp['status'] = 'success';
-			$save = $this->conn->query("UPDATE cart_list set quantity = quantity {$quantity} where id = '{$cart_id}'");
+			$resp['msg'] = "Invalid input parameters.";
+			return json_encode($resp);
 		}
+		
+		// Sanitize inputs
+		$cart_id = $this->conn->real_escape_string($cart_id);
+		$quantity = $this->conn->real_escape_string($quantity);
+		
+		// Get cart item details
+		$cart_item = $this->conn->query("SELECT c.*, p.name FROM `cart_list` c 
+										INNER JOIN product_list p ON c.product_id = p.id 
+										WHERE c.id = '{$cart_id}'");
+		
+		if($cart_item->num_rows == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Cart item not found.";
+			return json_encode($resp);
+		}
+		
+		$cart_data = $cart_item->fetch_assoc();
+		$pid = $cart_data['product_id'];
+		$current_quantity = $cart_data['quantity'];
+		
+		// Calculate new quantity based on operation
+		$new_quantity = 0;
+		if(strpos($quantity, '+') !== false){
+			$new_quantity = $current_quantity + (int)str_replace('+', '', $quantity);
+		} elseif(strpos($quantity, '-') !== false){
+			$new_quantity = $current_quantity - (int)str_replace('-', '', $quantity);
+		} else {
+			$new_quantity = (int)$quantity;
+		}
+		
+		// Check stock availability
+		$stocks = $this->conn->query("SELECT SUM(quantity) as total_stock FROM stock_list WHERE product_id = '{$pid}' AND type = 1")->fetch_assoc()['total_stock'];
+		$out = $this->conn->query("SELECT SUM(oi.quantity) as total_out FROM order_items oi 
+								  INNER JOIN order_list ol ON oi.order_id = ol.id 
+								  WHERE oi.product_id = '{$pid}' AND ol.status != 5")->fetch_assoc()['total_out'];
+		
+		$stocks = $stocks > 0 ? $stocks : 0;
+		$out = $out > 0 ? $out : 0;
+		$available = $stocks - $out;
+		
+		// Validate quantity constraints
+		if($new_quantity < 1){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Quantity cannot be less than 1.";
+			$save = $this->conn->query("UPDATE cart_list SET quantity = '1' WHERE id = '{$cart_id}'");
+		} elseif($new_quantity > $available){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Only {$available} units available in stock.";
+			$save = $this->conn->query("UPDATE cart_list SET quantity = '{$available}' WHERE id = '{$cart_id}'");
+		} elseif($available < 1){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Product is out of stock.";
+			$save = $this->conn->query("UPDATE cart_list SET quantity = '0' WHERE id = '{$cart_id}'");
+		} else {
+			$resp['status'] = 'success';
+			$save = $this->conn->query("UPDATE cart_list SET quantity = '{$new_quantity}' WHERE id = '{$cart_id}'");
+		}
+		
+		if(!$save){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to update cart quantity.";
+			$resp['error'] = $this->conn->error;
+		}
+		
 		return json_encode($resp);
 	}
 	function remove_from_cart(){
 		extract($_POST);
-		$del = $this->conn->query("DELETE FROM `cart_list` where id = '{$cart_id}'");
+		
+		// Validate inputs
+		if(empty($cart_id)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Invalid cart item ID.";
+			return json_encode($resp);
+		}
+		
+		// Sanitize inputs
+		$cart_id = $this->conn->real_escape_string($cart_id);
+		
+		// Verify cart item belongs to current user
+		$client_id = $this->settings->userdata('id');
+		$cart_check = $this->conn->query("SELECT id FROM `cart_list` WHERE id = '{$cart_id}' AND client_id = '{$client_id}'");
+		
+		if($cart_check->num_rows == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Cart item not found or access denied.";
+			return json_encode($resp);
+		}
+		
+		$del = $this->conn->query("DELETE FROM `cart_list` WHERE id = '{$cart_id}'");
 		if($del){
 			$resp['status'] = 'success';
-			$resp['msg'] = " Product has been remove from cart list successfully.";
+			$resp['msg'] = "Product has been removed from cart successfully.";
 		}else{
 			$resp['status'] = 'failed';
-			$resp['msg'] = " Product has failed to remove from the cart list.";
+			$resp['msg'] = "Failed to remove product from cart.";
 			$resp['error'] = $this->conn->error;
 		}
+		
 		if($resp['status'] == 'success')
 			$this->settings->set_flashdata('success',$resp['msg']);
 		return json_encode($resp);
@@ -503,52 +625,121 @@ Class Master extends DBConnection {
 	function place_order(){
 		$_POST['client_id'] = $this->settings->userdata('id');
 		extract($_POST);
-		$pref = date("Ym-");
-		$code = sprintf("%'.05d",1);
-		while(true){
-			$check = $this->conn->query("SELECT * FROM `order_list` where ref_code = '{$pref}{$code}'")->num_rows;
-			if($check > 0){
-				$code = sprintf("%'.05d",ceil($code) + 1);
-			}else{
-				break;
+		
+		// Validate inputs
+		if(empty($client_id) || empty($delivery_address)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Please provide delivery address.";
+			return json_encode($resp);
+		}
+		
+		// Sanitize inputs
+		$client_id = $this->conn->real_escape_string($client_id);
+		$delivery_address = $this->conn->real_escape_string($delivery_address);
+		
+		// Check if cart has items
+		$cart_check = $this->conn->query("SELECT COUNT(*) as cart_count FROM cart_list WHERE client_id = '{$client_id}'");
+		$cart_count = $cart_check->fetch_assoc()['cart_count'];
+		
+		if($cart_count == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Your cart is empty.";
+			return json_encode($resp);
+		}
+		
+		// Start transaction
+		$this->conn->begin_transaction();
+		
+		try {
+			// Generate unique reference code
+			$pref = date("Ym-");
+			$code = sprintf("%'.05d",1);
+			while(true){
+				$check = $this->conn->query("SELECT * FROM `order_list` WHERE ref_code = '{$pref}{$code}'")->num_rows;
+				if($check > 0){
+					$code = sprintf("%'.05d",ceil($code) + 1);
+				}else{
+					break;
+				}
+			} 
+			$ref_code = $pref.$code;
+			
+			// Create order
+			$sql1 = "INSERT INTO `order_list` (`ref_code`,`client_id`,`delivery_address`) VALUES ('{$ref_code}','{$client_id}','{$delivery_address}')";
+			$save = $this->conn->query($sql1);
+			
+			if(!$save){
+				throw new Exception("Failed to create order: " . $this->conn->error);
 			}
-		} 
-		$ref_code = $pref.$code;
-		$sql1 = "INSERT INTO `order_list` (`ref_code`,`client_id`,`delivery_address`) VALUES ('{$ref_code}','{$client_id}','{$delivery_address}')";
-		$save = $this->conn->query($sql1);
-		if($save){
+			
 			$oid = $this->conn->insert_id;
 			$data = "";
 			$total_amount = 0;
-			$cart = $this->conn->query("SELECT c.*,p.price FROM cart_list c inner join product_list p on c.product_id = p.id where c.client_id = '{$client_id}'");
+			
+			// Get cart items with product details
+			$cart = $this->conn->query("SELECT c.*, p.price, p.name FROM cart_list c 
+									   INNER JOIN product_list p ON c.product_id = p.id 
+									   WHERE c.client_id = '{$client_id}'");
+			
 			while($row = $cart->fetch_assoc()){
+				// Check stock availability for each item
+				$stocks = $this->conn->query("SELECT SUM(quantity) as total_stock FROM stock_list WHERE product_id = '{$row['product_id']}' AND type = 1")->fetch_assoc()['total_stock'];
+				$out = $this->conn->query("SELECT SUM(oi.quantity) as total_out FROM order_items oi 
+										  INNER JOIN order_list ol ON oi.order_id = ol.id 
+										  WHERE oi.product_id = '{$row['product_id']}' AND ol.status != 5")->fetch_assoc()['total_out'];
+				
+				$stocks = $stocks > 0 ? $stocks : 0;
+				$out = $out > 0 ? $out : 0;
+				$available = $stocks - $out;
+				
+				if($row['quantity'] > $available){
+					throw new Exception("Product '{$row['name']}' has insufficient stock. Available: {$available}, Requested: {$row['quantity']}");
+				}
+				
 				if(!empty($data)) $data .= ", ";
 				$data .= "('{$oid}','{$row['product_id']}','{$row['quantity']}')";
 				$total_amount += ($row['price'] * $row['quantity']);
 			}
+			
 			if(!empty($data)){
 				$sql2 = "INSERT INTO `order_items` (`order_id`,`product_id`,`quantity`) VALUES {$data}";
 				$save2 = $this->conn->query($sql2);
-				if($save2){
-					$resp['status'] = 'success';
-					$this->conn->query("DELETE FROM `cart_list` where client_id = '{$client_id}'");
-					$this->conn->query("UPDATE `order_list` set total_amount = '{$total_amount}' where id = '{$oid}'");
-					$resp['msg'] = " Order has been place successfully.";
-				}else{
-					$resp['status'] = 'failed';
-					$resp['msg'] = " Order has failed to place.";
-					$resp['error'] = $this->conn->error;
-					$this->conn->query("DELETE FROM `order_list` where id = '{$oid}'");
+				
+				if(!$save2){
+					throw new Exception("Failed to add order items: " . $this->conn->error);
 				}
-			}else{
-				$resp['status'] = 'failed';
-				$resp['msg'] = " Cart is empty.";
+				
+				// Update order total
+				$update_total = $this->conn->query("UPDATE `order_list` SET total_amount = '{$total_amount}' WHERE id = '{$oid}'");
+				if(!$update_total){
+					throw new Exception("Failed to update order total: " . $this->conn->error);
+				}
+				
+				// Clear cart
+				$clear_cart = $this->conn->query("DELETE FROM `cart_list` WHERE client_id = '{$client_id}'");
+				if(!$clear_cart){
+					throw new Exception("Failed to clear cart: " . $this->conn->error);
+				}
+				
+				// Commit transaction
+				$this->conn->commit();
+				
+				$resp['status'] = 'success';
+				$resp['msg'] = "Order has been placed successfully. Reference Code: {$ref_code}";
+				$resp['order_id'] = $oid;
+				$resp['ref_code'] = $ref_code;
+				
+			} else {
+				throw new Exception("No items found in cart.");
 			}
-		}else{
+			
+		} catch (Exception $e) {
+			// Rollback transaction on error
+			$this->conn->rollback();
 			$resp['status'] = 'failed';
-			$resp['msg'] = " Order has failed to place.";
-			$resp['error'] = $this->conn->error;
+			$resp['msg'] = $e->getMessage();
 		}
+		
 		if($resp['status'] == 'success')
 			$this->settings->set_flashdata('success',$resp['msg']);
 		return json_encode($resp);
@@ -613,6 +804,21 @@ Class Master extends DBConnection {
 		$this->settings->set_flashdata('success',$resp['msg']);
 		return json_encode($resp);
 	}
+	function get_cart_count(){
+		$client_id = $this->settings->userdata('id');
+		if(empty($client_id)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "User not logged in.";
+			return json_encode($resp);
+		}
+		
+		$cart_count = $this->conn->query("SELECT SUM(quantity) as total from cart_list where client_id = '{$client_id}'")->fetch_assoc()['total'];
+		$cart_count = $cart_count > 0 ? $cart_count : 0;
+		
+		$resp['status'] = 'success';
+		$resp['cart_count'] = $cart_count;
+		return json_encode($resp);
+	}
 }
 
 $Master = new Master();
@@ -672,6 +878,9 @@ switch ($action) {
 	break;
 	case 'remove_from_cart':
 		echo $Master->remove_from_cart();
+	break;
+	case 'get_cart_count':
+		echo $Master->get_cart_count();
 	break;
 	case 'place_order':
 		echo $Master->place_order();

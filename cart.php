@@ -5,6 +5,14 @@
         object-fit:scale-down;
         object-position: center center;
     }
+    .stock-warning {
+        color: #dc3545;
+        font-size: 0.8em;
+    }
+    .stock-info {
+        color: #28a745;
+        font-size: 0.8em;
+    }
 </style>
 <div class="content py-5 mt-3">
     <div class="container">
@@ -16,6 +24,16 @@
                 $total = 0;
                 $cart = $conn->query("SELECT c.*,p.name, p.price, p.image_path,b.name as brand, cc.category FROM `cart_list` c inner join product_list p on c.product_id = p.id inner join brand_list b on p.brand_id = b.id inner join categories cc on p.category_id = cc.id where c.client_id = '{$_settings->userdata('id')}' order by p.name asc");
                 while($row = $cart->fetch_assoc()):
+                    // Calculate available stock
+                    $stocks = $conn->query("SELECT SUM(quantity) as total_stock FROM stock_list WHERE product_id = '{$row['product_id']}' AND type = 1")->fetch_assoc()['total_stock'];
+                    $out = $conn->query("SELECT SUM(oi.quantity) as total_out FROM order_items oi 
+                                        INNER JOIN order_list ol ON oi.order_id = ol.id 
+                                        WHERE oi.product_id = '{$row['product_id']}' AND ol.status != 5")->fetch_assoc()['total_out'];
+                    
+                    $stocks = $stocks > 0 ? $stocks : 0;
+                    $out = $out > 0 ? $out : 0;
+                    $available = $stocks - $out;
+                    
                     $total += ($row['quantity'] * $row['price']);
                 ?>
                 <div class="d-flex align-items-center w-100 border cart-item" data-id="<?= $row['id'] ?>">
@@ -30,14 +48,33 @@
                                 </a>
                                 <small><?= $row['brand'] ?></small><br>
                                 <small><?= $row['category'] ?></small><br>
+                                
+                                <!-- Stock availability info -->
+                                <?php if($available < $row['quantity']): ?>
+                                    <div class="stock-warning">
+                                        <i class="fa fa-exclamation-triangle"></i> 
+                                        Only <?= $available ?> units available (you have <?= $row['quantity'] ?> in cart)
+                                    </div>
+                                <?php elseif($available <= 5): ?>
+                                    <div class="stock-warning">
+                                        <i class="fa fa-exclamation-triangle"></i> 
+                                        Low stock: <?= $available ?> units available
+                                    </div>
+                                <?php else: ?>
+                                    <div class="stock-info">
+                                        <i class="fa fa-check-circle"></i> 
+                                        <?= $available ?> units available
+                                    </div>
+                                <?php endif; ?>
+                                
                                 <div class="d-flex align-items-center w-100 mb-1">
                                     <div class="input-group " style="width:8em">
                                         <div class="input-group-prepend">
-                                            <button class="btn btn-sm btn-outline-secondary btn-minus" data-id='<?= $row['id'] ?>'><i class="fa fa-minus"></i></button>
+                                            <button class="btn btn-sm btn-outline-secondary btn-minus" data-id='<?= $row['id'] ?>' <?= $available < 1 ? 'disabled' : '' ?>><i class="fa fa-minus"></i></button>
                                         </div>
                                         <input type="text" value="<?= $row['quantity'] ?>" readonly class="form-control form-control-sm text-center">
                                         <div class="input-group-append">
-                                            <button class="btn btn-sm btn-outline-secondary btn-plus" data-id='<?= $row['id'] ?>'><i class="fa fa-plus"></i></button>
+                                            <button class="btn btn-sm btn-outline-secondary btn-plus" data-id='<?= $row['id'] ?>' <?= $available <= $row['quantity'] ? 'disabled' : '' ?>><i class="fa fa-plus"></i></button>
                                         </div>
                                     </div>
                                     <span class="ml-2">X <?= number_format($row['price'],2) ?></span>

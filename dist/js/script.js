@@ -22,8 +22,12 @@ window.alert_toast = function($msg = 'TEST', $bg = 'success', $pos = '') {
 }
 
 window.update_cart_count = function($count = 0) {
-    if ($count > 0 && $('#cart_count').length > 0) {
-        $('#cart_count').text($count)
+    if ($('#cart_count').length > 0) {
+        if ($count > 0) {
+            $('#cart_count').text($count).show();
+        } else {
+            $('#cart_count').text('0').hide();
+        }
     }
 }
 
