@@ -41,6 +41,85 @@
       @keyframes chartjs-render-animation{from{opacity:.99}to{opacity:1}}.chartjs-render-monitor{animation:chartjs-render-animation 1ms}.chartjs-size-monitor,.chartjs-size-monitor-expand,.chartjs-size-monitor-shrink{position:absolute;direction:ltr;left:0;top:0;right:0;bottom:0;overflow:hidden;pointer-events:none;visibility:hidden;z-index:-1}.chartjs-size-monitor-expand>div{position:absolute;width:1000000px;height:1000000px;left:0;top:0}.chartjs-size-monitor-shrink>div{position:absolute;width:200%;height:200%;left:0;top:0}
     </style>
 
+    <!-- Global Admin Dashboard CSS Fixes -->
+    <style>
+    /* Fix scrolling issues across all admin pages */
+    .content-wrapper {
+        overflow-y: auto !important;
+        height: calc(100vh - 60px) !important;
+        padding-bottom: 20px;
+    }
+
+    .main-content {
+        min-height: calc(100vh - 60px);
+    }
+
+    .card-body {
+        overflow-x: auto;
+    }
+
+    .table-responsive {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    /* Ensure proper spacing */
+    .info-box {
+        margin-bottom: 15px;
+    }
+
+    /* Fix modal scrolling */
+    .modal-body {
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+
+    /* Improve table readability */
+    .table th {
+        position: sticky;
+        top: 0;
+        background: #f4f6f9;
+        z-index: 10;
+    }
+
+    /* Better table styling */
+    .table td {
+        vertical-align: middle;
+    }
+
+    .dropdown-menu {
+        min-width: 120px;
+    }
+
+    /* Fix sidebar scrolling */
+    .main-sidebar {
+        overflow-y: auto;
+        height: 100vh;
+    }
+
+    /* Ensure content area is scrollable */
+    .content {
+        overflow-y: auto;
+        height: calc(100vh - 60px);
+    }
+
+    /* Fix DataTables scrolling */
+    .dataTables_wrapper {
+        overflow-x: auto;
+    }
+
+    /* Better responsive design */
+    @media (max-width: 768px) {
+        .content-wrapper {
+            height: calc(100vh - 120px) !important;
+        }
+        
+        .table-responsive {
+            max-height: 50vh;
+        }
+    }
+    </style>
+
      <!-- jQuery -->
     <script src="<?php echo base_url ?>plugins/jquery/jquery.min.js"></script>
     <!-- jQuery UI 1.11.4 -->
