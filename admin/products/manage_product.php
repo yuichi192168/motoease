@@ -8,26 +8,14 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
     }
 }
 ?>
-<style>
-    .template-preview {
-        background: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 4px;
-        padding: 10px;
-        margin-top: 10px;
-        font-size: 0.9rem;
-        max-height: 200px;
-        overflow-y: auto;
-    }
-</style>
-
-<div class="card card-outline card-info">
+<div class="card card-outline card-info rounded-0">
 	<div class="card-header">
 		<h3 class="card-title"><?php echo isset($id) ? "Update ": "Create New " ?> Product</h3>
 	</div>
 	<div class="card-body">
 		<form action="" id="product-form">
-			<input type="hidden" name="id" value="<?php echo isset($id) ? $id : '' ?>">
+			<input type="hidden" name ="id" value="<?php echo isset($id) ? $id : '' ?>">
+            
             <div class="form-group">
 				<label for="brand_id" class="control-label">Brand</label>
                 <select name="brand_id" id="brand_id" class="custom-select select2">
@@ -40,6 +28,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                     <?php endwhile; ?>
                 </select>
 			</div>
+            
             <div class="form-group">
 				<label for="category_id" class="control-label">Category</label>
                 <select name="category_id" id="category_id" class="custom-select select2">
@@ -52,48 +41,48 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                     <?php endwhile; ?>
                 </select>
 			</div>
+
 			<div class="form-group">
 				<label for="name" class="control-label">Name</label>
                 <input name="name" id="name" type="text" class="form-control rounded-0" value="<?php echo isset($name) ? $name : ''; ?>" required>
 			</div>
+
 			<div class="form-group">
 				<label for="models" class="control-label">Compatible for: <small>(model)</small></label>
                 <input name="models" id="models" type="text" class="form-control rounded-0" value="<?php echo isset($models) ? $models : ''; ?>" required>
 			</div>
-            
-            <!-- Template Description System -->
+
+            <!-- Template selection -->
             <div class="form-group">
-				<label for="description_template" class="control-label">Description Template</label>
-                <select name="description_template" id="description_template" class="custom-select select2">
-                    <option value="">Select a template or write custom description</option>
-                    <option value="crash_guard" <?= (isset($description) && strpos($description, 'Crash Guard') !== false) ? 'selected' : '' ?>>Crash Guard Template</option>
-                    <option value="steering_damper" <?= (isset($description) && strpos($description, 'Steering Damper') !== false) ? 'selected' : '' ?>>Steering Damper Template</option>
-                    <option value="exhaust_system" <?= (isset($description) && strpos($description, 'Exhaust System') !== false) ? 'selected' : '' ?>>Exhaust System Template</option>
-                    <option value="brake_system" <?= (isset($description) && strpos($description, 'Brake System') !== false) ? 'selected' : '' ?>>Brake System Template</option>
-                    <option value="lighting" <?= (isset($description) && strpos($description, 'Lighting') !== false) ? 'selected' : '' ?>>Lighting Template</option>
-                    <option value="performance" <?= (isset($description) && strpos($description, 'Performance') !== false) ? 'selected' : '' ?>>Performance Parts Template</option>
-                    <option value="custom">Custom Description</option>
+                <label for="template" class="control-label">Template</label>
+                <select id="template" class="custom-select">
+                    <option value="" selected disabled>Select a Template</option>
+                    <option value="motorcycle">Motorcycle</option>
+                    <option value="motorcycle_helmet">Motorcycle Helmet</option>
+                    <option value="crash_guard">Crash Guard</option>
+                    <option value="steering_damper">Steering Damper</option>
+                    <option value="exhaust_system">Exhaust System</option>
+                    <option value="brake_system">Brake System</option>
+                    <option value="lighting">Lighting System</option>
+                    <option value="performance">Performance Kit</option>
                 </select>
-                <div id="template_preview" class="template-preview" style="display:none;"></div>
+                <small class="form-text text-muted">Choosing a template will auto-fill the description field.</small>
             </div>
-            
+
             <div class="form-group">
 				<label for="description" class="control-label">Description</label>
                 <textarea name="description" id="description" type="text" class="form-control rounded-0 summernote" required><?php echo isset($description) ? $description : ''; ?></textarea>
 			</div>
-            
-            <!-- Manual Price Input -->
+
 			<div class="form-group">
 				<label for="price" class="control-label">Price</label>
-                <div class="input-group">
-                    <div class="input-group-prepend">
-                        <span class="input-group-text">₱</span>
-                    </div>
-                    <input type="number" name="price" id="price" class="form-control rounded-0" value="<?php echo isset($price) ? $price : ''; ?>" step="0.01" min="0" required>
-                </div>
-                <small class="form-text text-muted">Enter the product price manually</small>
+                <input name="price" id="price" type="text" 
+                       class="form-control rounded-0 text-right" 
+                       value="<?php echo isset($price) ? number_format($price, 2) : '0.00'; ?>" 
+                       required>
+                <small class="form-text text-muted">Auto-formatted with commas and two decimal places.</small>
 			</div>
-            
+
             <div class="form-group">
 				<label for="status" class="control-label">Status</label>
                 <select name="status" id="status" class="custom-select selevt">
@@ -101,6 +90,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 <option value="0" <?php echo isset($status) && $status == 0 ? 'selected' : '' ?>>Inactive</option>
                 </select>
 			</div>
+
 			<div class="form-group">
 				<div class="row">
 					<div class="col-md-6">
@@ -117,7 +107,6 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 					</div>
 				</div>
 			</div>
-			
 		</form>
 	</div>
 	<div class="card-footer">
@@ -125,188 +114,128 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 		<a class="btn btn-flat btn-default" href="?page=products">Cancel</a>
 	</div>
 </div>
+
 <script>
-	window.displayImg = function(input,_this) {
-	    if (input.files && input.files[0]) {
-	        var reader = new FileReader();
-	        reader.onload = function (e) {
-	        	$('#cimg').attr('src', e.target.result);
-	        	_this.siblings('.custom-file-label').html(input.files[0].name)
-	        }
+const templates = {
+    motorcycle: {
+        description: `<p><strong>Complete Motorcycle</strong></p>
+        <p>Experience the thrill and freedom of the open road with this high-performance motorcycle. Features include:</p>
+        <ul>
+            <li>Powerful engine for smooth acceleration</li>
+            <li>Durable frame and suspension for stability</li>
+            <li>Fuel-efficient design for longer rides</li>
+            <li>Modern styling with aerodynamic design</li>
+            <li>Equipped with essential safety features like brakes and lights</li>
+        </ul>
+        <p>Perfect choice for both daily commuting and weekend adventures.</p>`
+    },
+    motorcycle_helmet: {
+        description: `<p><strong>Premium Motorcycle Helmet</strong></p>
+        <p>Ride safely and comfortably with this top-quality motorcycle helmet. Features include:</p>
+        <ul>
+            <li>DOT and ECE certified for maximum safety</li>
+            <li>Lightweight yet durable shell construction</li>
+            <li>Removable and washable inner lining for hygiene</li>
+            <li>Adjustable visor with anti-scratch and anti-fog coating</li>
+            <li>Ergonomic design for comfortable long rides</li>
+        </ul>
+        <p>Essential gear for every rider to ensure safety without compromising style.</p>`
+    },
+    crash_guard: { description: `<p><strong>High-Quality Crash Guard</strong></p><p>This premium crash guard provides excellent protection for your motorcycle's engine and body parts...</p>` },
+    steering_damper: { description: `<p><strong>Performance Steering Damper</strong></p><p>Enhance your motorcycle's stability and handling...</p>` },
+    exhaust_system: { description: `<p><strong>Performance Exhaust System</strong></p><p>Upgrade your motorcycle's performance and sound...</p>` },
+    brake_system: { description: `<p><strong>High-Performance Brake System</strong></p><p>Upgrade your motorcycle's braking performance...</p>` },
+    lighting: { description: `<p><strong>LED Lighting System</strong></p><p>Illuminate your path with this advanced LED lighting system...</p>` },
+    performance: { description: `<p><strong>Performance Enhancement Kit</strong></p><p>Boost your motorcycle's performance...</p>` }
+};
 
-	        reader.readAsDataURL(input.files[0]);
-	    }else{
-            $('#cimg').attr('src', "<?php echo validate_image(isset($image_path) ? $image_path : "") ?>");
-            _this.siblings('.custom-file-label').html("Choose file")
+window.displayImg = function(input,_this) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            $('#cimg').attr('src', e.target.result);
+            _this.siblings('.custom-file-label').html(input.files[0].name)
         }
-	}
+        reader.readAsDataURL(input.files[0]);
+    }else{
+        $('#cimg').attr('src', "<?php echo validate_image(isset($image_path) ? $image_path : "") ?>");
+        _this.siblings('.custom-file-label').html("Choose file")
+    }
+}
 
-	$(document).ready(function(){
-		$('.select2').select2({
-			placeholder:"Please Select Here",
-			dropdownParent: $('#uni_modal')
-		})
+$(document).ready(function(){
+    $('.select2').select2({
+        width:'100%',
+        placeholder:"Please Select Here"
+    });
 
-        // Initialize Select2 for brand and category dropdowns
-        $('#brand_id, #category_id').select2({
-            placeholder: "Please Select Here",
-            allowClear: true,
-            dropdownParent: $('body')
-        });
+    // Auto-fill description
+    $('#template').change(function(){
+        let selected = $(this).val();
+        if(templates[selected]){
+            $('#description').summernote('code', templates[selected].description);
+        }
+    });
 
-        // Template description system
-        const templates = {
-            crash_guard: {
-                description: `<p><strong>High-Quality Crash Guard</strong></p>
-<p>This premium crash guard provides excellent protection for your motorcycle's engine and body parts. Features include:</p>
-<ul>
-<li>Heavy-duty steel construction for maximum durability</li>
-<li>Powder-coated finish for rust resistance</li>
-<li>Easy installation with included hardware</li>
-<li>Universal fit design for most motorcycle models</li>
-<li>Impact-resistant design for superior protection</li>
-</ul>
-<p>Essential protection for your motorcycle's vital components.</p>`
-            },
-            steering_damper: {
-                description: `<p><strong>Performance Steering Damper</strong></p>
-<p>Enhance your motorcycle's stability and handling with this high-performance steering damper. Features include:</p>
-<ul>
-<li>Adjustable damping for personalized feel</li>
-<li>High-quality materials for long-lasting performance</li>
-<li>Easy installation with detailed instructions</li>
-<li>Compatible with most motorcycle models</li>
-<li>Reduces handlebar vibration and wobble</li>
-</ul>
-<p>Improve your riding experience with better control and stability.</p>`
-            },
-            exhaust_system: {
-                description: `<p><strong>Performance Exhaust System</strong></p>
-<p>Upgrade your motorcycle's performance and sound with this premium exhaust system. Features include:</p>
-<ul>
-<li>High-flow design for improved power output</li>
-<li>Stainless steel construction for durability</li>
-<li>Deep, aggressive exhaust note</li>
-<li>Easy bolt-on installation</li>
-<li>Includes mounting hardware and gaskets</li>
-</ul>
-<p>Unlock your motorcycle's true potential with enhanced performance.</p>`
-            },
-            brake_system: {
-                description: `<p><strong>High-Performance Brake System</strong></p>
-<p>Upgrade your motorcycle's braking performance with this advanced brake system. Features include:</p>
-<ul>
-<li>Stainless steel brake lines for consistent performance</li>
-<li>Easy installation and maintenance</li>
-<li>Compatible with stock brake calipers</li>
-<li>Improved brake feel and response</li>
-</ul>
-<p>Essential upgrade for safety-conscious riders.</p>`
-            },
-            lighting: {
-                description: `<p><strong>LED Lighting System</strong></p>
-<p>Illuminate your path with this advanced LED lighting system. Features include:</p>
-<ul>
-<li>High-brightness LED technology for maximum visibility</li>
-<li>Energy-efficient design for longer battery life</li>
-<li>Easy plug-and-play installation</li>
-<li>Weather-resistant construction</li>
-<li>Multiple lighting modes and patterns</li>
-</ul>
-<p>Enhance visibility and safety during night rides.</p>`
-            },
-            performance: {
-                description: `<p><strong>Performance Enhancement Kit</strong></p>
-<p>Boost your motorcycle's performance with this comprehensive upgrade kit. Features include:</p>
-<ul>
-<li>High-flow air filter for improved breathing</li>
-<li>Performance ECU tuning for optimal power</li>
-<li>Lightweight components for better handling</li>
-<li>Easy installation with detailed instructions</li>
-<li>Compatible with stock motorcycle systems</li>
-</ul>
-<p>Unlock your motorcycle's full potential.</p>`
-            }
-        };
+    // Price formatting
+    $('#price').on('input', function(){
+        let val = $(this).val().replace(/,/g, '').replace(/[^0-9.]/g, '');
+        if(val){
+            let num = parseFloat(val).toFixed(2);
+            $(this).val(num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+        }
+    });
 
-        $('#description_template').change(function() {
-            var template = $(this).val();
-            
-            if (template && template !== 'custom' && templates[template]) {
-                $('#description').val(templates[template].description);
-                $('#template_preview').html(templates[template].description).show();
-                // Trigger summernote update
-                $('#description').summernote('code', templates[template].description);
-            } else {
-                $('#template_preview').hide();
-                if (template === 'custom') {
-                    $('#description').val('').focus();
-                    $('#description').summernote('code', '');
+    $('#product-form').submit(function(e){
+        e.preventDefault();
+        var _this = $(this);
+        $('.err-msg').remove();
+        start_loader();
+        $.ajax({
+            url:_base_url_+"classes/Master.php?f=save_product",
+            data: new FormData($(this)[0]),
+            cache: false,
+            contentType: false,
+            processData: false,
+            method: 'POST',
+            type: 'POST',
+            dataType: 'json',
+            error:err=>{
+                console.log(err)
+                alert_toast("An error occured",'error');
+                end_loader();
+            },
+            success:function(resp){
+                if(typeof resp =='object' && resp.status == 'success'){
+                    location.href = "./?page=products/view_product&id="+resp.id;
+                }else if(resp.status == 'failed' && !!resp.msg){
+                    var el = $('<div>')
+                        el.addClass("alert alert-danger err-msg").text(resp.msg)
+                        _this.prepend(el)
+                        el.show('slow')
+                        $("html, body").animate({ scrollTop: _this.closest('.card').offset().top }, "fast");
+                        end_loader()
+                }else{
+                    alert_toast("An error occured",'error');
+                    end_loader();
+                    console.log(resp)
                 }
             }
-        });
+        })
+    });
 
-        // Auto-detect template on page load
-        var currentDescription = $('#description').val();
-        if (currentDescription) {
-            for (var template in templates) {
-                if (currentDescription.includes(templates[template].description.substring(0, 50))) {
-                    $('#description_template').val(template).trigger('change');
-                    break;
-                }
-            }
-        }
-
-		$('#product-form').submit(function(e){
-			e.preventDefault();
-            var _this = $(this)
-			 $('.err-msg').remove();
-			start_loader();
-			$.ajax({
-				url:_base_url_+"classes/Master.php?f=save_product",
-				data: new FormData($(this)[0]),
-                cache: false,
-                contentType: false,
-                processData: false,
-                method: 'POST',
-                type: 'POST',
-                dataType: 'json',
-				error:err=>{
-					console.log(err)
-					alert_toast("An error occured",'error');
-					end_loader();
-				},
-				success:function(resp){
-					if(typeof resp =='object' && resp.status == 'success'){
-						location.href = "?page=products";
-					}else if(resp.status == 'failed' && !!resp.msg){
-                        var el = $('<div>')
-                            el.addClass("alert alert-danger err-msg").text(resp.msg)
-                            _this.prepend(el)
-                            el.show('slow')
-                            $("html, body").animate({ scrollTop: _this.closest('.card').offset().top }, "fast");
-                            end_loader()
-                    }else{
-						alert_toast("An error occured",'error');
-						end_loader();
-                        console.log(resp)
-					}
-				}
-			})
-		})
-
-        $('.summernote').summernote({
-		        height: 200,
-		        toolbar: [
-		            [ 'style', [ 'style' ] ],
-		            [ 'font', [ 'bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'clear'] ],
-		            [ 'fontname', [ 'fontname' ] ],
-		            [ 'fontsize', [ 'fontsize' ] ],
-		            [ 'color', [ 'color' ] ],
-		            [ 'para', [ 'ol', 'ul', 'paragraph', 'height' ] ],
-		            [ 'table', [ 'table' ] ],
-		            [ 'view', [ 'undo', 'redo', 'fullscreen', 'codeview', 'help' ] ]
-		        ]
-		    })
-	})
+    $('.summernote').summernote({
+        height: 200,
+        toolbar: [
+            [ 'style', [ 'style' ] ],
+            [ 'font', [ 'bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'clear'] ],
+            [ 'fontname', [ 'fontname' ] ],
+            [ 'fontsize', [ 'fontsize' ] ],
+            [ 'color', [ 'color' ] ],
+            [ 'para', [ 'ol', 'ul', 'paragraph', 'height' ] ],
+            [ 'table', [ 'table' ] ],
+            [ 'view', [ 'undo', 'redo', 'fullscreen', 'codeview', 'help' ] ]
+        ]
+    });
+});
 </script>

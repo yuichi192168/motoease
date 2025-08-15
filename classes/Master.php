@@ -559,7 +559,6 @@ Class Master extends DBConnection {
 		}
 		return json_encode($resp);
 	}
-	
 	function delete_product(){
 		extract($_POST);
 		$del = $this->conn->query("UPDATE `product_list` set `delete_flag` = 1  where id = '{$id}'");
@@ -571,6 +570,7 @@ Class Master extends DBConnection {
 			$resp['error'] = $this->conn->error;
 		}
 		return json_encode($resp);
+
 	}
 	
 	// Service functions
