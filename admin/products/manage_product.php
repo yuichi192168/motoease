@@ -8,14 +8,32 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
     }
 }
 ?>
-<div class="card card-outline card-info rounded-0">
+<style>
+    .template-preview {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 10px;
+        margin-top: 10px;
+        font-size: 0.9rem;
+    }
+    .price-display {
+        background: #e9ecef;
+        padding: 10px;
+        border-radius: 4px;
+        font-weight: bold;
+        color: #495057;
+    }
+</style>
+
+<div class="card card-outline card-info">
 	<div class="card-header">
 		<h3 class="card-title"><?php echo isset($id) ? "Update ": "Create New " ?> Product</h3>
 	</div>
 	<div class="card-body">
 		<form action="" id="product-form">
-			<input type="hidden" name ="id" value="<?php echo isset($id) ? $id : '' ?>">
-            <div class="form-group">
+			<input type="hidden" name="id" value="<?php echo isset($id) ? $id : '' ?>">
+			<div class="form-group">
 				<label for="brand_id" class="control-label">Brand</label>
                 <select name="brand_id" id="brand_id" class="custom-select select2">
                     <option value="" <?= !isset($brand_id) ? "selected" : "" ?> disabled></option>
@@ -47,14 +65,42 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 				<label for="models" class="control-label">Compatible for: <small>(model)</small></label>
                 <input name="models" id="models" type="text" class="form-control rounded-0" value="<?php echo isset($models) ? $models : ''; ?>" required>
 			</div>
+            
+            <!-- Template Description System -->
+            <div class="form-group">
+				<label for="description_template" class="control-label">Description Template</label>
+                <select name="description_template" id="description_template" class="custom-select select2">
+                    <option value="">Select a template or write custom description</option>
+                    <option value="crash_guard" <?= (isset($description) && strpos($description, 'Crash Guard') !== false) ? 'selected' : '' ?>>Crash Guard Template</option>
+                    <option value="steering_damper" <?= (isset($description) && strpos($description, 'Steering Damper') !== false) ? 'selected' : '' ?>>Steering Damper Template</option>
+                    <option value="exhaust_system" <?= (isset($description) && strpos($description, 'Exhaust System') !== false) ? 'selected' : '' ?>>Exhaust System Template</option>
+                    <option value="brake_system" <?= (isset($description) && strpos($description, 'Brake System') !== false) ? 'selected' : '' ?>>Brake System Template</option>
+                    <option value="lighting" <?= (isset($description) && strpos($description, 'Lighting') !== false) ? 'selected' : '' ?>>Lighting Template</option>
+                    <option value="performance" <?= (isset($description) && strpos($description, 'Performance') !== false) ? 'selected' : '' ?>>Performance Parts Template</option>
+                    <option value="custom">Custom Description</option>
+                </select>
+                <div id="template_preview" class="template-preview" style="display:none;"></div>
+            </div>
+            
             <div class="form-group">
 				<label for="description" class="control-label">Description</label>
                 <textarea name="description" id="description" type="text" class="form-control rounded-0 summernote" required><?php echo isset($description) ? $description : ''; ?></textarea>
 			</div>
-			<div class="form-group">
-				<label for="price" class="control-label">Price</label>
-                <input name="price" id="price" type="number" class="form-control rounded-0 text-right" value="<?php echo isset($price) ? $price : 0; ?>" required>
-			</div>
+            
+            <!-- Automatic Price Display -->
+            <div class="form-group">
+				<label for="price" class="control-label">Price (Auto-calculated)</label>
+                <div class="price-display" id="price_display">
+                    <?php if(isset($price) && $price > 0): ?>
+                        ₱<?= number_format($price, 2) ?>
+                    <?php else: ?>
+                        Price will be calculated based on template and category
+                    <?php endif; ?>
+                </div>
+                <input type="hidden" name="price" id="price" value="<?php echo isset($price) ? $price : 0; ?>">
+                <small class="form-text text-muted">Price is automatically calculated based on the selected template and category</small>
+            </div>
+            
             <div class="form-group">
 				<label for="status" class="control-label">Status</label>
                 <select name="status" id="status" class="custom-select selevt">
@@ -101,11 +147,142 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
             _this.siblings('.custom-file-label').html("Choose file")
         }
 	}
+
 	$(document).ready(function(){
 		$('.select2').select2({
-			width:'100%',
-			placeholder:"Please Select Here"
+			placeholder:"Please Select Here",
+			dropdownParent: $('#uni_modal')
 		})
+
+        // Template description system
+        const templates = {
+            crash_guard: {
+                description: `<p><strong>High-Quality Crash Guard</strong></p>
+<p>This premium crash guard provides excellent protection for your motorcycle's engine and body parts. Features include:</p>
+<ul>
+<li>Heavy-duty steel construction for maximum durability</li>
+<li>Powder-coated finish for rust resistance</li>
+<li>Easy installation with included mounting hardware</li>
+<li>Compatible with multiple motorcycle models</li>
+<li>Provides comprehensive engine and body protection</li>
+</ul>
+<p>Perfect for riders who want reliable protection for their valuable motorcycle investment.</p>`,
+                basePrice: 2500
+            },
+            steering_damper: {
+                description: `<p><strong>Performance Steering Damper</strong></p>
+<p>Enhance your motorcycle's handling and stability with this professional-grade steering damper. Features include:</p>
+<ul>
+<li>Adjustable damping settings for personalized feel</li>
+<li>High-quality hydraulic system for smooth operation</li>
+<li>CNC-machined aluminum construction</li>
+<li>Easy installation with detailed instructions</li>
+<li>Reduces handlebar vibration and improves control</li>
+</ul>
+<p>Ideal for performance riders and long-distance touring.</p>`,
+                basePrice: 15000
+            },
+            exhaust_system: {
+                description: `<p><strong>Performance Exhaust System</strong></p>
+<p>Upgrade your motorcycle's performance and sound with this premium exhaust system. Features include:</p>
+<ul>
+<li>Stainless steel construction for durability</li>
+<li>Performance-tuned for optimal power output</li>
+<li>Deep, aggressive exhaust note</li>
+<li>Easy bolt-on installation</li>
+<li>Includes all necessary mounting hardware</li>
+</ul>
+<p>Transform your motorcycle's performance and appearance.</p>`,
+                basePrice: 12000
+            },
+            brake_system: {
+                description: `<p><strong>High-Performance Brake System</strong></p>
+<p>Upgrade your motorcycle's stopping power with this premium brake system. Features include:</p>
+<ul>
+<li>High-quality brake pads for superior stopping power</li>
+<li>Stainless steel brake lines for consistent performance</li>
+<li>Easy installation and maintenance</li>
+<li>Compatible with stock brake calipers</li>
+<li>Improved brake feel and response</li>
+</ul>
+<p>Essential upgrade for safety-conscious riders.</p>`,
+                basePrice: 8000
+            },
+            lighting: {
+                description: `<p><strong>LED Lighting System</strong></p>
+<p>Illuminate your path with this advanced LED lighting system. Features include:</p>
+<ul>
+<li>High-brightness LED technology for maximum visibility</li>
+<li>Energy-efficient design for longer battery life</li>
+<li>Easy plug-and-play installation</li>
+<li>Weather-resistant construction</li>
+<li>Multiple lighting modes and patterns</li>
+</ul>
+<p>Enhance visibility and safety during night rides.</p>`,
+                basePrice: 3500
+            },
+            performance: {
+                description: `<p><strong>Performance Enhancement Kit</strong></p>
+<p>Boost your motorcycle's performance with this comprehensive upgrade kit. Features include:</p>
+<ul>
+<li>High-flow air filter for improved breathing</li>
+<li>Performance ECU tuning for optimal power</li>
+<li>Lightweight components for better handling</li>
+<li>Easy installation with detailed instructions</li>
+<li>Compatible with stock motorcycle systems</li>
+</ul>
+<p>Unlock your motorcycle's full potential.</p>`,
+                basePrice: 18000
+            }
+        };
+
+        // Category price multipliers
+        const categoryMultipliers = {
+            1: 1.0,  // Default
+            2: 1.2,  // Performance parts
+            3: 0.9,  // Basic accessories
+            4: 1.5,  // Premium parts
+            5: 1.1   // Standard parts
+        };
+
+        $('#description_template').change(function() {
+            var template = $(this).val();
+            var categoryId = $('#category_id').val();
+            
+            if (template && template !== 'custom' && templates[template]) {
+                $('#description').val(templates[template].description);
+                $('#template_preview').html(templates[template].description).show();
+                
+                // Calculate price
+                var basePrice = templates[template].basePrice;
+                var multiplier = categoryMultipliers[categoryId] || 1.0;
+                var finalPrice = basePrice * multiplier;
+                
+                $('#price').val(finalPrice);
+                $('#price_display').html('₱' + finalPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            } else {
+                $('#template_preview').hide();
+                if (template === 'custom') {
+                    $('#description').val('').focus();
+                }
+            }
+        });
+
+        // Update price when category changes
+        $('#category_id').change(function() {
+            var template = $('#description_template').val();
+            var categoryId = $(this).val();
+            
+            if (template && template !== 'custom' && templates[template]) {
+                var basePrice = templates[template].basePrice;
+                var multiplier = categoryMultipliers[categoryId] || 1.0;
+                var finalPrice = basePrice * multiplier;
+                
+                $('#price').val(finalPrice);
+                $('#price_display').html('₱' + finalPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            }
+        });
+
 		$('#product-form').submit(function(e){
 			e.preventDefault();
             var _this = $(this)
@@ -127,7 +304,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 				},
 				success:function(resp){
 					if(typeof resp =='object' && resp.status == 'success'){
-						location.href = "./?page=products/view_product&id="+resp.id;
+						location.href = "?page=products";
 					}else if(resp.status == 'failed' && !!resp.msg){
                         var el = $('<div>')
                             el.addClass("alert alert-danger err-msg").text(resp.msg)
