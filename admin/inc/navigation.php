@@ -60,38 +60,38 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 </li>
                 <?php endif; ?>
                 
-                <!-- Inventory Management -->
-                <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'stock_admin'])): ?>
-                <li class="nav-item <?php echo in_array($page, ['products','inventory','maintenance']) ? 'menu-open' : '' ?>">
-                    <a href="#" class="nav-link <?php echo in_array($page, ['products','inventory','maintenance']) ? 'active' : '' ?>">
-                        <i class="nav-icon fas fa-boxes"></i>
-                        <p>
-                            Inventory
-                            <i class="right fas fa-angle-left"></i>
-                        </p>
-                    </a>
-                    <ul class="nav nav-treeview">
-                        <li class="nav-item">
-                            <a href="./?page=products" class="nav-link <?php echo $page == 'products' ? 'active' : '' ?>">
-                                <i class="far fa-circle nav-icon"></i>
-                                <p>Products</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="./?page=inventory" class="nav-link <?php echo $page == 'inventory' ? 'active' : '' ?>">
-                                <i class="far fa-circle nav-icon"></i>
-                                <p>Stock Management</p>
-                            </a>
-                        </li>
-                        <!-- <li class="nav-item">
-                            <a href="./?page=maintenance" class="nav-link <?php echo $page == 'maintenance' ? 'active' : '' ?>">
-                                <i class="far fa-circle nav-icon"></i>
-                                <p>Maintenance</p>
-                            </a>
-                        </li> -->
-                    </ul>
-                </li>
-                <?php endif; ?>
+               <!-- Inventory Management -->
+<?php if(in_array($role_type, ['admin', 'branch_supervisor', 'stock_admin'])): ?>
+<li class="nav-item <?php echo in_array($page, ['products','inventory','inventory/abc_analysis']) ? 'menu-open' : '' ?>">
+    <a href="#" class="nav-link <?php echo in_array($page, ['products','inventory','inventory/abc_analysis']) ? 'active' : '' ?>">
+        <i class="nav-icon fas fa-boxes"></i>
+        <p>
+            Inventory
+            <i class="right fas fa-angle-left"></i>
+        </p>
+    </a>
+    <ul class="nav nav-treeview">
+        <li class="nav-item">
+            <a href="./?page=products" class="nav-link <?php echo $page == 'products' ? 'active' : '' ?>">
+                <i class="far fa-circle nav-icon"></i>
+                <p>Products</p>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="./?page=inventory" class="nav-link <?php echo $page == 'inventory' ? 'active' : '' ?>">
+                <i class="far fa-circle nav-icon"></i>
+                <p>Stock Management</p>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="./?page=inventory/abc_analysis" class="nav-link <?php echo $page == 'inventory/abc_analysis' ? 'active' : '' ?>">
+                <i class="far fa-circle nav-icon"></i>
+                <p>ABC Analysis</p>
+            </a>
+        </li>
+    </ul>
+</li>
+<?php endif; ?>
                 
                 <!-- Service Management -->
                 <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'service_admin', 'mechanic'])): ?>

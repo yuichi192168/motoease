@@ -1181,6 +1181,372 @@ Class Master extends DBConnection {
 		
 		return json_encode($resp);
 	}
+
+	// ABC Inventory Management functions
+	function save_stock(){
+		extract($_POST);
+		
+		// Validate inputs
+		if(empty($product_id) || empty($quantity) || $quantity <= 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Product and quantity are required.";
+			return json_encode($resp);
+		}
+		
+		// Sanitize inputs
+		$product_id = $this->conn->real_escape_string($product_id);
+		$quantity = (float)$quantity;
+		$reason = isset($reason) ? $this->conn->real_escape_string($reason) : 'Stock addition';
+		
+		// Get current stock
+		$current_stock_query = $this->conn->query("SELECT SUM(quantity) as total_stock FROM stock_list WHERE product_id = '{$product_id}' AND type = 1");
+		$current_stock = $current_stock_query->fetch_assoc()['total_stock'];
+		$current_stock = $current_stock ? $current_stock : 0;
+		
+		// Calculate new stock
+		$new_stock = $current_stock + $quantity;
+		
+		// Start transaction
+		$this->conn->begin_transaction();
+		
+		try {
+			// Add stock to stock_list
+			$stock_data = "('{$product_id}', '{$quantity}', 1, NOW())";
+			$insert_stock = $this->conn->query("INSERT INTO stock_list (product_id, quantity, type, date_created) VALUES {$stock_data}");
+			
+			if(!$insert_stock){
+				throw new Exception("Failed to add stock: " . $this->conn->error);
+			}
+			
+			// Record stock movement if table exists
+			$movement_data = "('{$product_id}', 'IN', '{$quantity}', '{$current_stock}', '{$new_stock}', '{$reason}', 'STOCK_ADD', 'PURCHASE', NOW(), NULL)";
+			$insert_movement = $this->conn->query("INSERT INTO stock_movements (product_id, movement_type, quantity, previous_stock, new_stock, reason, reference_id, reference_type, date_created, created_by) VALUES {$movement_data}");
+			
+			// Check for stock alerts
+			$this->check_stock_alerts($product_id, $new_stock);
+			
+			// Commit transaction
+			$this->conn->commit();
+			
+			$resp['status'] = 'success';
+			$resp['msg'] = "Stock added successfully.";
+			$resp['new_stock'] = $new_stock;
+			
+		} catch (Exception $e) {
+			// Rollback transaction
+			$this->conn->rollback();
+			
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to add stock: " . $e->getMessage();
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function update_stock(){
+		extract($_POST);
+		
+		// Validate inputs
+		if(empty($product_id) || empty($quantity) || empty($movement_type)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Product, quantity, and movement type are required.";
+			return json_encode($resp);
+		}
+		
+		// Sanitize inputs
+		$product_id = $this->conn->real_escape_string($product_id);
+		$quantity = (float)$quantity;
+		$movement_type = $this->conn->real_escape_string($movement_type);
+		$reason = isset($reason) ? $this->conn->real_escape_string($reason) : 'Stock adjustment';
+		$reference_id = isset($reference_id) ? $this->conn->real_escape_string($reference_id) : 'STOCK_ADJ';
+		$reference_type = isset($reference_type) ? $this->conn->real_escape_string($reference_type) : 'ADJUSTMENT';
+		
+		// Get current stock
+		$current_stock_query = $this->conn->query("SELECT SUM(quantity) as total_stock FROM stock_list WHERE product_id = '{$product_id}' AND type = 1");
+		$current_stock = $current_stock_query->fetch_assoc()['total_stock'];
+		$current_stock = $current_stock ? $current_stock : 0;
+		
+		// Calculate new stock based on movement type
+		$stock_type = 1; // IN
+		switch($movement_type){
+			case 'IN':
+				$new_stock = $current_stock + $quantity;
+				$stock_type = 1;
+				break;
+			case 'OUT':
+				$new_stock = $current_stock - $quantity;
+				$stock_type = 2;
+				if($new_stock < 0){
+					$resp['status'] = 'failed';
+					$resp['msg'] = "Insufficient stock for this operation.";
+					return json_encode($resp);
+				}
+				break;
+			case 'ADJUSTMENT':
+				$new_stock = $quantity;
+				$stock_type = 1;
+				break;
+			default:
+				$resp['status'] = 'failed';
+				$resp['msg'] = "Invalid movement type.";
+				return json_encode($resp);
+		}
+		
+		// Start transaction
+		$this->conn->begin_transaction();
+		
+		try {
+			// Add stock movement record
+			$stock_data = "('{$product_id}', '{$quantity}', '{$stock_type}', NOW())";
+			$insert_stock = $this->conn->query("INSERT INTO stock_list (product_id, quantity, type, date_created) VALUES {$stock_data}");
+			
+			if(!$insert_stock){
+				throw new Exception("Failed to update stock: " . $this->conn->error);
+			}
+			
+			// Record stock movement if table exists
+			$movement_data = "('{$product_id}', '{$movement_type}', '{$quantity}', '{$current_stock}', '{$new_stock}', '{$reason}', '{$reference_id}', '{$reference_type}', NOW(), NULL)";
+			$insert_movement = $this->conn->query("INSERT INTO stock_movements (product_id, movement_type, quantity, previous_stock, new_stock, reason, reference_id, reference_type, date_created, created_by) VALUES {$movement_data}");
+			
+			// Check for stock alerts
+			$this->check_stock_alerts($product_id, $new_stock);
+			
+			// Commit transaction
+			$this->conn->commit();
+			
+			$resp['status'] = 'success';
+			$resp['msg'] = "Stock updated successfully.";
+			$resp['new_stock'] = $new_stock;
+			
+		} catch (Exception $e) {
+			// Rollback transaction
+			$this->conn->rollback();
+			
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to update stock: " . $e->getMessage();
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function get_abc_analysis(){
+		// Get ABC analysis data
+		$abc_query = $this->conn->query("SELECT * FROM abc_analysis_view ORDER BY abc_category, price DESC");
+		
+		$data = [];
+		$category_stats = ['A' => 0, 'B' => 0, 'C' => 0];
+		$total_value = 0;
+		
+		while($row = $abc_query->fetch_assoc()){
+			$data[] = $row;
+			$category_stats[$row['abc_category']]++;
+			$total_value += ($row['price'] * $row['available_stock']);
+		}
+		
+		$resp['status'] = 'success';
+		$resp['data'] = $data;
+		$resp['category_stats'] = $category_stats;
+		$resp['total_value'] = $total_value;
+		
+		return json_encode($resp);
+	}
+	
+	function get_product_recommendations(){
+		extract($_POST);
+		
+		// Validate inputs
+		if(empty($product_id)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Product ID is required.";
+			return json_encode($resp);
+		}
+		
+		// Sanitize inputs
+		$product_id = $this->conn->real_escape_string($product_id);
+		
+		// Get recommendations
+		$recommendations_query = $this->conn->query("
+			SELECT pr.*, p.name, p.price, p.image_path, p.abc_category,
+				   COALESCE(s.total_stock, 0) as current_stock,
+				   COALESCE(o.total_ordered, 0) as total_ordered,
+				   (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) as available_stock
+			FROM product_recommendations pr
+			JOIN product_list p ON pr.recommended_product_id = p.id
+			LEFT JOIN (
+				SELECT product_id, SUM(quantity) as total_stock 
+				FROM stock_list 
+				WHERE type = 1 
+				GROUP BY product_id
+			) s ON p.id = s.product_id
+			LEFT JOIN (
+				SELECT oi.product_id, SUM(oi.quantity) as total_ordered
+				FROM order_items oi
+				JOIN order_list ol ON oi.order_id = ol.id
+				WHERE ol.status != 5
+				GROUP BY oi.product_id
+			) o ON p.id = o.product_id
+			WHERE pr.product_id = '{$product_id}' 
+			AND p.delete_flag = 0 
+			AND p.status = 1
+			ORDER BY pr.priority ASC, pr.recommendation_type ASC
+		");
+		
+		$recommendations = [];
+		while($row = $recommendations_query->fetch_assoc()){
+			$recommendations[] = $row;
+		}
+		
+		$resp['status'] = 'success';
+		$resp['recommendations'] = $recommendations;
+		
+		return json_encode($resp);
+	}
+	
+	function check_stock_alerts($product_id, $current_stock){
+		// Get product details
+		$product_query = $this->conn->query("SELECT * FROM product_list WHERE id = '{$product_id}'");
+		if($product_query->num_rows == 0) return;
+		
+		$product = $product_query->fetch_assoc();
+		
+		// Check for low stock alert
+		if($current_stock <= $product['reorder_point']){
+			$alert_message = "Low stock alert: {$product['name']} has {$current_stock} units remaining (Reorder point: {$product['reorder_point']})";
+			$this->create_stock_alert($product_id, 'LOW_STOCK', $current_stock, $product['reorder_point'], $alert_message);
+		}
+		
+		// Check for out of stock alert
+		if($current_stock <= 0){
+			$alert_message = "Out of stock: {$product['name']} is no longer available";
+			$this->create_stock_alert($product_id, 'OUT_OF_STOCK', $current_stock, 0, $alert_message);
+		}
+		
+		// Check for overstock alert
+		if($current_stock >= $product['max_stock']){
+			$alert_message = "Overstock alert: {$product['name']} has {$current_stock} units (Max stock: {$product['max_stock']})";
+			$this->create_stock_alert($product_id, 'OVERSTOCK', $current_stock, $product['max_stock'], $alert_message);
+		}
+	}
+	
+	function create_stock_alert($product_id, $alert_type, $current_stock, $threshold_value, $message){
+		// Check if alert already exists and is not resolved
+		$existing_alert = $this->conn->query("SELECT id FROM inventory_alerts WHERE product_id = '{$product_id}' AND alert_type = '{$alert_type}' AND is_resolved = 0");
+		
+		if($existing_alert->num_rows == 0){
+			// Create new alert
+			$alert_data = "('{$product_id}', '{$alert_type}', '{$current_stock}', '{$threshold_value}', '{$message}', 0, NULL, NULL, NOW())";
+			$this->conn->query("INSERT INTO inventory_alerts (product_id, alert_type, current_stock, threshold_value, message, is_resolved, resolved_by, resolved_date, date_created) VALUES {$alert_data}");
+		}
+	}
+	
+	function get_stock_alerts(){
+		$alerts_query = $this->conn->query("
+			SELECT ia.*, p.name as product_name, p.abc_category
+			FROM inventory_alerts ia
+			JOIN product_list p ON ia.product_id = p.id
+			WHERE ia.is_resolved = 0
+			ORDER BY ia.date_created DESC
+		");
+		
+		$alerts = [];
+		while($row = $alerts_query->fetch_assoc()){
+			$alerts[] = $row;
+		}
+		
+		$resp['status'] = 'success';
+		$resp['alerts'] = $alerts;
+		
+		return json_encode($resp);
+	}
+	
+	function resolve_stock_alert(){
+		extract($_POST);
+		
+		// Validate inputs
+		if(empty($alert_id)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Alert ID is required.";
+			return json_encode($resp);
+		}
+		
+		// Sanitize inputs
+		$alert_id = $this->conn->real_escape_string($alert_id);
+		$resolved_by = isset($resolved_by) ? $this->conn->real_escape_string($resolved_by) : NULL;
+		
+		// Update alert
+		$update_query = "UPDATE inventory_alerts SET is_resolved = 1, resolved_by = " . ($resolved_by ? "'{$resolved_by}'" : "NULL") . ", resolved_date = NOW() WHERE id = '{$alert_id}'";
+		$update = $this->conn->query($update_query);
+		
+		if($update){
+			$resp['status'] = 'success';
+			$resp['msg'] = "Alert resolved successfully.";
+		} else {
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to resolve alert.";
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function auto_classify_abc(){
+		// Get all products with their sales data
+		$products_query = $this->conn->query("
+			SELECT p.*, 
+				   COALESCE(sales.total_sales_value, 0) as total_sales_value,
+				   COALESCE(sales.total_quantity_sold, 0) as total_quantity_sold
+			FROM product_list p
+			LEFT JOIN (
+				SELECT oi.product_id,
+					   SUM(oi.quantity * p.price) as total_sales_value,
+					   SUM(oi.quantity) as total_quantity_sold
+				FROM order_items oi
+				JOIN order_list ol ON oi.order_id = ol.id
+				JOIN product_list p ON oi.product_id = p.id
+				WHERE ol.status != 5
+				GROUP BY oi.product_id
+			) sales ON p.id = sales.product_id
+			WHERE p.delete_flag = 0
+			ORDER BY sales.total_sales_value DESC
+		");
+		
+		$products = [];
+		$total_value = 0;
+		
+		while($row = $products_query->fetch_assoc()){
+			$products[] = $row;
+			$total_value += $row['total_sales_value'];
+		}
+		
+		// Calculate cumulative percentages and assign ABC categories
+		$cumulative_value = 0;
+		$updated_count = 0;
+		
+		foreach($products as $product){
+			$cumulative_value += $product['total_sales_value'];
+			$percentage = $total_value > 0 ? ($cumulative_value / $total_value) * 100 : 0;
+			
+			// Assign ABC category based on cumulative percentage
+			$abc_category = 'C';
+			if($percentage <= 80){
+				$abc_category = 'A';
+			} elseif($percentage <= 95){
+				$abc_category = 'B';
+			}
+			
+			// Update product ABC category
+			$update_query = "UPDATE product_list SET abc_category = '{$abc_category}' WHERE id = '{$product['id']}'";
+			if($this->conn->query($update_query)){
+				$updated_count++;
+			}
+		}
+		
+		$resp['status'] = 'success';
+		$resp['msg'] = "ABC classification updated for {$updated_count} products.";
+		$resp['total_products'] = count($products);
+		$resp['updated_count'] = $updated_count;
+		
+		return json_encode($resp);
+	}
 }
 
 $Master = new Master();
@@ -1279,6 +1645,27 @@ $sysset = new SystemSettings();
 	break;
 	case 'adjust_client_balance':
 		echo $Master->adjust_client_balance();
+	break;
+	case 'save_stock':
+		echo $Master->save_stock();
+	break;
+	case 'update_stock':
+		echo $Master->update_stock();
+	break;
+	case 'get_abc_analysis':
+		echo $Master->get_abc_analysis();
+	break;
+	case 'get_product_recommendations':
+		echo $Master->get_product_recommendations();
+	break;
+	case 'get_stock_alerts':
+		echo $Master->get_stock_alerts();
+	break;
+	case 'resolve_stock_alert':
+		echo $Master->resolve_stock_alert();
+	break;
+	case 'auto_classify_abc':
+		echo $Master->auto_classify_abc();
 	break;
 	default:
 		break;

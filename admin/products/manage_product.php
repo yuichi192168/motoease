@@ -76,12 +76,60 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 
 			<div class="form-group">
 				<label for="price" class="control-label">Price</label>
-                <input name="price" id="price" type="text" 
-                       class="form-control rounded-0 text-right" 
-                       value="<?php echo isset($price) ? number_format($price, 2) : '0.00'; ?>" 
-                       required>
-                <small class="form-text text-muted">Auto-formatted with commas and two decimal places.</small>
+                <input name="price" id="price" type="number" step="0.01" min="0" class="form-control form-control-sm text-right" value="<?php echo isset($price) ? $price : ''; ?>" required>
 			</div>
+
+            <!-- ABC Classification Fields -->
+            <div class="form-group">
+				<label for="abc_category" class="control-label">ABC Category</label>
+                <select name="abc_category" id="abc_category" class="custom-select select2">
+                    <option value="A" <?php echo isset($abc_category) && $abc_category == 'A' ? 'selected' : '' ?>>Category A - High Value (80% of total value)</option>
+                    <option value="B" <?php echo isset($abc_category) && $abc_category == 'B' ? 'selected' : '' ?>>Category B - Medium Value (15% of total value)</option>
+                    <option value="C" <?php echo isset($abc_category) && $abc_category == 'C' ? 'selected' : '' ?>>Category C - Low Value (5% of total value)</option>
+                </select>
+                <small class="text-muted">ABC classification helps prioritize inventory management</small>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="reorder_point" class="control-label">Reorder Point</label>
+                        <input name="reorder_point" id="reorder_point" type="number" min="0" class="form-control form-control-sm text-right" value="<?php echo isset($reorder_point) ? $reorder_point : '0'; ?>">
+                        <small class="text-muted">Stock level to trigger reorder</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="min_stock" class="control-label">Minimum Stock</label>
+                        <input name="min_stock" id="min_stock" type="number" min="0" class="form-control form-control-sm text-right" value="<?php echo isset($min_stock) ? $min_stock : '0'; ?>">
+                        <small class="text-muted">Minimum stock level</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="max_stock" class="control-label">Maximum Stock</label>
+                        <input name="max_stock" id="max_stock" type="number" min="0" class="form-control form-control-sm text-right" value="<?php echo isset($max_stock) ? $max_stock : '0'; ?>">
+                        <small class="text-muted">Maximum stock level</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="unit_cost" class="control-label">Unit Cost</label>
+                        <input name="unit_cost" id="unit_cost" type="number" step="0.01" min="0" class="form-control form-control-sm text-right" value="<?php echo isset($unit_cost) ? $unit_cost : '0.00'; ?>">
+                        <small class="text-muted">Cost per unit for inventory valuation</small>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="lead_time_days" class="control-label">Lead Time (Days)</label>
+                        <input name="lead_time_days" id="lead_time_days" type="number" min="0" class="form-control form-control-sm text-right" value="<?php echo isset($lead_time_days) ? $lead_time_days : '7'; ?>">
+                        <small class="text-muted">Days to receive new stock</small>
+                    </div>
+                </div>
+            </div>
 
             <div class="form-group">
 				<label for="status" class="control-label">Status</label>

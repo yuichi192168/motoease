@@ -109,6 +109,14 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                     <span class="stock-status stock-out">
                                         <i class="fa fa-times-circle"></i> Out of Stock
                                     </span>
+                                    
+                                    <!-- Product Recommendations for Out of Stock Items -->
+                                    <div id="product_recommendations" class="mt-3">
+                                        <h6 class="text-muted">Alternative Products:</h6>
+                                        <div id="recommendations_container">
+                                            <!-- Recommendations will be loaded here -->
+                                        </div>
+                                    </div>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -128,6 +136,11 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 </div>
 <script>
     $(function(){
+        // Load product recommendations if out of stock
+        <?php if($available <= 0): ?>
+        loadProductRecommendations();
+        <?php endif; ?>
+        
         $('#add_to_cart').click(function(){
             if("<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>" == 1){
                 if('<?= $available > 0 ?>' == 1){
@@ -219,4 +232,73 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
             }
         });
     });
+    
+    function loadProductRecommendations(){
+        $.ajax({
+            url: _base_url_ + "classes/Master.php?f=get_product_recommendations",
+            method: "POST",
+            data: {
+                product_id: '<?= isset($id) ? $id : "" ?>'
+            },
+            dataType: "json",
+            error: err => {
+                console.log(err);
+            },
+            success: function(resp){
+                if(resp.status == 'success' && resp.recommendations.length > 0){
+                    var html = '<div class="row">';
+                    $.each(resp.recommendations, function(index, rec){
+                        var stock_status = '';
+                        if(rec.available_stock > 10){
+                            stock_status = '<span class="badge badge-success">In Stock</span>';
+                        } else if(rec.available_stock > 0){
+                            stock_status = '<span class="badge badge-warning">Low Stock</span>';
+                        } else {
+                            stock_status = '<span class="badge badge-danger">Out of Stock</span>';
+                        }
+                        
+                        html += '<div class="col-md-4 mb-2">';
+                        html += '<div class="card h-100">';
+                        html += '<img src="' + _base_url_ + rec.image_path + '" class="card-img-top" style="height: 100px; object-fit: cover;">';
+                        html += '<div class="card-body">';
+                        html += '<h6 class="card-title">' + rec.name + '</h6>';
+                        html += '<p class="card-text">₱' + parseFloat(rec.price).toLocaleString() + '</p>';
+                        html += '<p class="card-text"><small class="text-muted">' + rec.recommendation_type + '</small></p>';
+                        html += stock_status;
+                        html += '<br><br>';
+                        html += '<a href="./?p=products/view_product&id=' + rec.recommended_product_id + '" class="btn btn-sm btn-primary">View Product</a>';
+                        html += '</div></div></div>';
+                    });
+                    html += '</div>';
+                    $('#recommendations_container').html(html);
+                } else {
+                    $('#recommendations_container').html('<p class="text-muted">No alternative products available at this time.</p>');
+                }
+            }
+        });
+    }
+    
+    function notifyWhenAvailable(product_id){
+        if("<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>" == 1){
+            Swal.fire({
+                title: 'Notification Set',
+                text: 'You will be notified when this product becomes available.',
+                icon: 'success',
+                confirmButtonText: 'OK'
+            });
+        } else {
+            Swal.fire({
+                title: 'Login Required',
+                text: 'Please login to set notifications.',
+                icon: 'warning',
+                confirmButtonText: 'Login Now',
+                showCancelButton: true,
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    location.href = './login.php';
+                }
+            });
+        }
+    }
 </script>
