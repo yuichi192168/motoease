@@ -57,27 +57,6 @@
                                 <small class="text-muted">Please provide your complete delivery address</small>
                             </div>
                             
-                            <div class="form-group">
-                                <label for="contact_number" class="control-label">Contact Number</label>
-                                <input type="text" name="contact_number" id="contact_number" class="form-control form-control-sm rounded-0" value="<?= $_settings->userdata('contact') ?>" readonly>
-                                <small class="text-muted">This is your registered contact number</small>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="payment_method" class="control-label">Payment Method</label>
-                                <select name="payment_method" id="payment_method" class="form-control form-control-sm rounded-0">
-                                    <option value="cod">Cash on Delivery (COD)</option>
-                                    <option value="bank_transfer">Bank Transfer</option>
-                                    <option value="gcash">GCash</option>
-                                </select>
-                                <small class="text-muted">Select your preferred payment method</small>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="notes" class="control-label">Additional Notes</label>
-                                <textarea name="notes" id="notes" class="form-control form-control-sm rounded-0" rows="3" placeholder="Any special instructions or notes for delivery..."></textarea>
-                            </div>
-                            
                             <div class="form-group text-right">
                                 <button class="btn btn-flat btn-primary" type="submit" id="place_order_btn">
                                     <i class="fa fa-shopping-cart"></i> Place Order

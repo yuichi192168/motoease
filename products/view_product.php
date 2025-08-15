@@ -160,22 +160,22 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                         if (result.isConfirmed) {
                             const quantity = result.value;
                             start_loader();
-                            $.ajax({
-                                url:_base_url_+"classes/Master.php?f=save_to_cart",
-                                method:'POST',
+                    $.ajax({
+                        url:_base_url_+"classes/Master.php?f=save_to_cart",
+                        method:'POST',
                                 data:{
                                     product_id: '<?= isset($id) ? $id : "" ?>',
                                     quantity: quantity
                                 },
-                                dataType:'json',
-                                error:err=>{
+                        dataType:'json',
+                        error:err=>{
                                     console.error(err);
                                     alert_toast("An error occurred","error");
-                                    end_loader();
-                                },
-                                success:function(resp){
-                                    if(resp.status =='success'){
-                                        update_cart_count(resp.cart_count);
+                            end_loader();
+                        },
+                        success:function(resp){
+                            if(resp.status =='success'){
+                                update_cart_count(resp.cart_count);
                                         Swal.fire({
                                             title: 'Success!',
                                             text: resp.msg,
@@ -190,13 +190,13 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                                 location.href = './?p=cart';
                                             }
                                         });
-                                    }else if(!!resp.msg){
+                            }else if(!!resp.msg){
                                         alert_toast(resp.msg,'error');
-                                    }else{
+                            }else{
                                         alert_toast("An error occurred","error");
-                                    }
-                                    end_loader();
-                                }
+                            }
+                            end_loader();
+                        }
                             });
                         }
                     });

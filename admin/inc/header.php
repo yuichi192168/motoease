@@ -124,10 +124,23 @@
     <script src="<?php echo base_url ?>plugins/jquery/jquery.min.js"></script>
     <!-- jQuery UI 1.11.4 -->
     <script src="<?php echo base_url ?>plugins/jquery-ui/jquery-ui.min.js"></script>
+    <!-- Bootstrap 4 -->
+    <script src="<?php echo base_url ?>plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
     <!-- SweetAlert2 -->
     <script src="<?php echo base_url ?>plugins/sweetalert2/sweetalert2.min.js"></script>
     <!-- Toastr -->
     <script src="<?php echo base_url ?>plugins/toastr/toastr.min.js"></script>
+    <!-- DataTables -->
+    <script src="<?php echo base_url ?>plugins/datatables/jquery.dataTables.min.js"></script>
+    <script src="<?php echo base_url ?>plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
+    <script src="<?php echo base_url ?>plugins/datatables-responsive/js/dataTables.responsive.min.js"></script>
+    <script src="<?php echo base_url ?>plugins/datatables-responsive/js/responsive.bootstrap4.min.js"></script>
+    <!-- Select2 -->
+    <script src="<?php echo base_url ?>plugins/select2/js/select2.full.min.js"></script>
+    <!-- Summernote -->
+    <script src="<?php echo base_url ?>plugins/summernote/summernote-bs4.min.js"></script>
+    <!-- AdminLTE App -->
+    <script src="<?php echo base_url ?>dist/js/adminlte.min.js"></script>
     <script>
         var _base_url_ = '<?php echo base_url ?>';
     </script>

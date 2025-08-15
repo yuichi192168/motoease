@@ -83,12 +83,12 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                                 <p>Stock Management</p>
                             </a>
                         </li>
-                        <li class="nav-item">
+                        <!-- <li class="nav-item">
                             <a href="./?page=maintenance" class="nav-link <?php echo $page == 'maintenance' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Maintenance</p>
                             </a>
-                        </li>
+                        </li> -->
                     </ul>
                 </li>
                 <?php endif; ?>
@@ -134,8 +134,8 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 
                 <!-- Reports -->
                 <?php if(in_array($role_type, ['admin', 'branch_supervisor'])): ?>
-                <li class="nav-item <?php echo in_array($page, ['report']) ? 'menu-open' : '' ?>">
-                    <a href="#" class="nav-link <?php echo in_array($page, ['report']) ? 'active' : '' ?>">
+                <li class="nav-item <?php echo in_array($page, ['report', 'user_log_history']) ? 'menu-open' : '' ?>">
+                    <a href="#" class="nav-link <?php echo in_array($page, ['report', 'user_log_history']) ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-chart-bar"></i>
                         <p>
                             Reports
@@ -143,12 +143,12 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                         </p>
                     </a>
                     <ul class="nav nav-treeview">
-                        <li class="nav-item">
+                        <!-- <li class="nav-item">
                             <a href="./?page=report" class="nav-link <?php echo $page == 'report' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Service Reports</p>
                             </a>
-                        </li>
+                        </li> -->
                         <li class="nav-item">
                             <a href="./?page=report/orders" class="nav-link <?php echo $page == 'report/orders' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
@@ -159,6 +159,12 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                             <a href="./?page=report/service_requests" class="nav-link <?php echo $page == 'report/service_requests' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Service Request Reports</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="./?page=user_log_history" class="nav-link <?php echo $page == 'user_log_history' ? 'active' : '' ?>">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>User Activity Log</p>
                             </a>
                         </li>
                     </ul>
@@ -176,13 +182,13 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 <?php endif; ?>
                 
                 <!-- Branch Management (Admin Only) -->
-                <?php if(in_array($role_type, ['admin'])): ?>
+                <!-- <?php if(in_array($role_type, ['admin'])): ?>
                 <li class="nav-item">
                     <a href="./?page=branches" class="nav-link <?php echo $page == 'branches' ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-building"></i>
                         <p>Branch Management</p>
                     </a>
-                </li>
+                </li> -->
                 <?php endif; ?>
                 
                 <!-- Customer Account Management -->

@@ -16,13 +16,8 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         padding: 10px;
         margin-top: 10px;
         font-size: 0.9rem;
-    }
-    .price-display {
-        background: #e9ecef;
-        padding: 10px;
-        border-radius: 4px;
-        font-weight: bold;
-        color: #495057;
+        max-height: 200px;
+        overflow-y: auto;
     }
 </style>
 
@@ -33,7 +28,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 	<div class="card-body">
 		<form action="" id="product-form">
 			<input type="hidden" name="id" value="<?php echo isset($id) ? $id : '' ?>">
-			<div class="form-group">
+            <div class="form-group">
 				<label for="brand_id" class="control-label">Brand</label>
                 <select name="brand_id" id="brand_id" class="custom-select select2">
                     <option value="" <?= !isset($brand_id) ? "selected" : "" ?> disabled></option>
@@ -87,19 +82,17 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 <textarea name="description" id="description" type="text" class="form-control rounded-0 summernote" required><?php echo isset($description) ? $description : ''; ?></textarea>
 			</div>
             
-            <!-- Automatic Price Display -->
-            <div class="form-group">
-				<label for="price" class="control-label">Price (Auto-calculated)</label>
-                <div class="price-display" id="price_display">
-                    <?php if(isset($price) && $price > 0): ?>
-                        ₱<?= number_format($price, 2) ?>
-                    <?php else: ?>
-                        Price will be calculated based on template and category
-                    <?php endif; ?>
+            <!-- Manual Price Input -->
+			<div class="form-group">
+				<label for="price" class="control-label">Price</label>
+                <div class="input-group">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text">₱</span>
+                    </div>
+                    <input type="number" name="price" id="price" class="form-control rounded-0" value="<?php echo isset($price) ? $price : ''; ?>" step="0.01" min="0" required>
                 </div>
-                <input type="hidden" name="price" id="price" value="<?php echo isset($price) ? $price : 0; ?>">
-                <small class="form-text text-muted">Price is automatically calculated based on the selected template and category</small>
-            </div>
+                <small class="form-text text-muted">Enter the product price manually</small>
+			</div>
             
             <div class="form-group">
 				<label for="status" class="control-label">Status</label>
@@ -154,6 +147,13 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 			dropdownParent: $('#uni_modal')
 		})
 
+        // Initialize Select2 for brand and category dropdowns
+        $('#brand_id, #category_id').select2({
+            placeholder: "Please Select Here",
+            allowClear: true,
+            dropdownParent: $('body')
+        });
+
         // Template description system
         const templates = {
             crash_guard: {
@@ -166,8 +166,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 <li>Compatible with multiple motorcycle models</li>
 <li>Provides comprehensive engine and body protection</li>
 </ul>
-<p>Perfect for riders who want reliable protection for their valuable motorcycle investment.</p>`,
-                basePrice: 2500
+<p>Perfect for riders who want reliable protection for their valuable motorcycle investment.</p>`
             },
             steering_damper: {
                 description: `<p><strong>Performance Steering Damper</strong></p>
@@ -179,8 +178,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 <li>Easy installation with detailed instructions</li>
 <li>Reduces handlebar vibration and improves control</li>
 </ul>
-<p>Ideal for performance riders and long-distance touring.</p>`,
-                basePrice: 15000
+<p>Ideal for performance riders and long-distance touring.</p>`
             },
             exhaust_system: {
                 description: `<p><strong>Performance Exhaust System</strong></p>
@@ -192,8 +190,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 <li>Easy bolt-on installation</li>
 <li>Includes all necessary mounting hardware</li>
 </ul>
-<p>Transform your motorcycle's performance and appearance.</p>`,
-                basePrice: 12000
+<p>Transform your motorcycle's performance and appearance.</p>`
             },
             brake_system: {
                 description: `<p><strong>High-Performance Brake System</strong></p>
@@ -205,8 +202,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 <li>Compatible with stock brake calipers</li>
 <li>Improved brake feel and response</li>
 </ul>
-<p>Essential upgrade for safety-conscious riders.</p>`,
-                basePrice: 8000
+<p>Essential upgrade for safety-conscious riders.</p>`
             },
             lighting: {
                 description: `<p><strong>LED Lighting System</strong></p>
@@ -218,8 +214,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 <li>Weather-resistant construction</li>
 <li>Multiple lighting modes and patterns</li>
 </ul>
-<p>Enhance visibility and safety during night rides.</p>`,
-                basePrice: 3500
+<p>Enhance visibility and safety during night rides.</p>`
             },
             performance: {
                 description: `<p><strong>Performance Enhancement Kit</strong></p>
@@ -231,55 +226,21 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 <li>Easy installation with detailed instructions</li>
 <li>Compatible with stock motorcycle systems</li>
 </ul>
-<p>Unlock your motorcycle's full potential.</p>`,
-                basePrice: 18000
+<p>Unlock your motorcycle's full potential.</p>`
             }
-        };
-
-        // Category price multipliers
-        const categoryMultipliers = {
-            1: 1.0,  // Default
-            2: 1.2,  // Performance parts
-            3: 0.9,  // Basic accessories
-            4: 1.5,  // Premium parts
-            5: 1.1   // Standard parts
         };
 
         $('#description_template').change(function() {
             var template = $(this).val();
-            var categoryId = $('#category_id').val();
             
             if (template && template !== 'custom' && templates[template]) {
                 $('#description').val(templates[template].description);
                 $('#template_preview').html(templates[template].description).show();
-                
-                // Calculate price
-                var basePrice = templates[template].basePrice;
-                var multiplier = categoryMultipliers[categoryId] || 1.0;
-                var finalPrice = basePrice * multiplier;
-                
-                $('#price').val(finalPrice);
-                $('#price_display').html('₱' + finalPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
             } else {
                 $('#template_preview').hide();
                 if (template === 'custom') {
                     $('#description').val('').focus();
                 }
-            }
-        });
-
-        // Update price when category changes
-        $('#category_id').change(function() {
-            var template = $('#description_template').val();
-            var categoryId = $(this).val();
-            
-            if (template && template !== 'custom' && templates[template]) {
-                var basePrice = templates[template].basePrice;
-                var multiplier = categoryMultipliers[categoryId] || 1.0;
-                var finalPrice = basePrice * multiplier;
-                
-                $('#price').val(finalPrice);
-                $('#price_display').html('₱' + finalPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
             }
         });
 

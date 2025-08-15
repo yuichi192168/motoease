@@ -98,7 +98,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                             <div class="form-group col-md-6">
                                 <input type="email" name="email" id="email" placeholder="Enter Email Address" class="form-control form-control-sm form-control-border" required value="<?= isset($email) ? $email : "" ?>">
                                 <small class="ml-3">Email Address</small>
-                            </div>
+                        </div>
                             <div class="form-group col-md-12">
                                 <textarea name="address" id="address" rows="3" placeholder="Enter Complete Address" class="form-control form-control-sm form-control-border" required><?= isset($address) ? $address : "" ?></textarea>
                                 <small class="ml-3">Complete Address</small>
@@ -135,7 +135,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                                     <input type="password" name="password" id="password" placeholder="Enter New Password" class="form-control form-control-sm form-control-border">
                                     <div class="input-group-append">
                                         <span class="input-group-text"><i class="fa fa-eye-slash pass_type" data-type="password"></i></span>
-                                    </div>
+                                </div>
                                 </div>
                                 <small class="ml-3">New Password</small>
                             </div>
@@ -144,7 +144,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                                     <input type="password" id="cpassword" placeholder="Confirm New Password" class="form-control form-control-sm form-control-border">
                                     <div class="input-group-append">
                                         <span class="input-group-text"><i class="fa fa-eye-slash pass_type" data-type="password"></i></span>
-                                    </div>
+                                </div>
                                 </div>
                                 <small class="ml-3">Confirm New Password</small>
                             </div>
@@ -272,20 +272,20 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                             <option value="gcash">GCash</option>
                             <option value="bank_transfer">Bank Transfer</option>
                         </select>
-                    </div>
+                        </div>
                     <div class="form-group">
                         <label>Reference Number (Optional)</label>
                         <input type="text" name="reference_number" class="form-control">
-                    </div>
-                </div>
+                                </div>
+                                </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">Add Balance</button>
                 </div>
             </form>
         </div>
-    </div>
-</div>
+                            </div>
+                        </div>
 
 <!-- Vehicle Info Modal -->
 <div class="modal fade" id="vehicleInfoModal" tabindex="-1" role="dialog">
@@ -310,15 +310,15 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                     <div class="form-group">
                         <label>Plate Number</label>
                         <input type="text" name="vehicle_plate_number" class="form-control" value="<?= isset($vehicle_plate_number) ? $vehicle_plate_number : '' ?>">
-                    </div>
-                </div>
+                            </div>
+                            </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">Update Vehicle Info</button>
+                        </div>
+                    </form>
                 </div>
-            </form>
-        </div>
-    </div>
+            </div>
 </div>
 
 <!-- OR/CR Upload Modal -->
@@ -392,9 +392,9 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
         $('#register-frm').submit(function(e){
             e.preventDefault()
             var _this = $(this)
-            $('.err-msg').remove();
+                    $('.err-msg').remove();
             var el = $('<div>')
-            el.hide()
+                    el.hide()
             if($('#password').val() != $('#cpassword').val()){
                 el.addClass('alert alert-danger err-msg').text('Password does not match.');
                 _this.prepend(el)

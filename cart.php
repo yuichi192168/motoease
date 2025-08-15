@@ -115,7 +115,7 @@
     window.update_quantity = function($cart_id = 0, $quantity = ""){
         start_loader();
         $.ajax({
-            url:_base_url_+'classes/master.php?f=update_cart_quantity',
+            url:_base_url_+'classes/Master.php?f=update_cart_quantity',
             data:{cart_id : $cart_id, quantity : $quantity},
             method:'POST',
             dataType:'json',
@@ -138,10 +138,18 @@
     }
     $(function(){
         $('.btn-minus').click(function(){
-            update_quantity($(this).attr('data-id'),"- 1")
+            var cart_id = $(this).attr('data-id');
+            var current_qty = parseInt($(this).closest('.input-group').find('input').val());
+            if(current_qty > 1){
+                update_quantity(cart_id, "- 1");
+            } else {
+                // Remove item if quantity would be 0
+                _conf("Remove this item from cart?", "remove_from_cart", [cart_id]);
+            }
         })
         $('.btn-plus').click(function(){
-            update_quantity($(this).attr('data-id'),"+ 1")
+            var cart_id = $(this).attr('data-id');
+            update_quantity(cart_id, "+ 1");
         })
         $('.btn-remove').click(function(){
             _conf("Are you sure to remove this product from cart list?","remove_from_cart",[$(this).attr('data-id')])
@@ -157,7 +165,7 @@
     function remove_from_cart($id){
         start_loader();
         $.ajax({
-            url:_base_url_+'classes/master.php?f=remove_from_cart',
+            url:_base_url_+'classes/Master.php?f=remove_from_cart',
             data:{cart_id : $id},
             method:'POST',
             dataType:'json',

@@ -1,5 +1,5 @@
 <?php
-require_once('../config.php');
+require_once(__DIR__.'/../config.php');
 Class Master extends DBConnection {
 	private $settings;
 	public function __construct(){
@@ -150,6 +150,197 @@ Class Master extends DBConnection {
 			$resp['msg'] = "Failed to add product to cart.";
 			$resp['error'] = $this->conn->error;
 		}
+		return json_encode($resp);
+	}
+	
+	function update_cart_quantity(){
+		extract($_POST);
+		$client_id = $this->settings->userdata('id');
+		
+		// Validate inputs
+		if(empty($cart_id) || empty($quantity)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Invalid input parameters.";
+			return json_encode($resp);
+		}
+		
+		// Sanitize inputs
+		$cart_id = $this->conn->real_escape_string($cart_id);
+		$quantity = $this->conn->real_escape_string($quantity);
+		
+		// Get current cart item
+		$cart_item = $this->conn->query("SELECT c.*, p.name FROM cart_list c 
+										INNER JOIN product_list p ON c.product_id = p.id 
+										WHERE c.id = '{$cart_id}' AND c.client_id = '{$client_id}'");
+		
+		if($cart_item->num_rows == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Cart item not found.";
+			return json_encode($resp);
+		}
+		
+		$item = $cart_item->fetch_assoc();
+		$current_qty = $item['quantity'];
+		
+		// Parse quantity change
+		if(strpos($quantity, '+') !== false){
+			$new_qty = $current_qty + (int)str_replace('+', '', $quantity);
+		} elseif(strpos($quantity, '-') !== false){
+			$new_qty = $current_qty - (int)str_replace('-', '', $quantity);
+		} else {
+			$new_qty = (int)$quantity;
+		}
+		
+		// Validate new quantity
+		if($new_qty <= 0){
+			// Remove item from cart
+			$sql = "DELETE FROM cart_list WHERE id = '{$cart_id}'";
+		} else {
+			// Check stock availability
+			$stocks = $this->conn->query("SELECT SUM(quantity) as total_stock FROM stock_list WHERE product_id = '{$item['product_id']}' AND type = 1")->fetch_assoc()['total_stock'];
+			$out = $this->conn->query("SELECT SUM(oi.quantity) as total_out FROM order_items oi 
+									  INNER JOIN order_list ol ON oi.order_id = ol.id 
+									  WHERE oi.product_id = '{$item['product_id']}' AND ol.status != 5")->fetch_assoc()['total_out'];
+			
+			$stocks = $stocks > 0 ? $stocks : 0;
+			$out = $out > 0 ? $out : 0;
+			$available = $stocks - $out;
+			
+			if($new_qty > $available){
+				$resp['status'] = 'failed';
+				$resp['msg'] = "Cannot update quantity. Only {$available} units available in stock.";
+				return json_encode($resp);
+			}
+			
+			$sql = "UPDATE cart_list SET quantity = '{$new_qty}' WHERE id = '{$cart_id}'";
+		}
+		
+		$update = $this->conn->query($sql);
+		if($update){
+			$resp['status'] = 'success';
+			$resp['msg'] = "Cart updated successfully.";
+		}else{
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to update cart.";
+			$resp['error'] = $this->conn->error;
+		}
+		return json_encode($resp);
+	}
+	
+	function remove_from_cart(){
+		extract($_POST);
+		$client_id = $this->settings->userdata('id');
+		
+		// Validate inputs
+		if(empty($cart_id)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Invalid cart item.";
+			return json_encode($resp);
+		}
+		
+		// Sanitize inputs
+		$cart_id = $this->conn->real_escape_string($cart_id);
+		
+		// Verify ownership and delete
+		$delete = $this->conn->query("DELETE FROM cart_list WHERE id = '{$cart_id}' AND client_id = '{$client_id}'");
+		
+		if($delete){
+			$resp['status'] = 'success';
+			$resp['msg'] = "Item removed from cart successfully.";
+		}else{
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to remove item from cart.";
+			$resp['error'] = $this->conn->error;
+		}
+		return json_encode($resp);
+	}
+	
+	function place_order(){
+		$client_id = $this->settings->userdata('id');
+		
+		// Validate inputs
+		if(empty($_POST['delivery_address'])){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Delivery address is required.";
+			return json_encode($resp);
+		}
+		
+		// Check if cart has items
+		$cart_items = $this->conn->query("SELECT COUNT(*) as count FROM cart_list WHERE client_id = '{$client_id}'");
+		if($cart_items->fetch_assoc()['count'] == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Your cart is empty.";
+			return json_encode($resp);
+		}
+		
+		// Start transaction
+		$this->conn->begin_transaction();
+		
+		try {
+			// Generate reference code
+			$ref_code = 'ORD-' . date('Ymd') . '-' . strtoupper(substr(md5(uniqid()), 0, 6));
+			
+			// Calculate total amount
+			$total_query = $this->conn->query("SELECT SUM(c.quantity * p.price) as total FROM cart_list c 
+											  INNER JOIN product_list p ON c.product_id = p.id 
+											  WHERE c.client_id = '{$client_id}'");
+			$total_amount = $total_query->fetch_assoc()['total'];
+			
+			// Create order - only use columns that exist in the database
+			$order_data = "client_id = '{$client_id}', 
+						   ref_code = '{$ref_code}', 
+						   total_amount = '{$total_amount}', 
+						   delivery_address = '" . $this->conn->real_escape_string($_POST['delivery_address']) . "', 
+						   status = 0";
+			
+			$create_order = $this->conn->query("INSERT INTO order_list SET {$order_data}");
+			
+			if(!$create_order){
+				throw new Exception("Failed to create order: " . $this->conn->error);
+			}
+			
+			$order_id = $this->conn->insert_id;
+			
+			// Get cart items and create order items
+			$cart_query = $this->conn->query("SELECT c.*, p.name, p.price FROM cart_list c 
+											 INNER JOIN product_list p ON c.product_id = p.id 
+											 WHERE c.client_id = '{$client_id}'");
+			
+			while($item = $cart_query->fetch_assoc()){
+				$order_item_data = "order_id = '{$order_id}', 
+								   product_id = '{$item['product_id']}', 
+								   quantity = '{$item['quantity']}'";
+				
+				$create_item = $this->conn->query("INSERT INTO order_items SET {$order_item_data}");
+				
+				if(!$create_item){
+					throw new Exception("Failed to create order item: " . $this->conn->error);
+				}
+			}
+			
+			// Clear cart
+			$clear_cart = $this->conn->query("DELETE FROM cart_list WHERE client_id = '{$client_id}'");
+			
+			if(!$clear_cart){
+				throw new Exception("Failed to clear cart: " . $this->conn->error);
+			}
+			
+			// Commit transaction
+			$this->conn->commit();
+			
+			$resp['status'] = 'success';
+			$resp['msg'] = "Order placed successfully!";
+			$resp['ref_code'] = $ref_code;
+			$resp['order_id'] = $order_id;
+			
+		} catch (Exception $e) {
+			// Rollback transaction
+			$this->conn->rollback();
+			
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to place order: " . $e->getMessage();
+		}
+		
 		return json_encode($resp);
 	}
 	
@@ -435,6 +626,130 @@ Class Master extends DBConnection {
 		return json_encode($resp);
 	}
 	
+	// Brand functions
+	function save_brand(){
+		extract($_POST);
+		$data = "";
+		foreach($_POST as $k =>$v){
+			if(!in_array($k,array('id'))){
+				if(!empty($data)) $data .=",";
+				$data .= " `{$k}`='{$v}' ";
+			}
+		}
+		$check = $this->conn->query("SELECT * FROM `brand_list` where `name` = '{$name}' ".(!empty($id) ? " and id != {$id} " : "")." ")->num_rows;
+		if($this->capture_err())
+			return $this->capture_err();
+		if($check > 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Brand already exist.";
+			return json_encode($resp);
+			exit;
+		}
+		if(empty($id)){
+			$sql = "INSERT INTO `brand_list` set {$data} ";
+			$save = $this->conn->query($sql);
+		}else{
+			$sql = "UPDATE `brand_list` set {$data} where id = '{$id}' ";
+			$save = $this->conn->query($sql);
+		}
+		if($save){
+			$resp['status'] = 'success';
+			$bid = empty($id) ? $this->conn->insert_id : $id;
+			$resp['id'] = $bid ;
+			if(empty($id))
+				$resp['msg'] = "New Brand successfully saved.";
+			else
+				$resp['msg'] = "Brand successfully updated.";
+			if(!empty($_FILES['img']['tmp_name'])){
+				$ext = pathinfo($_FILES['img']['name'], PATHINFO_EXTENSION);
+				$dir = base_app."uploads/brands/";
+				if(!is_dir($dir))
+				mkdir($dir);
+				$name = $bid.".".$ext;
+				if(is_file($dir.$name))
+					unlink($dir.$name);
+				$move = move_uploaded_file($_FILES['img']['tmp_name'],$dir.$name);
+				if($move){
+					$this->conn->query("UPDATE `brand_list` set image_path = CONCAT('uploads/brands/$name','?v=',unix_timestamp(CURRENT_TIMESTAMP)) where id = '{$bid}'");
+				}else{
+					$resp['msg'] .= " But logo has failed to upload.";
+				}
+			}
+		}else{
+			$resp['status'] = 'failed';
+			$resp['err'] = $this->conn->error."[{$sql}]";
+		}
+		if(isset($resp['msg']) && $resp['status'] == 'success'){
+			$this->settings->set_flashdata('success',$resp['msg']);
+		}
+		return json_encode($resp);
+	}
+	
+	function delete_brand(){
+		extract($_POST);
+		$del = $this->conn->query("UPDATE `brand_list` set delete_flag = 1 where id = '{$id}'");
+		if($del){
+			$resp['status'] = 'success';
+			$this->settings->set_flashdata('success',"Brand successfully deleted.");
+		}else{
+			$resp['status'] = 'failed';
+			$resp['error'] = $this->conn->error;
+		}
+		return json_encode($resp);
+	}
+	
+	// Mechanic functions
+	function save_mechanic(){
+		extract($_POST);
+		$data = "";
+		foreach($_POST as $k =>$v){
+			if(!in_array($k,array('id'))){
+				if(!empty($data)) $data .=",";
+				$data .= " `{$k}`='{$v}' ";
+			}
+		}
+		$check = $this->conn->query("SELECT * FROM `mechanics_list` where `name` = '{$name}' ".(!empty($id) ? " and id != {$id} " : "")." ")->num_rows;
+		if($this->capture_err())
+			return $this->capture_err();
+		if($check > 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Mechanic already exist.";
+			return json_encode($resp);
+			exit;
+		}
+		if(empty($id)){
+			$sql = "INSERT INTO `mechanics_list` set {$data} ";
+			$save = $this->conn->query($sql);
+		}else{
+			$sql = "UPDATE `mechanics_list` set {$data} where id = '{$id}' ";
+			$save = $this->conn->query($sql);
+		}
+		if($save){
+			$resp['status'] = 'success';
+			if(empty($id))
+				$this->settings->set_flashdata('success',"New Mechanic successfully saved.");
+			else
+				$this->settings->set_flashdata('success',"Mechanic successfully updated.");
+		}else{
+			$resp['status'] = 'failed';
+			$resp['err'] = $this->conn->error."[{$sql}]";
+		}
+		return json_encode($resp);
+	}
+	
+	function delete_mechanic(){
+		extract($_POST);
+		$del = $this->conn->query("UPDATE `mechanics_list` set delete_flag = 1 where id = '{$id}'");
+		if($del){
+			$resp['status'] = 'success';
+			$this->settings->set_flashdata('success',"Mechanic successfully deleted.");
+		}else{
+			$resp['status'] = 'failed';
+			$resp['error'] = $this->conn->error;
+		}
+		return json_encode($resp);
+	}
+	
 	// Service request functions
 	function save_request(){
 		if(empty($_POST['id']))
@@ -530,6 +845,151 @@ Class Master extends DBConnection {
 		$this->settings->set_flashdata('success',$resp['status']);
 		return json_encode($resp);
 	}
+	
+	// Order status update
+	function update_order_status(){
+		extract($_POST);
+		$update = $this->conn->query("UPDATE `order_list` set status = '{$status}' where id = '{$id}'");
+		if($update){
+			$resp['status'] = 'success';
+			$resp['msg'] = "Order status successfully updated.";
+		}else{
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Order status update failed.";
+			$resp['error'] = $this->conn->error;
+		}
+		return json_encode($resp);
+	}
+	
+	// Document management functions
+	function update_document_status(){
+		extract($_POST);
+		$data = "";
+		foreach($_POST as $k =>$v){
+			if(!in_array($k,array('document_id'))){
+				if(!empty($data)) $data .=",";
+				$data .= " `{$k}`='{$v}' ";
+			}
+		}
+		$sql = "UPDATE `or_cr_documents` set {$data} where id = '{$document_id}' ";
+		$update = $this->conn->query($sql);
+		if($update){
+			$resp['status'] = 'success';
+			$resp['msg'] = "Document status successfully updated.";
+		}else{
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Document status update failed.";
+			$resp['error'] = $this->conn->error;
+		}
+		return json_encode($resp);
+	}
+	
+	function delete_document(){
+		extract($_POST);
+		$del = $this->conn->query("DELETE FROM `or_cr_documents` where id = '{$document_id}'");
+		if($del){
+			$resp['status'] = 'success';
+			$resp['msg'] = "Document successfully deleted.";
+		}else{
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Document deletion failed.";
+			$resp['error'] = $this->conn->error;
+		}
+		return json_encode($resp);
+	}
+	
+	// Account balance functions
+	function add_account_balance(){
+		extract($_POST);
+		$client_id = $this->settings->userdata('id');
+		
+		// Get current balance
+		$current_balance = $this->conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}'")->fetch_assoc()['account_balance'];
+		$current_balance = $current_balance ? $current_balance : 0;
+		
+		// Add new amount
+		$new_balance = $current_balance + $amount;
+		
+		// Update balance
+		$update = $this->conn->query("UPDATE client_list SET account_balance = '{$new_balance}' WHERE id = '{$client_id}'");
+		
+		if($update){
+			// Record transaction
+			$transaction_data = "('{$client_id}', 'payment', '{$amount}', 'Account balance added via {$payment_method}', '{$reference_number}', NOW())";
+			$this->conn->query("INSERT INTO customer_transactions (client_id, transaction_type, amount, description, reference_id, date_created) VALUES {$transaction_data}");
+			
+			$resp['status'] = 'success';
+			$resp['msg'] = "Account balance successfully updated.";
+		}else{
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to update account balance.";
+			$resp['error'] = $this->conn->error;
+		}
+		return json_encode($resp);
+	}
+	
+	function update_vehicle_info(){
+		extract($_POST);
+		$client_id = $this->settings->userdata('id');
+		
+		$data = "";
+		foreach($_POST as $k =>$v){
+			if(!in_array($k,array('id'))){
+				if(!empty($data)) $data .=",";
+				$data .= " `{$k}`='{$v}' ";
+			}
+		}
+		
+		$sql = "UPDATE `client_list` set {$data} where id = '{$client_id}' ";
+		$update = $this->conn->query($sql);
+		
+		if($update){
+			$resp['status'] = 'success';
+			$resp['msg'] = "Vehicle information successfully updated.";
+		}else{
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to update vehicle information.";
+			$resp['error'] = $this->conn->error;
+		}
+		return json_encode($resp);
+	}
+	
+	function upload_orcr_document(){
+		extract($_POST);
+		$client_id = $this->settings->userdata('id');
+		
+		$data = "client_id = '{$client_id}', document_type = '{$document_type}', document_number = '{$document_number}', plate_number = '{$plate_number}', release_date = '{$release_date}', remarks = '{$remarks}', status = 'pending'";
+		
+		$sql = "INSERT INTO `or_cr_documents` set {$data} ";
+		$save = $this->conn->query($sql);
+		
+		if($save){
+			$doc_id = $this->conn->insert_id;
+			
+			// Handle file upload
+			if(!empty($_FILES['document_file']['tmp_name'])){
+				$ext = pathinfo($_FILES['document_file']['name'], PATHINFO_EXTENSION);
+				$dir = base_app."uploads/documents/";
+				if(!is_dir($dir))
+				mkdir($dir);
+				$name = $doc_id.".".$ext;
+				if(is_file($dir.$name))
+					unlink($dir.$name);
+				$move = move_uploaded_file($_FILES['document_file']['tmp_name'],$dir.$name);
+				if($move){
+					$this->conn->query("UPDATE `or_cr_documents` set file_path = CONCAT('uploads/documents/$name','?v=',unix_timestamp(CURRENT_TIMESTAMP)) where id = '{$doc_id}'");
+				}
+			}
+			
+			$resp['status'] = 'success';
+			$resp['msg'] = "Document successfully uploaded.";
+		}else{
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to upload document.";
+			$resp['error'] = $this->conn->error;
+		}
+		return json_encode($resp);
+	}
 }
 
 $Master = new Master();
@@ -566,6 +1026,15 @@ $sysset = new SystemSettings();
 	case 'save_to_cart':
 		echo $Master->save_to_cart();
 	break;
+	case 'update_cart_quantity':
+		echo $Master->update_cart_quantity();
+	break;
+	case 'remove_from_cart':
+		echo $Master->remove_from_cart();
+	break;
+	case 'place_order':
+		echo $Master->place_order();
+	break;
 	case 'get_cart_count':
 		echo $Master->get_cart_count();
 	break;
@@ -580,6 +1049,36 @@ $sysset = new SystemSettings();
 	break;
 	case 'mark_notification_read':
 		echo $Master->markNotificationRead();
+	break;
+	case 'save_brand':
+		echo $Master->save_brand();
+	break;
+	case 'delete_brand':
+		echo $Master->delete_brand();
+	break;
+	case 'save_mechanic':
+		echo $Master->save_mechanic();
+	break;
+	case 'delete_mechanic':
+		echo $Master->delete_mechanic();
+	break;
+	case 'update_order_status':
+		echo $Master->update_order_status();
+	break;
+	case 'update_document_status':
+		echo $Master->update_document_status();
+	break;
+	case 'delete_document':
+		echo $Master->delete_document();
+	break;
+	case 'add_account_balance':
+		echo $Master->add_account_balance();
+	break;
+	case 'update_vehicle_info':
+		echo $Master->update_vehicle_info();
+	break;
+	case 'upload_orcr_document':
+		echo $Master->upload_orcr_document();
 	break;
 	default:
 		break;
