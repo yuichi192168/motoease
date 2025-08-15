@@ -990,6 +990,197 @@ Class Master extends DBConnection {
 		}
 		return json_encode($resp);
 	}
+	
+	// Customer Account Management functions
+	function get_client_balance(){
+		extract($_POST);
+		
+		// Validate inputs
+		if(empty($client_id)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Client ID is required.";
+			return json_encode($resp);
+		}
+		
+		// Sanitize inputs
+		$client_id = $this->conn->real_escape_string($client_id);
+		
+		// Get client balance
+		$client = $this->conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}' AND delete_flag = 0");
+		
+		if($client->num_rows == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Client not found.";
+			return json_encode($resp);
+		}
+		
+		$balance = $client->fetch_assoc()['account_balance'];
+		$balance = $balance ? $balance : 0;
+		
+		$resp['status'] = 'success';
+		$resp['balance'] = $balance;
+		return json_encode($resp);
+	}
+	
+	function get_client_transactions(){
+		extract($_POST);
+		
+		// Validate inputs
+		if(empty($client_id)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Client ID is required.";
+			return json_encode($resp);
+		}
+		
+		// Sanitize inputs
+		$client_id = $this->conn->real_escape_string($client_id);
+		
+		// Get client info
+		$client = $this->conn->query("SELECT CONCAT(lastname, ', ', firstname, ' ', middlename) as fullname FROM client_list WHERE id = '{$client_id}'");
+		if($client->num_rows == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Client not found.";
+			return json_encode($resp);
+		}
+		$client_name = $client->fetch_assoc()['fullname'];
+		
+		// Get transactions
+		$transactions = $this->conn->query("SELECT * FROM customer_transactions WHERE client_id = '{$client_id}' ORDER BY date_created DESC LIMIT 50");
+		
+		$html = '<div class="table-responsive">';
+		$html .= '<h6>Transaction History for: <strong>' . $client_name . '</strong></h6>';
+		$html .= '<table class="table table-bordered table-striped">';
+		$html .= '<thead><tr>';
+		$html .= '<th>Date</th>';
+		$html .= '<th>Type</th>';
+		$html .= '<th>Amount</th>';
+		$html .= '<th>Description</th>';
+		$html .= '<th>Reference</th>';
+		$html .= '</tr></thead>';
+		$html .= '<tbody>';
+		
+		if($transactions->num_rows > 0){
+			while($row = $transactions->fetch_assoc()){
+				$amount_class = $row['transaction_type'] == 'payment' ? 'text-success' : 'text-danger';
+				$amount_sign = $row['transaction_type'] == 'payment' ? '+' : '-';
+				
+				$html .= '<tr>';
+				$html .= '<td>' . date("M d, Y H:i", strtotime($row['date_created'])) . '</td>';
+				$html .= '<td><span class="badge badge-' . ($row['transaction_type'] == 'payment' ? 'success' : 'danger') . '">' . ucfirst($row['transaction_type']) . '</span></td>';
+				$html .= '<td class="' . $amount_class . '">' . $amount_sign . '₱' . number_format($row['amount'], 2) . '</td>';
+				$html .= '<td>' . htmlspecialchars($row['description']) . '</td>';
+				$html .= '<td>' . htmlspecialchars($row['reference_id']) . '</td>';
+				$html .= '</tr>';
+			}
+		} else {
+			$html .= '<tr><td colspan="5" class="text-center text-muted">No transactions found.</td></tr>';
+		}
+		
+		$html .= '</tbody></table></div>';
+		
+		$resp['status'] = 'success';
+		$resp['html'] = $html;
+		return json_encode($resp);
+	}
+	
+	function adjust_client_balance(){
+		extract($_POST);
+		
+		// Validate inputs
+		if(empty($client_id) || empty($adjustment_type) || empty($amount) || empty($reason)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "All fields are required.";
+			return json_encode($resp);
+		}
+		
+		// Sanitize inputs
+		$client_id = $this->conn->real_escape_string($client_id);
+		$adjustment_type = $this->conn->real_escape_string($adjustment_type);
+		$amount = (float)$amount;
+		$reason = $this->conn->real_escape_string($reason);
+		
+		// Validate amount
+		if($amount <= 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Amount must be greater than 0.";
+			return json_encode($resp);
+		}
+		
+		// Get current balance
+		$client = $this->conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}' AND delete_flag = 0");
+		if($client->num_rows == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Client not found.";
+			return json_encode($resp);
+		}
+		
+		$current_balance = $client->fetch_assoc()['account_balance'];
+		$current_balance = $current_balance ? $current_balance : 0;
+		
+		// Calculate new balance
+		$new_balance = $current_balance;
+		$transaction_type = 'payment';
+		$transaction_amount = $amount;
+		
+		switch($adjustment_type){
+			case 'add':
+				$new_balance += $amount;
+				$transaction_type = 'payment';
+				$transaction_amount = $amount;
+				break;
+			case 'deduct':
+				$new_balance -= $amount;
+				$transaction_type = 'withdrawal';
+				$transaction_amount = $amount;
+				break;
+			case 'set':
+				$new_balance = $amount;
+				$transaction_type = $amount > $current_balance ? 'payment' : 'withdrawal';
+				$transaction_amount = abs($amount - $current_balance);
+				break;
+			default:
+				$resp['status'] = 'failed';
+				$resp['msg'] = "Invalid adjustment type.";
+				return json_encode($resp);
+		}
+		
+		// Start transaction
+		$this->conn->begin_transaction();
+		
+		try {
+			// Update client balance
+			$update_balance = $this->conn->query("UPDATE client_list SET account_balance = '{$new_balance}' WHERE id = '{$client_id}'");
+			if(!$update_balance){
+				throw new Exception("Failed to update balance: " . $this->conn->error);
+			}
+			
+			// Record transaction
+			$reference_id = 'ADJ-' . date('Ymd') . '-' . strtoupper(substr(md5(uniqid()), 0, 6));
+			$description = "Balance adjustment: " . $reason;
+			
+			$transaction_data = "('{$client_id}', '{$transaction_type}', '{$transaction_amount}', '{$description}', '{$reference_id}', NOW())";
+			$insert_transaction = $this->conn->query("INSERT INTO customer_transactions (client_id, transaction_type, amount, description, reference_id, date_created) VALUES {$transaction_data}");
+			
+			if(!$insert_transaction){
+				throw new Exception("Failed to record transaction: " . $this->conn->error);
+			}
+			
+			// Commit transaction
+			$this->conn->commit();
+			
+			$resp['status'] = 'success';
+			$resp['msg'] = "Account balance adjusted successfully.";
+			
+		} catch (Exception $e) {
+			// Rollback transaction
+			$this->conn->rollback();
+			
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to adjust balance: " . $e->getMessage();
+		}
+		
+		return json_encode($resp);
+	}
 }
 
 $Master = new Master();
@@ -1079,6 +1270,15 @@ $sysset = new SystemSettings();
 	break;
 	case 'upload_orcr_document':
 		echo $Master->upload_orcr_document();
+	break;
+	case 'get_client_balance':
+		echo $Master->get_client_balance();
+	break;
+	case 'get_client_transactions':
+		echo $Master->get_client_transactions();
+	break;
+	case 'adjust_client_balance':
+		echo $Master->adjust_client_balance();
 	break;
 	default:
 		break;

@@ -162,41 +162,40 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 <ul>
 <li>Heavy-duty steel construction for maximum durability</li>
 <li>Powder-coated finish for rust resistance</li>
-<li>Easy installation with included mounting hardware</li>
-<li>Compatible with multiple motorcycle models</li>
-<li>Provides comprehensive engine and body protection</li>
+<li>Easy installation with included hardware</li>
+<li>Universal fit design for most motorcycle models</li>
+<li>Impact-resistant design for superior protection</li>
 </ul>
-<p>Perfect for riders who want reliable protection for their valuable motorcycle investment.</p>`
+<p>Essential protection for your motorcycle's vital components.</p>`
             },
             steering_damper: {
                 description: `<p><strong>Performance Steering Damper</strong></p>
-<p>Enhance your motorcycle's handling and stability with this professional-grade steering damper. Features include:</p>
+<p>Enhance your motorcycle's stability and handling with this high-performance steering damper. Features include:</p>
 <ul>
-<li>Adjustable damping settings for personalized feel</li>
-<li>High-quality hydraulic system for smooth operation</li>
-<li>CNC-machined aluminum construction</li>
+<li>Adjustable damping for personalized feel</li>
+<li>High-quality materials for long-lasting performance</li>
 <li>Easy installation with detailed instructions</li>
-<li>Reduces handlebar vibration and improves control</li>
+<li>Compatible with most motorcycle models</li>
+<li>Reduces handlebar vibration and wobble</li>
 </ul>
-<p>Ideal for performance riders and long-distance touring.</p>`
+<p>Improve your riding experience with better control and stability.</p>`
             },
             exhaust_system: {
                 description: `<p><strong>Performance Exhaust System</strong></p>
 <p>Upgrade your motorcycle's performance and sound with this premium exhaust system. Features include:</p>
 <ul>
+<li>High-flow design for improved power output</li>
 <li>Stainless steel construction for durability</li>
-<li>Performance-tuned for optimal power output</li>
 <li>Deep, aggressive exhaust note</li>
 <li>Easy bolt-on installation</li>
-<li>Includes all necessary mounting hardware</li>
+<li>Includes mounting hardware and gaskets</li>
 </ul>
-<p>Transform your motorcycle's performance and appearance.</p>`
+<p>Unlock your motorcycle's true potential with enhanced performance.</p>`
             },
             brake_system: {
                 description: `<p><strong>High-Performance Brake System</strong></p>
-<p>Upgrade your motorcycle's stopping power with this premium brake system. Features include:</p>
+<p>Upgrade your motorcycle's braking performance with this advanced brake system. Features include:</p>
 <ul>
-<li>High-quality brake pads for superior stopping power</li>
 <li>Stainless steel brake lines for consistent performance</li>
 <li>Easy installation and maintenance</li>
 <li>Compatible with stock brake calipers</li>
@@ -236,13 +235,27 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
             if (template && template !== 'custom' && templates[template]) {
                 $('#description').val(templates[template].description);
                 $('#template_preview').html(templates[template].description).show();
+                // Trigger summernote update
+                $('#description').summernote('code', templates[template].description);
             } else {
                 $('#template_preview').hide();
                 if (template === 'custom') {
                     $('#description').val('').focus();
+                    $('#description').summernote('code', '');
                 }
             }
         });
+
+        // Auto-detect template on page load
+        var currentDescription = $('#description').val();
+        if (currentDescription) {
+            for (var template in templates) {
+                if (currentDescription.includes(templates[template].description.substring(0, 50))) {
+                    $('#description_template').val(template).trigger('change');
+                    break;
+                }
+            }
+        }
 
 		$('#product-form').submit(function(e){
 			e.preventDefault();
