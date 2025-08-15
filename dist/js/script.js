@@ -76,7 +76,6 @@ $(document).ready(function() {
                 url: _base_url_ + 'classes/Login.php?f=login_client',
                 method: 'POST',
                 data: $(this).serialize(),
-                dataType: 'json',
                 error: err => {
                     console.log(err)
                     el.text('An error occured')
@@ -86,22 +85,52 @@ $(document).ready(function() {
                     end_loader()
                 },
                 success: function(resp) {
-                    if (resp.status == 'success') {
-                        location.replace(_base_url_);
-                    } else if (!!resp.msg) {
-                        el.text(resp.msg)
+                    try {
+                        if (typeof resp === 'string') {
+                            resp = JSON.parse(resp)
+                        }
+                        
+                        if (resp.status == 'success') {
+                            // Show success message before redirect
+                            el.text('Login successful! Redirecting...')
+                            el.addClass('alert-success')
+                            _this.append(el)
+                            el.show('slow')
+                            
+                            // Redirect after a short delay to show the success message
+                            setTimeout(function() {
+                                window.location.href = _base_url_;
+                            }, 1000);
+                        } else if (resp.status == 'locked') {
+                            el.text(resp.msg)
+                            el.addClass('alert-warning')
+                            _this.append(el)
+                            el.show('slow')
+                            _this.find('input').addClass('is-invalid')
+                            $('[name="email"]').focus()
+                        } else if (!!resp.msg) {
+                            el.text(resp.msg)
+                            el.addClass('alert-danger')
+                            _this.append(el)
+                            el.show('slow')
+                            _this.find('input').addClass('is-invalid')
+                            $('[name="email"]').focus()
+                        } else {
+                            el.text('An error occured')
+                            el.addClass('alert-danger')
+                            _this.append(el)
+                            el.show('slow')
+                            _this.find('input').addClass('is-invalid')
+                            $('[name="email"]').focus()
+                        }
+                    } catch (e) {
+                        console.log('JSON Parse Error:', e, 'Response:', resp)
+                        el.text('An error occured while processing the response')
                         el.addClass('alert-danger')
                         _this.append(el)
                         el.show('slow')
                         _this.find('input').addClass('is-invalid')
-                        $('[name="username"]').focus()
-                    } else {
-                        el.text('An error occured')
-                        el.addClass('alert-danger')
-                        _this.append(el)
-                        el.show('slow')
-                        _this.find('input').addClass('is-invalid')
-                        $('[name="username"]').focus()
+                        $('[name="email"]').focus()
                     }
                     end_loader()
                 }

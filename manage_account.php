@@ -14,17 +14,58 @@ if($_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2){
 }else{
     echo "<script> alert('You are not allowed to access this page.'); location.replace('./') </script>";
 }
+
+// Get account balance
+$balance = $conn->query("SELECT account_balance FROM client_list WHERE id = '{$_settings->userdata('id')}'")->fetch_assoc()['account_balance'];
+$balance = $balance ? $balance : 0.00;
+
+// Get recent transactions
+$transactions = $conn->query("SELECT * FROM customer_transactions WHERE client_id = '{$_settings->userdata('id')}' ORDER BY date_created DESC LIMIT 10");
+
+// Get OR/CR documents
+$documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_settings->userdata('id')}' ORDER BY date_created DESC");
 ?>
 <div class="content py-5 mt-3">
     <div class="container">
+        <!-- Account Balance Card -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card card-outline card-primary shadow rounded-0">
+                    <div class="card-header">
+                        <h4 class="card-title"><b>Account Balance</b></h4>
+                    </div>
+                    <div class="card-body">
+                        <h2 class="text-primary">₱<?= number_format($balance, 2) ?></h2>
+                        <small class="text-muted">Current available balance</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card card-outline card-info shadow rounded-0">
+                    <div class="card-header">
+                        <h4 class="card-title"><b>Quick Actions</b></h4>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-primary btn-sm" onclick="showAddBalance()">Add Balance</button>
+                        <button class="btn btn-info btn-sm" onclick="showVehicleInfo()">Update Vehicle Info</button>
+                        <button class="btn btn-success btn-sm" onclick="showORCRUpload()">Upload OR/CR</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Account Management -->
         <div class="card card-outline card-dark shadow rounded-0">
             <div class="card-header">
                 <h4 class="card-title"><b>Manage Account Details/Credentials</b></h4>
             </div>
             <div class="card-body">
                 <div class="container-fluid">
-                    <form id="register-frm" action="" method="post">
+                    <form id="register-frm" action="" method="post" enctype="multipart/form-data">
                         <input type="hidden" name="id" value="<?= isset($id) ? $id : "" ?>">
+                        
+                        <!-- Personal Information -->
+                        <h5 class="text-primary mb-3">Personal Information</h5>
                         <div class="row">
                             <div class="form-group col-md-6">
                                 <input type="text" name="firstname" id="firstname" placeholder="Enter First Name" autofocus class="form-control form-control-sm form-control-border" value="<?= isset($firstname) ? $firstname : "" ?>" required>
@@ -38,80 +79,299 @@ if($_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2){
                                 <input type="text" name="lastname" id="lastname" placeholder="Enter Last Name" class="form-control form-control-sm form-control-border" required value="<?= isset($lastname) ? $lastname : "" ?>">
                                 <small class="ml-3">Last Name</small>
                             </div>
-                        </div>
-                        <div class="row">
                             <div class="form-group col-md-6">
-                                <select name="gender" id="gender" class="custom-select custom-select-sm form-control-border" required>
-                                    <option <?= isset($gender) && $gender == 'Male' ? "selected" : "" ?>>Male</option>
-                                    <option <?= isset($gender) && $gender == 'Female' ? "selected" : "" ?>>Female</option>
+                                <select name="gender" id="gender" class="form-control form-control-sm form-control-border" required>
+                                    <option value="Male" <?= isset($gender) && $gender == 'Male' ? 'selected' : '' ?>>Male</option>
+                                    <option value="Female" <?= isset($gender) && $gender == 'Female' ? 'selected' : '' ?>>Female</option>
                                 </select>
                                 <small class="ml-3">Gender</small>
                             </div>
-                            <div class="form-group col-md-6">
-                                <input type="text" name="contact" id="contact" placeholder="Enter Contact #" class="form-control form-control-sm form-control-border" required value="<?= isset($contact) ? $contact : "" ?>">
-                                <small class="ml-3">Contact #</small>
-                            </div>
                         </div>
+                        
+                        <!-- Contact Information -->
+                        <h5 class="text-primary mb-3 mt-4">Contact Information</h5>
                         <div class="row">
+                            <div class="form-group col-md-6">
+                                <input type="text" name="contact" id="contact" placeholder="Enter Contact Number" class="form-control form-control-sm form-control-border" required value="<?= isset($contact) ? $contact : "" ?>">
+                                <small class="ml-3">Contact Number</small>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <input type="email" name="email" id="email" placeholder="Enter Email Address" class="form-control form-control-sm form-control-border" required value="<?= isset($email) ? $email : "" ?>">
+                                <small class="ml-3">Email Address</small>
+                            </div>
                             <div class="form-group col-md-12">
-                            <small class="ml-3">Address</small>
-                            <textarea name="address" id="address" rows="3" class="form-control form-control-sm rounded-0" placeholder="Blk 8 Lot 88, Mabuhay Mamatid, Cabuyao City, Laguna, 4025"><?= isset($address) ? $address : "" ?></textarea>
+                                <textarea name="address" id="address" rows="3" placeholder="Enter Complete Address" class="form-control form-control-sm form-control-border" required><?= isset($address) ? $address : "" ?></textarea>
+                                <small class="ml-3">Complete Address</small>
                             </div>
                         </div>
-                        <hr>
+                        
+                        <!-- Vehicle Information -->
+                        <h5 class="text-primary mb-3 mt-4">Vehicle Information</h5>
                         <div class="row">
                             <div class="form-group col-md-6">
-                                <input type="email" name="email" id="email" placeholder="jsmith@sample.com" class="form-control form-control-sm form-control-border" required value="<?= isset($email) ? $email : "" ?>">
-                                <small class="ml-3">Email</small>
+                                <input type="text" name="vehicle_plate_number" id="vehicle_plate_number" placeholder="Enter Plate Number" class="form-control form-control-sm form-control-border" value="<?= isset($vehicle_plate_number) ? $vehicle_plate_number : "" ?>">
+                                <small class="ml-3">Vehicle Plate Number</small>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <input type="text" name="or_cr_number" id="or_cr_number" placeholder="Enter OR/CR Number" class="form-control form-control-sm form-control-border" value="<?= isset($or_cr_number) ? $or_cr_number : "" ?>">
+                                <small class="ml-3">OR/CR Number</small>
                             </div>
                         </div>
+                        
+                        <!-- Password Change -->
+                        <h5 class="text-primary mb-3 mt-4">Change Password</h5>
                         <div class="row">
                             <div class="form-group col-md-6">
                                 <div class="input-group">
-                                <input type="password" name="password" id="password" placeholder="" class="form-control form-control-sm form-control-border">
-                                <div class="input-group-append border-bottom border-top-0 border-left-0 border-right-0">
-                                    <span class="input-append-text text-sm"><i class="fa fa-eye-slash text-muted pass_type" data-type="password"></i></span>
+                                    <input type="password" name="oldpassword" id="oldpassword" placeholder="Enter Current Password" class="form-control form-control-sm form-control-border">
+                                    <div class="input-group-append">
+                                        <span class="input-group-text"><i class="fa fa-eye-slash pass_type" data-type="password"></i></span>
+                                    </div>
                                 </div>
+                                <small class="ml-3">Current Password</small>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <div class="input-group">
+                                    <input type="password" name="password" id="password" placeholder="Enter New Password" class="form-control form-control-sm form-control-border">
+                                    <div class="input-group-append">
+                                        <span class="input-group-text"><i class="fa fa-eye-slash pass_type" data-type="password"></i></span>
+                                    </div>
                                 </div>
                                 <small class="ml-3">New Password</small>
                             </div>
                             <div class="form-group col-md-6">
                                 <div class="input-group">
-                                <input type="password" id="cpassword" placeholder="" class="form-control form-control-sm form-control-border">
-                                <div class="input-group-append border-bottom border-top-0 border-left-0 border-right-0">
-                                    <span class="input-append-text text-sm"><i class="fa fa-eye-slash text-muted pass_type" data-type="password"></i></span>
-                                </div>
+                                    <input type="password" id="cpassword" placeholder="Confirm New Password" class="form-control form-control-sm form-control-border">
+                                    <div class="input-group-append">
+                                        <span class="input-group-text"><i class="fa fa-eye-slash pass_type" data-type="password"></i></span>
+                                    </div>
                                 </div>
                                 <small class="ml-3">Confirm New Password</small>
                             </div>
-                            <div class="col-12"><small class="text-muted"><em>Fill the password fields above only if you want to update your password.</em></small></div>
                         </div>
-                        <div class="row">
-                            <div class="form-group col-md-6">
-                                <div class="input-group">
-                                <input type="password" name="oldpassword" id="oldpassword" placeholder="" class="form-control form-control-sm form-control-border" required>
-                                <div class="input-group-append border-bottom border-top-0 border-left-0 border-right-0">
-                                    <span class="input-append-text text-sm"><i class="fa fa-eye-slash text-muted pass_type" data-type="password"></i></span>
-                                </div>
-                                </div>
-                                <small class="ml-3">Current Password</small>
-                            </div>
-                        </div>
-                        <div class="row align-items-center">
-                            <div class="col-8">
-                            </div>
-                            <!-- /.col -->
-                            <div class="col-4">
-                            <button type="submit" class="btn btn-primary btn-sm btn-flat btn-block">Update Details</button>
-                            </div>
-                            <!-- /.col -->
+                        
+                        <div class="text-right mt-4">
+                            <button type="submit" class="btn btn-primary btn-sm px-4">Update Account</button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
+        
+        <!-- Recent Transactions -->
+        <div class="card card-outline card-success shadow rounded-0 mt-4">
+            <div class="card-header">
+                <h4 class="card-title"><b>Recent Transactions</b></h4>
+            </div>
+            <div class="card-body">
+                <?php if($transactions->num_rows > 0): ?>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Reference</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while($trans = $transactions->fetch_assoc()): ?>
+                            <tr>
+                                <td><?= date('M d, Y H:i', strtotime($trans['date_created'])) ?></td>
+                                <td>
+                                    <span class="badge badge-<?= $trans['transaction_type'] == 'payment' ? 'success' : ($trans['transaction_type'] == 'refund' ? 'warning' : 'info') ?>">
+                                        <?= ucfirst($trans['transaction_type']) ?>
+                                    </span>
+                                </td>
+                                <td><?= $trans['description'] ?></td>
+                                <td class="text-right">₱<?= number_format($trans['amount'], 2) ?></td>
+                                <td><?= $trans['reference_id'] ?: 'N/A' ?></td>
+                            </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php else: ?>
+                <p class="text-muted text-center">No transactions found.</p>
+                <?php endif; ?>
+            </div>
+        </div>
+        
+        <!-- OR/CR Documents -->
+        <div class="card card-outline card-warning shadow rounded-0 mt-4">
+            <div class="card-header">
+                <h4 class="card-title"><b>OR/CR Documents</b></h4>
+            </div>
+            <div class="card-body">
+                <?php if($documents->num_rows > 0): ?>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Document Type</th>
+                                <th>Document Number</th>
+                                <th>Plate Number</th>
+                                <th>Release Date</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while($doc = $documents->fetch_assoc()): ?>
+                            <tr>
+                                <td><?= strtoupper($doc['document_type']) ?></td>
+                                <td><?= $doc['document_number'] ?></td>
+                                <td><?= $doc['plate_number'] ?: 'N/A' ?></td>
+                                <td><?= $doc['release_date'] ? date('M d, Y', strtotime($doc['release_date'])) : 'N/A' ?></td>
+                                <td>
+                                    <span class="badge badge-<?= $doc['status'] == 'released' ? 'success' : ($doc['status'] == 'expired' ? 'danger' : 'warning') ?>">
+                                        <?= ucfirst($doc['status']) ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <?php if($doc['file_path']): ?>
+                                    <a href="<?= validate_image($doc['file_path']) ?>" target="_blank" class="btn btn-sm btn-info">View</a>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php else: ?>
+                <p class="text-muted text-center">No OR/CR documents uploaded yet.</p>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- Add Balance Modal -->
+<div class="modal fade" id="addBalanceModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Account Balance</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="addBalanceForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Amount to Add</label>
+                        <input type="number" name="amount" class="form-control" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Method</label>
+                        <select name="payment_method" class="form-control" required>
+                            <option value="">Select Payment Method</option>
+                            <option value="cash">Cash</option>
+                            <option value="gcash">GCash</option>
+                            <option value="bank_transfer">Bank Transfer</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Reference Number (Optional)</label>
+                        <input type="text" name="reference_number" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Balance</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Vehicle Info Modal -->
+<div class="modal fade" id="vehicleInfoModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Vehicle Information</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="vehicleInfoForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Vehicle Brand</label>
+                        <input type="text" name="vehicle_brand" class="form-control" value="<?= isset($vehicle_brand) ? $vehicle_brand : '' ?>">
+                    </div>
+                    <div class="form-group">
+                        <label>Vehicle Model</label>
+                        <input type="text" name="vehicle_model" class="form-control" value="<?= isset($vehicle_model) ? $vehicle_model : '' ?>">
+                    </div>
+                    <div class="form-group">
+                        <label>Plate Number</label>
+                        <input type="text" name="vehicle_plate_number" class="form-control" value="<?= isset($vehicle_plate_number) ? $vehicle_plate_number : '' ?>">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Vehicle Info</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- OR/CR Upload Modal -->
+<div class="modal fade" id="orcrUploadModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upload OR/CR Document</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="orcrUploadForm" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Document Type</label>
+                        <select name="document_type" class="form-control" required>
+                            <option value="">Select Document Type</option>
+                            <option value="or">Original Receipt (OR)</option>
+                            <option value="cr">Certificate of Registration (CR)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Document Number</label>
+                        <input type="text" name="document_number" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Plate Number</label>
+                        <input type="text" name="plate_number" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Release Date</label>
+                        <input type="date" name="release_date" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Document File</label>
+                        <input type="file" name="document_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
+                        <small class="text-muted">Accepted formats: PDF, JPG, JPEG, PNG</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Remarks</label>
+                        <textarea name="remarks" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Upload Document</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
     $(function(){
         $('.pass_type').click(function(){
@@ -128,12 +388,13 @@ if($_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2){
                 $(this).addClass("fa-eye-slash")
             }
         })
+        
         $('#register-frm').submit(function(e){
             e.preventDefault()
             var _this = $(this)
-                    $('.err-msg').remove();
+            $('.err-msg').remove();
             var el = $('<div>')
-                    el.hide()
+            el.hide()
             if($('#password').val() != $('#cpassword').val()){
                 el.addClass('alert alert-danger err-msg').text('Password does not match.');
                 _this.prepend(el)
@@ -172,5 +433,89 @@ if($_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2){
                 }
             })
         })
+        
+        // Add Balance Form
+        $('#addBalanceForm').submit(function(e){
+            e.preventDefault();
+            start_loader();
+            $.ajax({
+                url:_base_url_+"classes/Master.php?f=add_account_balance",
+                data: new FormData($(this)[0]),
+                cache: false,
+                contentType: false,
+                processData: false,
+                method: 'POST',
+                dataType: 'json',
+                success:function(resp){
+                    if(resp.status == 'success'){
+                        $('#addBalanceModal').modal('hide');
+                        location.reload();
+                    }else{
+                        alert_toast(resp.msg,'error');
+                    }
+                    end_loader();
+                }
+            });
+        });
+        
+        // Vehicle Info Form
+        $('#vehicleInfoForm').submit(function(e){
+            e.preventDefault();
+            start_loader();
+            $.ajax({
+                url:_base_url_+"classes/Master.php?f=update_vehicle_info",
+                data: new FormData($(this)[0]),
+                cache: false,
+                contentType: false,
+                processData: false,
+                method: 'POST',
+                dataType: 'json',
+                success:function(resp){
+                    if(resp.status == 'success'){
+                        $('#vehicleInfoModal').modal('hide');
+                        location.reload();
+                    }else{
+                        alert_toast(resp.msg,'error');
+                    }
+                    end_loader();
+                }
+            });
+        });
+        
+        // OR/CR Upload Form
+        $('#orcrUploadForm').submit(function(e){
+            e.preventDefault();
+            start_loader();
+            $.ajax({
+                url:_base_url_+"classes/Master.php?f=upload_orcr_document",
+                data: new FormData($(this)[0]),
+                cache: false,
+                contentType: false,
+                processData: false,
+                method: 'POST',
+                dataType: 'json',
+                success:function(resp){
+                    if(resp.status == 'success'){
+                        $('#orcrUploadModal').modal('hide');
+                        location.reload();
+                    }else{
+                        alert_toast(resp.msg,'error');
+                    }
+                    end_loader();
+                }
+            });
+        });
     })
+    
+    function showAddBalance() {
+        $('#addBalanceModal').modal('show');
+    }
+    
+    function showVehicleInfo() {
+        $('#vehicleInfoModal').modal('show');
+    }
+    
+    function showORCRUpload() {
+        $('#orcrUploadModal').modal('show');
+    }
 </script>

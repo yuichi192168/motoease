@@ -819,6 +819,373 @@ Class Master extends DBConnection {
 		$resp['cart_count'] = $cart_count;
 		return json_encode($resp);
 	}
+	
+	function add_account_balance(){
+		extract($_POST);
+		
+		// Validate inputs
+		if(empty($amount) || $amount <= 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Invalid amount.";
+			return json_encode($resp);
+		}
+		
+		// Sanitize inputs
+		$amount = $this->conn->real_escape_string($amount);
+		$payment_method = $this->conn->real_escape_string($payment_method);
+		$reference_number = $this->conn->real_escape_string($reference_number);
+		$client_id = $this->settings->userdata('id');
+		
+		// Start transaction
+		$this->conn->begin_transaction();
+		
+		try {
+			// Update account balance
+			$update_balance = $this->conn->query("UPDATE client_list SET account_balance = account_balance + {$amount} WHERE id = '{$client_id}'");
+			if(!$update_balance){
+				throw new Exception("Failed to update account balance: " . $this->conn->error);
+			}
+			
+			// Record transaction
+			$description = "Account balance added via {$payment_method}";
+			if(!empty($reference_number)){
+				$description .= " (Ref: {$reference_number})";
+			}
+			
+			$insert_transaction = $this->conn->query("INSERT INTO customer_transactions (client_id, transaction_type, amount, description, reference_id) 
+													 VALUES ('{$client_id}', 'payment', '{$amount}', '{$description}', '{$reference_number}')");
+			if(!$insert_transaction){
+				throw new Exception("Failed to record transaction: " . $this->conn->error);
+			}
+			
+			// Commit transaction
+			$this->conn->commit();
+			
+			$resp['status'] = 'success';
+			$resp['msg'] = "Account balance has been updated successfully.";
+			
+		} catch (Exception $e) {
+			// Rollback transaction on error
+			$this->conn->rollback();
+			$resp['status'] = 'failed';
+			$resp['msg'] = $e->getMessage();
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function update_vehicle_info(){
+		extract($_POST);
+		
+		// Sanitize inputs
+		$vehicle_brand = $this->conn->real_escape_string($vehicle_brand);
+		$vehicle_model = $this->conn->real_escape_string($vehicle_model);
+		$vehicle_plate_number = $this->conn->real_escape_string($vehicle_plate_number);
+		$client_id = $this->settings->userdata('id');
+		
+		// Update vehicle information
+		$update = $this->conn->query("UPDATE client_list SET 
+									 vehicle_brand = '{$vehicle_brand}',
+									 vehicle_model = '{$vehicle_model}',
+									 vehicle_plate_number = '{$vehicle_plate_number}'
+									 WHERE id = '{$client_id}'");
+		
+		if($update){
+			$resp['status'] = 'success';
+			$resp['msg'] = "Vehicle information has been updated successfully.";
+		} else {
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to update vehicle information.";
+			$resp['error'] = $this->conn->error;
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function upload_orcr_document(){
+		extract($_POST);
+		
+		// Validate inputs
+		if(empty($document_type) || empty($document_number)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Please fill in all required fields.";
+			return json_encode($resp);
+		}
+		
+		// Sanitize inputs
+		$document_type = $this->conn->real_escape_string($document_type);
+		$document_number = $this->conn->real_escape_string($document_number);
+		$plate_number = $this->conn->real_escape_string($plate_number);
+		$release_date = $this->conn->real_escape_string($release_date);
+		$remarks = $this->conn->real_escape_string($remarks);
+		$client_id = $this->settings->userdata('id');
+		
+		// Handle file upload
+		$file_path = "";
+		if(!empty($_FILES['document_file']['tmp_name'])){
+			$ext = pathinfo($_FILES['document_file']['name'], PATHINFO_EXTENSION);
+			$dir = base_app."uploads/orcr_documents/";
+			if(!is_dir($dir))
+				mkdir($dir, 0777, true);
+			
+			$filename = $client_id . "_" . time() . "." . $ext;
+			$move = move_uploaded_file($_FILES['document_file']['tmp_name'], $dir . $filename);
+			
+			if($move){
+				$file_path = "uploads/orcr_documents/" . $filename;
+			} else {
+				$resp['status'] = 'failed';
+				$resp['msg'] = "Failed to upload document file.";
+				return json_encode($resp);
+			}
+		}
+		
+		// Insert document record
+		$insert = $this->conn->query("INSERT INTO or_cr_documents (client_id, document_type, document_number, plate_number, vehicle_model, vehicle_brand, release_date, file_path, remarks) 
+									 VALUES ('{$client_id}', '{$document_type}', '{$document_number}', '{$plate_number}', '{$vehicle_model}', '{$vehicle_brand}', '{$release_date}', '{$file_path}', '{$remarks}')");
+		
+		if($insert){
+			$resp['status'] = 'success';
+			$resp['msg'] = "Document has been uploaded successfully.";
+		} else {
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to upload document.";
+			$resp['error'] = $this->conn->error;
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function get_customer_dashboard_data(){
+		$client_id = $this->settings->userdata('id');
+		if(empty($client_id)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "User not logged in.";
+			return json_encode($resp);
+		}
+		
+		// Get account balance
+		$balance = $this->conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}'")->fetch_assoc()['account_balance'];
+		$balance = $balance ? $balance : 0.00;
+		
+		// Get recent transactions
+		$transactions = $this->conn->query("SELECT * FROM customer_transactions WHERE client_id = '{$client_id}' ORDER BY date_created DESC LIMIT 5");
+		$transactions_data = [];
+		while($row = $transactions->fetch_assoc()){
+			$transactions_data[] = $row;
+		}
+		
+		// Get OR/CR documents
+		$documents = $this->conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$client_id}' ORDER BY date_created DESC");
+		$documents_data = [];
+		while($row = $documents->fetch_assoc()){
+			$documents_data[] = $row;
+		}
+		
+		// Get recent orders
+		$orders = $this->conn->query("SELECT * FROM order_list WHERE client_id = '{$client_id}' ORDER BY date_created DESC LIMIT 5");
+		$orders_data = [];
+		while($row = $orders->fetch_assoc()){
+			$orders_data[] = $row;
+		}
+		
+		$resp['status'] = 'success';
+		$resp['data'] = [
+			'balance' => $balance,
+			'transactions' => $transactions_data,
+			'documents' => $documents_data,
+			'orders' => $orders_data
+		];
+		
+		return json_encode($resp);
+	}
+	
+	// Admin functions for customer account management
+	function get_client_balance(){
+		extract($_POST);
+		
+		$client_id = $this->conn->real_escape_string($client_id);
+		$balance = $this->conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}'")->fetch_assoc()['account_balance'];
+		
+		$resp['status'] = 'success';
+		$resp['balance'] = $balance ? $balance : 0.00;
+		return json_encode($resp);
+	}
+	
+	function get_client_transactions(){
+		extract($_POST);
+		
+		$client_id = $this->conn->real_escape_string($client_id);
+		$transactions = $this->conn->query("SELECT * FROM customer_transactions WHERE client_id = '{$client_id}' ORDER BY date_created DESC LIMIT 20");
+		
+		$html = '<table class="table table-bordered table-striped">';
+		$html .= '<thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Amount</th><th>Reference</th></tr></thead>';
+		$html .= '<tbody>';
+		
+		if($transactions->num_rows > 0){
+			while($row = $transactions->fetch_assoc()){
+				$html .= '<tr>';
+				$html .= '<td>'.date('M d, Y H:i', strtotime($row['date_created'])).'</td>';
+				$html .= '<td><span class="badge badge-'.($row['transaction_type'] == 'payment' ? 'success' : ($row['transaction_type'] == 'refund' ? 'warning' : 'info')).'">'.ucfirst($row['transaction_type']).'</span></td>';
+				$html .= '<td>'.$row['description'].'</td>';
+				$html .= '<td class="text-right">₱'.number_format($row['amount'], 2).'</td>';
+				$html .= '<td>'.($row['reference_id'] ?: 'N/A').'</td>';
+				$html .= '</tr>';
+			}
+		} else {
+			$html .= '<tr><td colspan="5" class="text-center">No transactions found.</td></tr>';
+		}
+		
+		$html .= '</tbody></table>';
+		
+		$resp['status'] = 'success';
+		$resp['html'] = $html;
+		return json_encode($resp);
+	}
+	
+	function adjust_client_balance(){
+		extract($_POST);
+		
+		// Validate inputs
+		if(empty($client_id) || empty($adjustment_type) || empty($amount) || empty($reason)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Please fill in all required fields.";
+			return json_encode($resp);
+		}
+		
+		// Sanitize inputs
+		$client_id = $this->conn->real_escape_string($client_id);
+		$adjustment_type = $this->conn->real_escape_string($adjustment_type);
+		$amount = $this->conn->real_escape_string($amount);
+		$reason = $this->conn->real_escape_string($reason);
+		
+		// Start transaction
+		$this->conn->begin_transaction();
+		
+		try {
+			// Get current balance
+			$current_balance = $this->conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}'")->fetch_assoc()['account_balance'];
+			$current_balance = $current_balance ? $current_balance : 0.00;
+			
+			// Calculate new balance
+			$new_balance = 0;
+			$transaction_type = '';
+			$description = '';
+			
+			if($adjustment_type == 'add'){
+				$new_balance = $current_balance + $amount;
+				$transaction_type = 'payment';
+				$description = "Balance adjustment: Added ₱{$amount} - {$reason}";
+			} elseif($adjustment_type == 'deduct'){
+				$new_balance = $current_balance - $amount;
+				$transaction_type = 'adjustment';
+				$description = "Balance adjustment: Deducted ₱{$amount} - {$reason}";
+			} elseif($adjustment_type == 'set'){
+				$new_balance = $amount;
+				$transaction_type = 'adjustment';
+				$description = "Balance adjustment: Set to ₱{$amount} - {$reason}";
+			}
+			
+			// Update account balance
+			$update_balance = $this->conn->query("UPDATE client_list SET account_balance = '{$new_balance}' WHERE id = '{$client_id}'");
+			if(!$update_balance){
+				throw new Exception("Failed to update account balance: " . $this->conn->error);
+			}
+			
+			// Record transaction
+			$insert_transaction = $this->conn->query("INSERT INTO customer_transactions (client_id, transaction_type, amount, description) 
+													 VALUES ('{$client_id}', '{$transaction_type}', '{$amount}', '{$description}')");
+			if(!$insert_transaction){
+				throw new Exception("Failed to record transaction: " . $this->conn->error);
+			}
+			
+			// Commit transaction
+			$this->conn->commit();
+			
+			$resp['status'] = 'success';
+			$resp['msg'] = "Account balance has been adjusted successfully.";
+			
+		} catch (Exception $e) {
+			// Rollback transaction on error
+			$this->conn->rollback();
+			$resp['status'] = 'failed';
+			$resp['msg'] = $e->getMessage();
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function update_document_status(){
+		extract($_POST);
+		
+		// Validate inputs
+		if(empty($document_id) || empty($status)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Please fill in all required fields.";
+			return json_encode($resp);
+		}
+		
+		// Sanitize inputs
+		$document_id = $this->conn->real_escape_string($document_id);
+		$status = $this->conn->real_escape_string($status);
+		$release_date = $this->conn->real_escape_string($release_date);
+		$remarks = $this->conn->real_escape_string($remarks);
+		
+		// Update document status
+		$update = $this->conn->query("UPDATE or_cr_documents SET 
+									 status = '{$status}',
+									 release_date = " . ($release_date ? "'{$release_date}'" : "NULL") . ",
+									 remarks = '{$remarks}',
+									 date_updated = NOW()
+									 WHERE id = '{$document_id}'");
+		
+		if($update){
+			$resp['status'] = 'success';
+			$resp['msg'] = "Document status has been updated successfully.";
+		} else {
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to update document status.";
+			$resp['error'] = $this->conn->error;
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function delete_document(){
+		extract($_POST);
+		
+		// Validate inputs
+		if(empty($document_id)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Invalid document ID.";
+			return json_encode($resp);
+		}
+		
+		// Sanitize inputs
+		$document_id = $this->conn->real_escape_string($document_id);
+		
+		// Get document info for file deletion
+		$doc_info = $this->conn->query("SELECT file_path FROM or_cr_documents WHERE id = '{$document_id}'")->fetch_assoc();
+		
+		// Delete document record
+		$delete = $this->conn->query("DELETE FROM or_cr_documents WHERE id = '{$document_id}'");
+		
+		if($delete){
+			// Delete file if exists
+			if($doc_info && $doc_info['file_path'] && file_exists(base_app . $doc_info['file_path'])){
+				unlink(base_app . $doc_info['file_path']);
+			}
+			
+			$resp['status'] = 'success';
+			$resp['msg'] = "Document has been deleted successfully.";
+		} else {
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to delete document.";
+			$resp['error'] = $this->conn->error;
+		}
+		
+		return json_encode($resp);
+	}
 }
 
 $Master = new Master();
@@ -893,6 +1260,33 @@ switch ($action) {
 	break;
 	case 'delete_order':
 		echo $Master->delete_order();
+	break;
+	case 'add_account_balance':
+		echo $Master->add_account_balance();
+	break;
+	case 'update_vehicle_info':
+		echo $Master->update_vehicle_info();
+	break;
+	case 'upload_orcr_document':
+		echo $Master->upload_orcr_document();
+	break;
+	case 'get_customer_dashboard_data':
+		echo $Master->get_customer_dashboard_data();
+	break;
+	case 'get_client_balance':
+		echo $Master->get_client_balance();
+	break;
+	case 'get_client_transactions':
+		echo $Master->get_client_transactions();
+	break;
+	case 'adjust_client_balance':
+		echo $Master->adjust_client_balance();
+	break;
+	case 'update_document_status':
+		echo $Master->update_document_status();
+	break;
+	case 'delete_document':
+		echo $Master->delete_document();
 	break;
 	default:
 		// echo $sysset->index();
