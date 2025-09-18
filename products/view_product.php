@@ -134,12 +134,117 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         </div>
     </div>
 </div>
+<div class="content py-0">
+    <div class="container">
+        <div class="card card-outline rounded-0 card-secondary shadow">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Customer Reviews</h5>
+            </div>
+            <div class="card-body">
+                <div id="reviews_summary" class="mb-3 text-muted"></div>
+                <div id="reviews_list"></div>
+                <hr>
+                <div class="review-form">
+                    <h6 class="mb-2">Leave a Review</h6>
+                    <div class="form-group mb-2">
+                        <label class="mb-1">Rating</label>
+                        <div id="rating_stars">
+                            <span class="text-warning h5 mx-1 star" data-val="1">★</span>
+                            <span class="text-warning h5 mx-1 star" data-val="2">★</span>
+                            <span class="text-warning h5 mx-1 star" data-val="3">★</span>
+                            <span class="text-warning h5 mx-1 star" data-val="4">★</span>
+                            <span class="text-warning h5 mx-1 star" data-val="5">★</span>
+                        </div>
+                    </div>
+                    <div class="form-group mb-2">
+                        <label class="mb-1">Comment</label>
+                        <textarea id="review_comment" class="form-control" rows="3" placeholder="Share your experience..."></textarea>
+                    </div>
+                    <button id="submit_review" class="btn btn-sm btn-primary">Submit Review</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 <script>
     $(function(){
         // Load product recommendations if out of stock
         <?php if($available <= 0): ?>
         loadProductRecommendations();
         <?php endif; ?>
+
+        // Reviews
+        loadReviews();
+        let selectedRating = 0;
+        $('#rating_stars .star').on('mouseenter', function(){
+            const v = parseInt($(this).data('val'));
+            highlightStars(v);
+        }).on('mouseleave', function(){
+            highlightStars(selectedRating);
+        }).on('click', function(){
+            selectedRating = parseInt($(this).data('val'));
+            highlightStars(selectedRating);
+        });
+        function highlightStars(v){
+            $('#rating_stars .star').each(function(){
+                const s = parseInt($(this).data('val'));
+                $(this).css('opacity', s <= v ? 1 : 0.3);
+            });
+        }
+        highlightStars(0);
+
+        $('#submit_review').click(function(){
+            if("<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>" != 1){
+                Swal.fire({
+                    title: 'Login Required',
+                    text: 'Please login to submit a review.',
+                    icon: 'warning',
+                    confirmButtonText: 'Login Now',
+                    showCancelButton: true,
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        location.href = './login.php';
+                    }
+                });
+                return;
+            }
+            if(selectedRating < 1){
+                alert_toast('Please select a rating.', 'warning');
+                return;
+            }
+            const comment = $('#review_comment').val();
+            start_loader();
+            $.ajax({
+                url:_base_url_+"classes/Master.php?f=save_review",
+                method:'POST',
+                data:{
+                    target_type:'product',
+                    target_id:'<?= isset($id) ? $id : "" ?>',
+                    rating:selectedRating,
+                    comment:comment
+                },
+                dataType:'json',
+                error:err=>{
+                    console.error(err);
+                    alert_toast("An error occurred","error");
+                    end_loader();
+                },
+                success:function(resp){
+                    if(resp.status =='success'){
+                        $('#review_comment').val('');
+                        selectedRating = 0; highlightStars(0);
+                        loadReviews();
+                        alert_toast(resp.msg,'success');
+                    }else if(!!resp.msg){
+                        alert_toast(resp.msg,'error');
+                    }else{
+                        alert_toast("An error occurred","error");
+                    }
+                    end_loader();
+                }
+            });
+        });
         
         $('#add_to_cart').click(function(){
             if("<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>" == 1){
@@ -233,6 +338,45 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         });
     });
     
+    function loadReviews(){
+        $.ajax({
+            url: _base_url_ + "classes/Master.php?f=get_reviews",
+            method: "POST",
+            data: {
+                target_type: 'product',
+                target_id: '<?= isset($id) ? $id : "" ?>',
+                limit: 10,
+                offset: 0
+            },
+            dataType: "json",
+            error: err => {
+                console.log(err);
+            },
+            success: function(resp){
+                if(resp.status == 'success'){
+                    let s = resp.count + ' review' + (resp.count==1?'':'s');
+                    if(resp.count>0){ s += ' • Avg ' + (resp.avg_rating||0) + '/5'; }
+                    $('#reviews_summary').text(s);
+                    if(resp.reviews.length > 0){
+                        var html = '';
+                        $.each(resp.reviews, function(idx, r){
+                            const name = r.reviewer_name ? r.reviewer_name : 'Customer';
+                            const stars = '★★★★★'.slice(0, r.rating) + '☆☆☆☆☆'.slice(0, 5 - r.rating);
+                            html += '<div class="mb-3">';
+                            html += '<div><strong>'+ name +'</strong> <span class="text-warning">'+ stars +'</span></div>';
+                            if(r.comment){ html += '<div class="text-muted">'+ $('<div>').text(r.comment).html() +'</div>'; }
+                            html += '<div class="text-xs text-muted">'+ r.date_created +'</div>';
+                            html += '</div>';
+                        });
+                        $('#reviews_list').html(html);
+                    } else {
+                        $('#reviews_list').html('<p class="text-muted">No reviews yet. Be the first to review this product.</p>');
+                    }
+                }
+            }
+        });
+    }
+
     function loadProductRecommendations(){
         $.ajax({
             url: _base_url_ + "classes/Master.php?f=get_product_recommendations",

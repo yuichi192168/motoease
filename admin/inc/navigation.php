@@ -202,12 +202,12 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                         </p>
                     </a>
                     <ul class="nav nav-treeview">
-                        <li class="nav-item">
+                        <!-- <li class="nav-item">
                             <a href="./?page=customer_accounts" class="nav-link <?php echo $page == 'customer_accounts' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Account Balances</p>
                             </a>
-                        </li>
+                        </li> -->
                         <li class="nav-item">
                             <a href="./?page=orcr_documents" class="nav-link <?php echo $page == 'orcr_documents' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>

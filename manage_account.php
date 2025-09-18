@@ -15,38 +15,21 @@ if($_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2){
     echo "<script> alert('You are not allowed to access this page.'); location.replace('./') </script>";
 }
 
-// Get account balance
-$balance = $conn->query("SELECT account_balance FROM client_list WHERE id = '{$_settings->userdata('id')}'")->fetch_assoc()['account_balance'];
-$balance = $balance ? $balance : 0.00;
-
-// Get recent transactions
-$transactions = $conn->query("SELECT * FROM customer_transactions WHERE client_id = '{$_settings->userdata('id')}' ORDER BY date_created DESC LIMIT 10");
+// Account balance and transaction UI removed
 
 // Get OR/CR documents
 $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_settings->userdata('id')}' ORDER BY date_created DESC");
 ?>
 <div class="content py-5 mt-3">
     <div class="container">
-        <!-- Account Balance Card -->
+        <!-- Quick Actions (balance removed) -->
         <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card card-outline card-primary shadow rounded-0">
-                    <div class="card-header">
-                        <h4 class="card-title"><b>Account Balance</b></h4>
-                    </div>
-                    <div class="card-body">
-                        <h2 class="text-primary">₱<?= number_format($balance, 2) ?></h2>
-                        <small class="text-muted">Current available balance</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
+            <div class="col-md-12">
                 <div class="card card-outline card-info shadow rounded-0">
                     <div class="card-header">
                         <h4 class="card-title"><b>Quick Actions</b></h4>
                     </div>
                     <div class="card-body">
-                        <button class="btn btn-primary btn-sm" onclick="showAddBalance()">Add Balance</button>
                         <button class="btn btn-info btn-sm" onclick="showVehicleInfo()">Update Vehicle Info</button>
                         <button class="btn btn-success btn-sm" onclick="showORCRUpload()">Upload OR/CR</button>
                     </div>
@@ -158,46 +141,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
             </div>
         </div>
         
-        <!-- Recent Transactions -->
-        <div class="card card-outline card-success shadow rounded-0 mt-4">
-            <div class="card-header">
-                <h4 class="card-title"><b>Recent Transactions</b></h4>
-            </div>
-            <div class="card-body">
-                <?php if($transactions->num_rows > 0): ?>
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Type</th>
-                                <th>Description</th>
-                                <th>Amount</th>
-                                <th>Reference</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php while($trans = $transactions->fetch_assoc()): ?>
-                            <tr>
-                                <td><?= date('M d, Y H:i', strtotime($trans['date_created'])) ?></td>
-                                <td>
-                                    <span class="badge badge-<?= $trans['transaction_type'] == 'payment' ? 'success' : ($trans['transaction_type'] == 'refund' ? 'warning' : 'info') ?>">
-                                        <?= ucfirst($trans['transaction_type']) ?>
-                                    </span>
-                                </td>
-                                <td><?= $trans['description'] ?></td>
-                                <td class="text-right">₱<?= number_format($trans['amount'], 2) ?></td>
-                                <td><?= $trans['reference_id'] ?: 'N/A' ?></td>
-                            </tr>
-                            <?php endwhile; ?>
-                        </tbody>
-                    </table>
-                </div>
-                <?php else: ?>
-                <p class="text-muted text-center">No transactions found.</p>
-                <?php endif; ?>
-            </div>
-        </div>
+        <!-- Recent Transactions removed -->
         
         <!-- OR/CR Documents -->
         <div class="card card-outline card-warning shadow rounded-0 mt-4">
@@ -248,44 +192,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
     </div>
 </div>
 
-<!-- Add Balance Modal -->
-<div class="modal fade" id="addBalanceModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Add Account Balance</h5>
-                <button type="button" class="close" data-dismiss="modal">
-                    <span>&times;</span>
-                </button>
-            </div>
-            <form id="addBalanceForm">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Amount to Add</label>
-                        <input type="number" name="amount" class="form-control" step="0.01" min="0" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Payment Method</label>
-                        <select name="payment_method" class="form-control" required>
-                            <option value="">Select Payment Method</option>
-                            <option value="cash">Cash</option>
-                            <option value="gcash">GCash</option>
-                            <option value="bank_transfer">Bank Transfer</option>
-                        </select>
-                        </div>
-                    <div class="form-group">
-                        <label>Reference Number (Optional)</label>
-                        <input type="text" name="reference_number" class="form-control">
-                                </div>
-                                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Balance</button>
-                </div>
-            </form>
-        </div>
-                            </div>
-                        </div>
+<!-- Add Balance Modal removed -->
 
 <!-- Vehicle Info Modal -->
 <div class="modal fade" id="vehicleInfoModal" tabindex="-1" role="dialog">
@@ -434,29 +341,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
             })
         })
         
-        // Add Balance Form
-        $('#addBalanceForm').submit(function(e){
-            e.preventDefault();
-            start_loader();
-            $.ajax({
-                url:_base_url_+"classes/Master.php?f=add_account_balance",
-                data: new FormData($(this)[0]),
-                cache: false,
-                contentType: false,
-                processData: false,
-                method: 'POST',
-                dataType: 'json',
-                success:function(resp){
-                    if(resp.status == 'success'){
-                        $('#addBalanceModal').modal('hide');
-                        location.reload();
-                    }else{
-                        alert_toast(resp.msg,'error');
-                    }
-                    end_loader();
-                }
-            });
-        });
+        // Add Balance removed
         
         // Vehicle Info Form
         $('#vehicleInfoForm').submit(function(e){
@@ -507,9 +392,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
         });
     })
     
-    function showAddBalance() {
-        $('#addBalanceModal').modal('show');
-    }
+    // showAddBalance removed
     
     function showVehicleInfo() {
         $('#vehicleInfoModal').modal('show');

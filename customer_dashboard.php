@@ -8,12 +8,7 @@ $client_id = $_settings->userdata('id');
 // Get customer data
 $customer = $conn->query("SELECT * FROM client_list WHERE id = '{$client_id}'")->fetch_assoc();
 
-// Get account balance
-$balance = $conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}'")->fetch_assoc()['account_balance'];
-$balance = $balance ? $balance : 0.00;
-
-// Get recent transactions
-$transactions = $conn->query("SELECT * FROM customer_transactions WHERE client_id = '{$client_id}' ORDER BY date_created DESC LIMIT 5");
+// Account balance and transactions removed from dashboard
 
 // Get recent orders
 $orders = $conn->query("SELECT * FROM order_list WHERE client_id = '{$client_id}' ORDER BY date_created DESC LIMIT 5");
@@ -43,10 +38,7 @@ $unread_notifications = $conn->query("SELECT COUNT(*) as count FROM notification
                                 <h3 class="mb-1">Welcome back, <?= ucwords($customer['firstname'] . ' ' . $customer['lastname']) ?>!</h3>
                                 <p class="text-muted mb-0">Manage your account, view orders, and track your services all in one place.</p>
                             </div>
-                            <div class="col-md-4 text-right">
-                                <div class="h2 text-primary mb-0">₱<?= number_format($balance, 2) ?></div>
-                                <small class="text-muted">Account Balance</small>
-                            </div>
+                            <div class="col-md-4 text-right"></div>
                         </div>
                     </div>
                 </div>
@@ -198,49 +190,6 @@ $unread_notifications = $conn->query("SELECT COUNT(*) as count FROM notification
         </div>
 
         <div class="row mt-4">
-            <!-- Recent Transactions -->
-            <div class="col-md-6">
-                <div class="card card-outline card-info shadow rounded-0">
-                    <div class="card-header">
-                        <h4 class="card-title"><b>Recent Transactions</b></h4>
-                        <div class="card-tools">
-                            <a href="./?p=manage_account" class="btn btn-sm btn-info">View All</a>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <?php if($transactions->num_rows > 0): ?>
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Type</th>
-                                        <th>Description</th>
-                                        <th>Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php while($trans = $transactions->fetch_assoc()): ?>
-                                    <tr>
-                                        <td><?= date('M d, Y', strtotime($trans['date_created'])) ?></td>
-                                        <td>
-                                            <span class="badge badge-<?= $trans['transaction_type'] == 'payment' ? 'success' : ($trans['transaction_type'] == 'refund' ? 'warning' : 'info') ?>">
-                                                <?= ucfirst($trans['transaction_type']) ?>
-                                            </span>
-                                        </td>
-                                        <td><?= $trans['description'] ?></td>
-                                        <td class="text-right">₱<?= number_format($trans['amount'], 2) ?></td>
-                                    </tr>
-                                    <?php endwhile; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                        <?php else: ?>
-                        <p class="text-muted text-center">No transactions found.</p>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
 
             <!-- Recent Appointments -->
             <div class="col-md-6">

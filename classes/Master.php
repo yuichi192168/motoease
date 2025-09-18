@@ -1547,6 +1547,112 @@ Class Master extends DBConnection {
 		
 		return json_encode($resp);
 	}
+    
+    // Customer Feedback & Engagement functions
+    function save_review(){
+        extract($_POST);
+        $user_id = $this->settings->userdata('id');
+        $login_type = $this->settings->userdata('login_type');
+
+        if(empty($user_id) || $login_type != 2){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Only logged-in customers can submit reviews.';
+            return json_encode($resp);
+        }
+
+        $allowed_types = array('product','service','dealership','order');
+        if(empty($target_type) || empty($target_id) || empty($rating)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Target, target id and rating are required.';
+            return json_encode($resp);
+        }
+        $target_type = strtolower(trim($target_type));
+        if(!in_array($target_type, $allowed_types)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Invalid review target type.';
+            return json_encode($resp);
+        }
+        $target_id = (int)$target_id;
+        $rating = (int)$rating;
+        if($rating < 1 || $rating > 5){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Rating must be between 1 and 5.';
+            return json_encode($resp);
+        }
+        $comment = isset($comment) ? $this->conn->real_escape_string(trim($comment)) : '';
+
+        switch($target_type){
+            case 'product':
+                $exists = $this->conn->query("SELECT id FROM product_list WHERE id = '{$target_id}' AND delete_flag = 0")->num_rows > 0;
+            break;
+            case 'service':
+                $exists = $this->conn->query("SELECT id FROM service_list WHERE id = '{$target_id}' AND delete_flag = 0")->num_rows > 0;
+            break;
+            case 'order':
+                $exists = $this->conn->query("SELECT id FROM order_list WHERE id = '{$target_id}' AND client_id = '{$user_id}'")->num_rows > 0;
+            break;
+            case 'dealership':
+                $exists = true;
+            break;
+            default:
+                $exists = false;
+        }
+        if(!$exists){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Target to review was not found.';
+            return json_encode($resp);
+        }
+
+        $check = $this->conn->query("SELECT id FROM reviews WHERE user_id = '{$user_id}' AND target_type = '{$target_type}' AND target_id = '{$target_id}'");
+        if($check->num_rows > 0){
+            $row = $check->fetch_assoc();
+            $sql = "UPDATE reviews SET rating = '{$rating}', comment = '{$comment}', date_updated = NOW() WHERE id = '{$row['id']}'";
+        } else {
+            $sql = "INSERT INTO reviews (user_id, target_type, target_id, rating, comment, date_created) VALUES ('{$user_id}', '{$target_type}', '{$target_id}', '{$rating}', '{$comment}', NOW())";
+        }
+        $save = $this->conn->query($sql);
+        if($save){
+            $resp['status'] = 'success';
+            $resp['msg'] = 'Thank you for your feedback!';
+        } else {
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Failed to save review.';
+            $resp['error'] = $this->conn->error;
+        }
+        return json_encode($resp);
+    }
+
+    function get_reviews(){
+        extract($_POST);
+        if(empty($target_type) || empty($target_id)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Target and target id are required.';
+            return json_encode($resp);
+        }
+        $target_type = $this->conn->real_escape_string(strtolower(trim($target_type)));
+        $target_id = (int)$target_id;
+        $limit = isset($limit) ? (int)$limit : 20;
+        $offset = isset($offset) ? (int)$offset : 0;
+
+        $q = $this->conn->query("SELECT r.*, CONCAT(cl.lastname, ', ', cl.firstname) as reviewer_name
+            FROM reviews r
+            LEFT JOIN client_list cl ON r.user_id = cl.id
+            WHERE r.target_type = '{$target_type}' AND r.target_id = '{$target_id}'
+            ORDER BY r.date_created DESC, r.id DESC
+            LIMIT {$limit} OFFSET {$offset}");
+        $reviews = array();
+        while($row = $q->fetch_assoc()){
+            $reviews[] = $row;
+        }
+
+        $stats_q = $this->conn->query("SELECT COUNT(*) as count, AVG(rating) as avg_rating FROM reviews WHERE target_type = '{$target_type}' AND target_id = '{$target_id}'");
+        $stats = $stats_q->fetch_assoc();
+        $resp['status'] = 'success';
+        $resp['reviews'] = $reviews;
+        $resp['count'] = (int)$stats['count'];
+        $resp['avg_rating'] = $stats['avg_rating'] ? round((float)$stats['avg_rating'], 2) : 0;
+        return json_encode($resp);
+    }
 }
 
 $Master = new Master();
@@ -1666,6 +1772,12 @@ $sysset = new SystemSettings();
 	break;
 	case 'auto_classify_abc':
 		echo $Master->auto_classify_abc();
+	break;
+	case 'save_review':
+		echo $Master->save_review();
+	break;
+	case 'get_reviews':
+		echo $Master->get_reviews();
 	break;
 	default:
 		break;

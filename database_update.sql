@@ -1,3 +1,18 @@
+-- Customer Feedback & Engagement: reviews table
+CREATE TABLE IF NOT EXISTS `reviews` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` INT UNSIGNED NOT NULL,
+  `target_type` ENUM('product','service','dealership','order') NOT NULL,
+  `target_id` INT UNSIGNED NOT NULL,
+  `rating` TINYINT UNSIGNED NOT NULL CHECK (`rating` BETWEEN 1 AND 5),
+  `comment` TEXT NULL,
+  `date_created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `date_updated` DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_target` (`target_type`, `target_id`),
+  INDEX `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Database Update Script for Missing Features
 -- Run this script to add all missing tables and columns
 
