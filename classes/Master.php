@@ -258,12 +258,12 @@ Class Master extends DBConnection {
 	function place_order(){
 		$client_id = $this->settings->userdata('id');
 		
-		// Validate inputs
-		if(empty($_POST['delivery_address'])){
-			$resp['status'] = 'failed';
-			$resp['msg'] = "Delivery address is required.";
-			return json_encode($resp);
-		}
+        // Delivery address UI removed; use saved address if available
+        $customer = $this->conn->query("SELECT address FROM client_list WHERE id = '{$client_id}'");
+        $saved_address = '';
+        if($customer && $customer->num_rows > 0){
+            $saved_address = $customer->fetch_assoc()['address'];
+        }
 		
 		// Check if cart has items
 		$cart_items = $this->conn->query("SELECT COUNT(*) as count FROM cart_list WHERE client_id = '{$client_id}'");
@@ -287,11 +287,11 @@ Class Master extends DBConnection {
 			$total_amount = $total_query->fetch_assoc()['total'];
 			
 			// Create order - only use columns that exist in the database
-			$order_data = "client_id = '{$client_id}', 
-						   ref_code = '{$ref_code}', 
-						   total_amount = '{$total_amount}', 
-						   delivery_address = '" . $this->conn->real_escape_string($_POST['delivery_address']) . "', 
-						   status = 0";
+            $order_data = "client_id = '{$client_id}', 
+                           ref_code = '{$ref_code}', 
+                           total_amount = '{$total_amount}', 
+                           delivery_address = '" . $this->conn->real_escape_string($saved_address) . "', 
+                           status = 0";
 			
 			$create_order = $this->conn->query("INSERT INTO order_list SET {$order_data}");
 			

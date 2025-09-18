@@ -46,16 +46,11 @@
             <!-- Checkout Form -->
             <div class="col-md-6">
                 <div class="card card-outline card-dark shadow rounded-0">
-                    <div class="card-header">
+                    <!-- <div class="card-header">
                         <h4 class="card-title">Checkout Information</h4>
-                    </div>
+                    </div> -->
                     <div class="card-body">
                         <form action="" id="place_order">
-                            <div class="form-group">
-                                <label for="delivery_address" class="control-label">Delivery Address <span class="text-danger">*</span></label>
-                                <textarea name="delivery_address" id="delivery_address" class="form-control form-control-sm rounded-0" rows="4" required><?= $_settings->userdata('address') ?></textarea>
-                                <small class="text-muted">Please provide your complete delivery address</small>
-                            </div>
                             
                             <div class="form-group text-right">
                                 <button class="btn btn-flat btn-primary" type="submit" id="place_order_btn">
@@ -71,16 +66,9 @@
 </div>
 <script>
     $(function(){
-        // Validate form before submission
+        // Submit order
         $('#place_order').submit(function(e){
             e.preventDefault();
-            
-            var delivery_address = $('#delivery_address').val().trim();
-            if(delivery_address.length < 10){
-                alert_toast('Please provide a complete delivery address (at least 10 characters)', 'warning');
-                $('#delivery_address').focus();
-                return false;
-            }
             
             var _this = $(this);
             $('.err-msg').remove();
@@ -143,12 +131,6 @@
                     }
                 }
             });
-        });
-        
-        // Auto-resize textarea
-        $('#delivery_address').on('input', function() {
-            this.style.height = 'auto';
-            this.style.height = (this.scrollHeight) + 'px';
         });
     });
 </script>
