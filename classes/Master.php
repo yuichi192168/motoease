@@ -79,12 +79,12 @@ Class Master extends DBConnection {
 	}
 	
 	// Cart functions
-    function save_to_cart(){
+	function save_to_cart(){
 		$_POST['client_id'] = $this->settings->userdata('id');
 		extract($_POST);
 		
 		// Validate inputs
-        if(empty($client_id) || empty($product_id) || empty($quantity) || $quantity <= 0){
+		if(empty($client_id) || empty($product_id) || empty($quantity) || $quantity <= 0){
 			$resp['status'] = 'failed';
 			$resp['msg'] = "Invalid input parameters.";
 			return json_encode($resp);
@@ -131,7 +131,7 @@ Class Master extends DBConnection {
 				return json_encode($resp);
 			}
 			
-            $sql = "UPDATE `cart_list` SET quantity = '{$new_quantity}' WHERE id = '{$cart_item['id']}'";
+			$sql = "UPDATE `cart_list` SET quantity = '{$new_quantity}' WHERE id = '{$cart_item['id']}'";
 		} else {
 			// New product in cart
 			if($quantity > $available){
@@ -172,7 +172,7 @@ Class Master extends DBConnection {
 		$quantity = $this->conn->real_escape_string($quantity);
 		
 		// Get current cart item
-        $cart_item = $this->conn->query("SELECT c.*, p.name FROM cart_list c 
+		$cart_item = $this->conn->query("SELECT c.*, p.name FROM cart_list c 
 										INNER JOIN product_list p ON c.product_id = p.id 
 										WHERE c.id = '{$cart_id}' AND c.client_id = '{$client_id}'");
 		
@@ -304,15 +304,15 @@ Class Master extends DBConnection {
 			
 			$order_id = $this->conn->insert_id;
 			
-            // Get cart items and create order items
-            $cart_query = $this->conn->query("SELECT c.*, p.name, p.price FROM cart_list c 
+			// Get cart items and create order items
+			$cart_query = $this->conn->query("SELECT c.*, p.name, p.price FROM cart_list c 
 											 INNER JOIN product_list p ON c.product_id = p.id 
 											 WHERE c.client_id = '{$client_id}'");
 			
 			while($item = $cart_query->fetch_assoc()){
 				$order_item_data = "order_id = '{$order_id}', 
 								   product_id = '{$item['product_id']}', 
-                                   quantity = '{$item['quantity']}'";
+								   quantity = '{$item['quantity']}'";
                 if(!empty($item['color'])){
                     $order_item_data .= ", color = '".$this->conn->real_escape_string($item['color'])."'";
                 }
@@ -554,6 +554,28 @@ Class Master extends DBConnection {
 					$this->conn->query("UPDATE `product_list` set image_path = CONCAT('uploads/products/$name','?v=',unix_timestamp(CURRENT_TIMESTAMP)) where id = '{$pid}'");
 				}else{
 					$resp['msg'] .= " But logo has failed to upload.";
+				}
+			}
+
+			// Handle color images if provided
+			if(isset($_POST['available_colors']) && isset($_FILES['color_image'])){
+				$colors_raw = $_POST['available_colors'];
+				$colors = array_filter(array_map('trim', explode(',', $colors_raw)));
+				$files = $_FILES['color_image'];
+				$dir = base_app."uploads/products/colors/";
+				if(!is_dir($dir)) mkdir($dir, 0777, true);
+				foreach($colors as $c){
+					$key = strtolower(preg_replace('/[^a-z0-9]+/i','_', $c));
+					if(isset($files['tmp_name'][$key]) && !empty($files['tmp_name'][$key])){
+						$ext = pathinfo($files['name'][$key], PATHINFO_EXTENSION);
+						$name = $pid.'_'.$key.'.'.$ext;
+						if(is_file($dir.$name)) unlink($dir.$name);
+						$move = move_uploaded_file($files['tmp_name'][$key], $dir.$name);
+						if($move){
+							$path = "uploads/products/colors/$name?v=".time();
+							$this->conn->query("INSERT INTO product_color_images (product_id, color, image_path) VALUES ('{$pid}', '".$this->conn->real_escape_string($c)."', '".$this->conn->real_escape_string($path)."') ON DUPLICATE KEY UPDATE image_path = VALUES(image_path)");
+						}
+					}
 				}
 			}
 		}else{
@@ -1193,7 +1215,7 @@ Class Master extends DBConnection {
 		extract($_POST);
 		
 		// Validate inputs
-		if(empty($product_id) || empty($quantity) || $quantity <= 0){
+        if(empty($product_id) || !isset($quantity)){
 			$resp['status'] = 'failed';
 			$resp['msg'] = "Product and quantity are required.";
 			return json_encode($resp);
@@ -1202,48 +1224,75 @@ Class Master extends DBConnection {
 		// Sanitize inputs
 		$product_id = $this->conn->real_escape_string($product_id);
 		$quantity = (float)$quantity;
-		$reason = isset($reason) ? $this->conn->real_escape_string($reason) : 'Stock addition';
+        $reason = isset($reason) ? $this->conn->real_escape_string($reason) : (empty($id) ? 'Stock addition' : 'Stock edit');
+        $stock_id = isset($id) && !empty($id) ? (int)$id : 0;
 		
-		// Get current stock
+        // Get current total stock
 		$current_stock_query = $this->conn->query("SELECT SUM(quantity) as total_stock FROM stock_list WHERE product_id = '{$product_id}' AND type = 1");
 		$current_stock = $current_stock_query->fetch_assoc()['total_stock'];
 		$current_stock = $current_stock ? $current_stock : 0;
-		
-		// Calculate new stock
-		$new_stock = $current_stock + $quantity;
 		
 		// Start transaction
 		$this->conn->begin_transaction();
 		
 		try {
-			// Add stock to stock_list
+            if($stock_id > 0){
+                // Editing an existing stock entry
+                $existing = $this->conn->query("SELECT * FROM stock_list WHERE id = '{$stock_id}' AND product_id = '{$product_id}'");
+                if($existing->num_rows == 0){
+                    throw new Exception('Stock entry not found.');
+                }
+                $row = $existing->fetch_assoc();
+                $old_qty = (float)$row['quantity'];
+                $delta = $quantity - $old_qty;
+                
+                // Update the stock_list row
+                $update = $this->conn->query("UPDATE stock_list SET quantity = '{$quantity}' WHERE id = '{$stock_id}'");
+                if(!$update){
+                    throw new Exception('Failed to update stock row: ' . $this->conn->error);
+                }
+                
+                // Compute new total stock after edit
+                $total_after = $current_stock + $delta;
+                
+                // Record adjustment movement
+                $movement_data = "('{$product_id}', 'ADJUSTMENT', '".($delta)."', '{$current_stock}', '{$total_after}', '{$reason}', 'STOCK_EDIT', 'ADJUSTMENT', NOW(), NULL)";
+                $this->conn->query("INSERT INTO stock_movements (product_id, movement_type, quantity, previous_stock, new_stock, reason, reference_id, reference_type, date_created, created_by) VALUES {$movement_data}");
+                
+                // Alerts
+                $this->check_stock_alerts($product_id, $total_after);
+                
+                $this->conn->commit();
+                $resp['status'] = 'success';
+                $resp['msg'] = 'Stock updated successfully.';
+                $resp['new_stock'] = $total_after;
+            } else {
+                // Adding a new stock entry (IN)
+                if($quantity <= 0){
+                    throw new Exception('Quantity must be greater than zero for new stock.');
+                }
+                $new_stock = $current_stock + $quantity;
+                
 			$stock_data = "('{$product_id}', '{$quantity}', 1, NOW())";
 			$insert_stock = $this->conn->query("INSERT INTO stock_list (product_id, quantity, type, date_created) VALUES {$stock_data}");
-			
 			if(!$insert_stock){
 				throw new Exception("Failed to add stock: " . $this->conn->error);
 			}
 			
-			// Record stock movement if table exists
 			$movement_data = "('{$product_id}', 'IN', '{$quantity}', '{$current_stock}', '{$new_stock}', '{$reason}', 'STOCK_ADD', 'PURCHASE', NOW(), NULL)";
-			$insert_movement = $this->conn->query("INSERT INTO stock_movements (product_id, movement_type, quantity, previous_stock, new_stock, reason, reference_id, reference_type, date_created, created_by) VALUES {$movement_data}");
+                $this->conn->query("INSERT INTO stock_movements (product_id, movement_type, quantity, previous_stock, new_stock, reason, reference_id, reference_type, date_created, created_by) VALUES {$movement_data}");
 			
-			// Check for stock alerts
 			$this->check_stock_alerts($product_id, $new_stock);
 			
-			// Commit transaction
 			$this->conn->commit();
-			
 			$resp['status'] = 'success';
 			$resp['msg'] = "Stock added successfully.";
 			$resp['new_stock'] = $new_stock;
-			
+            }
 		} catch (Exception $e) {
-			// Rollback transaction
 			$this->conn->rollback();
-			
 			$resp['status'] = 'failed';
-			$resp['msg'] = "Failed to add stock: " . $e->getMessage();
+            $resp['msg'] = "Failed to save stock: " . $e->getMessage();
 		}
 		
 		return json_encode($resp);

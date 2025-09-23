@@ -254,3 +254,15 @@ ADD COLUMN IF NOT EXISTS `color` varchar(50) DEFAULT NULL AFTER `product_id`;
 -- Ensure unique cart items per color
 ALTER TABLE `cart_list`
 ADD UNIQUE KEY IF NOT EXISTS `uniq_cart_client_product_color` (`client_id`,`product_id`,`color`);
+
+-- 22. Product color images table
+CREATE TABLE IF NOT EXISTS `product_color_images` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `product_id` int(11) NOT NULL,
+  `color` varchar(50) NOT NULL,
+  `image_path` varchar(255) NOT NULL,
+  `date_created` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `product_id` (`product_id`),
+  KEY `color` (`color`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

@@ -94,9 +94,28 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                             <div class="card rounded-0 shadow">
                                 <div class="product-img-holder overflow-hidden position-relative">
                                     <img src="<?= validate_image($row['image_path']) ?>" alt="Product Image" class="img-top"/>
+                                    <?php 
+                                    // fetch color images
+                                    $swatches = $conn->query("SELECT color, image_path FROM product_color_images WHERE product_id = '{$row['id']}'");
+                                    if($swatches && $swatches->num_rows > 0): ?>
+                                    <div class="position-absolute" style="bottom:6px; left:6px; right:6px;">
+                                        <div class="d-flex flex-wrap">
+                                            <?php while($sw = $swatches->fetch_assoc()): ?>
+                                            <div class="mr-1 mb-1" title="<?= htmlspecialchars($sw['color']) ?>">
+                                                <img src="<?= validate_image($sw['image_path']) ?>" alt="<?= htmlspecialchars($sw['color']) ?>" style="width:28px; height:28px; object-fit:cover; border:1px solid #ddd; border-radius:3px;">
+                                            </div>
+                                            <?php endwhile; ?>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
                                     <span class="position-absolute price-tag rounded-pill bg-success elevation-1text-light px-3">
                                         <i class="fa fa-tags"></i> <b><?= number_format($row['price'],2) ?></b>
                                     </span>
+                                    <div class="position-absolute" style="top:6px; right:6px;">
+                                        <label class="badge badge-light mb-0" style="cursor:pointer;">
+                                            <input type="checkbox" class="compare-checkbox" data-id="<?= $row['id'] ?>" style="vertical-align:middle;"> Compare
+                                        </label>
+                                    </div>
                                 </div>
                                 <div class="card-body border-top">
                                     <h4 class="card-title my-0"><b><?= $row['name'] ?></b></h4><br>
@@ -174,4 +193,51 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
             location.href="./?p=products"+(category_ids.length > 0 ? "&category_filter="+category_ids : "")+"<?= isset($_GET['brand_filter']) ? "&brand_filter=".$_GET['brand_filter'] : "" ?><?= isset($_GET['search']) ? "&search=".$_GET['search'] : "" ?>";
         })
     })
+</script>
+<style>
+.compare-bar{position:fixed;bottom:15px;left:50%;transform:translateX(-50%);z-index:9999;background:#fff;border:1px solid #ddd;border-radius:30px;padding:8px 12px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.compare-bar .item{display:inline-block;margin:0 6px;padding:2px 8px;border:1px solid #ccc;border-radius:16px;font-size:.9em;background:#f9f9f9}
+</style>
+<div id="compareBar" class="compare-bar d-none">
+    <span class="mr-2">Compare:</span>
+    <span id="compareItems"></span>
+    <button id="compareBtn" class="btn btn-sm btn-primary ml-2">Compare</button>
+    <button id="clearCompare" class="btn btn-sm btn-link">Clear</button>
+    <input type="hidden" id="compareIds" value="">
+</div>
+<script>
+(function(){
+    const maxCompare = 3;
+    const bar = $('#compareBar');
+    const items = $('#compareItems');
+    const idsInput = $('#compareIds');
+    function renderBar(){
+        const ids = (idsInput.val()||'').split(',').filter(Boolean);
+        items.empty();
+        ids.forEach(function(id){ items.append('<span class="item" data-id="'+id+'">#'+id+'</span>'); });
+        if(ids.length>0){ bar.removeClass('d-none'); } else { bar.addClass('d-none'); }
+        $('.compare-checkbox').each(function(){
+            const id=$(this).data('id')+'';
+            $(this).prop('checked', ids.includes(id));
+        });
+    }
+    function toggleId(id){
+        let ids = (idsInput.val()||'').split(',').filter(Boolean);
+        if(ids.includes(id)) ids = ids.filter(x=>x!==id);
+        else{
+            if(ids.length>=maxCompare){ alert_toast('You can compare up to '+maxCompare+' items.','warning'); return; }
+            ids.push(id);
+        }
+        idsInput.val(ids.join(','));
+        renderBar();
+    }
+    $(document).on('change','.compare-checkbox',function(){ toggleId(($(this).data('id')+'')); });
+    $('#clearCompare').on('click',function(){ idsInput.val(''); renderBar(); });
+    $('#compareBtn').on('click',function(){
+        const ids = idsInput.val();
+        if(!ids){ return; }
+        location.href = './?p=products/compare&ids='+encodeURIComponent(ids);
+    });
+    renderBar();
+})();
 </script>

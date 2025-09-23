@@ -68,7 +68,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 <div class="container">
                     <div class="row">
                         <div class="col-md-12 text-center">
-                            <img src="<?= validate_image(isset($image_path) ? $image_path : "") ?>" alt="Product Image <?= isset($name) ? $name : "" ?>" class="img-thumbnail product-img">
+                            <img id="mainProductImage" src="<?= validate_image(isset($image_path) ? $image_path : "") ?>" alt="Product Image <?= isset($name) ? $name : "" ?>" class="img-thumbnail product-img">
                         </div>
                     </div>
                     <div class="row">
@@ -101,12 +101,23 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                         <div class="col-md-12">
                             <small class="mx-2 text-muted">Available Colors</small>
                             <div class="pl-4">
-                                <div class="d-flex flex-wrap" id="color_options">
-                                    <?php foreach($colors as $c): ?>
-                                    <div class="custom-control custom-radio mr-3 mb-2">
-                                        <input type="radio" id="color_<?= md5($c) ?>" name="selected_color" class="custom-control-input" value="<?= htmlspecialchars($c) ?>">
-                                        <label class="custom-control-label" for="color_<?= md5($c) ?>"><?= htmlspecialchars($c) ?></label>
-                                    </div>
+                                <div class="d-flex flex-wrap align-items-center" id="color_options">
+                                    <?php 
+                                    $swatches = $conn->query("SELECT color, image_path FROM product_color_images WHERE product_id = '".$id."'");
+                                    $hasSw = $swatches && $swatches->num_rows>0; 
+                                    $colorToImg = [];
+                                    if($hasSw){ while($s=$swatches->fetch_assoc()){ $colorToImg[trim(strtolower($s['color']))]=$s['image_path']; } }
+                                    foreach($colors as $c): 
+                                        $key = strtolower(trim($c));
+                                        $sw = isset($colorToImg[$key]) ? $colorToImg[$key] : '';
+                                    ?>
+                                    <label class="mr-3 mb-2 d-flex align-items-center" style="cursor:pointer;">
+                                        <input type="radio" class="mr-1 color-radio" name="selected_color" value="<?= htmlspecialchars($c) ?>">
+                                        <?php if($sw): ?>
+                                        <img src="<?= validate_image($sw) ?>" alt="<?= htmlspecialchars($c) ?>" style="width:28px;height:28px;object-fit:cover;border:1px solid #ddd;border-radius:3px;" class="mr-1">
+                                        <?php endif; ?>
+                                        <span><?= htmlspecialchars($c) ?></span>
+                                    </label>
                                     <?php endforeach; ?>
                                 </div>
                             </div>
@@ -391,6 +402,24 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 });
             }
         });
+    });
+    // Swap main image when selecting a color with a swatch
+    $(document).on('change','.color-radio', function(){
+        var color = ($(this).val()||'').toLowerCase().trim();
+        // map color to image via PHP-rendered dataset
+        var map = {};
+        <?php 
+        $mapPairs = [];
+        if(isset($colorToImg)){
+            foreach($colorToImg as $ck=>$ip){
+                $mapPairs[] = json_encode($ck).":".json_encode($ip);
+            }
+        }
+        ?>
+        map = {<?= implode(',', $mapPairs) ?>};
+        if(map[color]){
+            $('#mainProductImage').attr('src', _base_url_ + map[color]);
+        }
     });
     
     function loadReviews(){

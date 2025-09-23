@@ -49,12 +49,28 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 
 			<div class="form-group">
 				<label for="models" class="control-label">Compatible for: <small>(model)</small></label>
-                <input name="models" id="models" type="text" class="form-control rounded-0" value="<?php echo isset($models) ? $models : ''; ?>" required>
+				<select name="models" id="models" class="custom-select select2" required>
+					<?php 
+					$models_list = [
+						"ADV 160","Airblade 150","Airblade 160","Beat","Click 125i","Click 125i SE","Click 160","CRF150L","DIO","Giorno+","PCX 150","PCX 160 ABS","PCX 160 CBS","RS 125","Supra GTR 150","TMX 125 ALPHA","TMX SUPREMO","Wave RSX(DISC)","Wave RSX(DRUM)","Winner X (Premium)","Winner X (Racing)","XR 150i","XRM 125 Dual Sport Fi","CB150x"
+					];
+					$current_model = isset($models) ? $models : '';
+					foreach($models_list as $m):
+					?>
+						<option value="<?= htmlspecialchars($m) ?>" <?= $current_model == $m ? 'selected' : '' ?>><?= htmlspecialchars($m) ?></option>
+					<?php endforeach; ?>
+				</select>
 			</div>
 
 			<div class="form-group">
 				<label for="available_colors" class="control-label">Available Colors <small>(comma-separated, e.g., Red, Blue, Black)</small></label>
 				<input name="available_colors" id="available_colors" type="text" class="form-control rounded-0" value="<?php echo isset($available_colors) ? htmlspecialchars($available_colors) : ''; ?>">
+			</div>
+
+			<div class="form-group">
+				<label class="control-label d-block">Color Images (optional)</label>
+				<small class="text-muted d-block mb-1">Upload one image per color name listed above. Leave blank to use main product image.</small>
+				<div id="colorImagesContainer"></div>
 			</div>
 
             <!-- Template selection -->
@@ -229,6 +245,35 @@ $(document).ready(function(){
             $('#description').summernote('code', templates[selected].description);
         }
     });
+
+    // Dynamic color image inputs based on available_colors
+    function renderColorImageInputs(){
+        var colorsRaw = $('#available_colors').val() || '';
+        var colors = colorsRaw.split(',').map(function(c){ return c.trim(); }).filter(function(c){ return c.length > 0; });
+        var container = $('#colorImagesContainer');
+        container.empty();
+        if(colors.length === 0){ return; }
+        colors.forEach(function(color){
+            var safe = color.replace(/[^a-z0-9]+/gi,'_').toLowerCase();
+            var group = $(
+                '<div class="mb-2">'
+                + '<label class="mb-1">'+ $('<div>').text(color).html() +'</label>'
+                + '<div class="custom-file">'
+                + '<input type="file" class="custom-file-input" name="color_image['+ safe +']" id="color_image_'+ safe +'">'
+                + '<label class="custom-file-label" for="color_image_'+ safe +'">Choose image for '+ $('<div>').text(color).html() +'</label>'
+                + '</div>'
+                + '</div>'
+            );
+            container.append(group);
+        });
+        // hook up filenames display
+        container.find('.custom-file-input').on('change', function(){
+            var fileName = this.files && this.files[0] ? this.files[0].name : 'Choose file';
+            $(this).siblings('.custom-file-label').text(fileName);
+        });
+    }
+    $('#available_colors').on('input', renderColorImageInputs);
+    renderColorImageInputs();
 
     // Price input handling: allow large numbers while typing; format on blur
     $('#price').on('focus', function(){
