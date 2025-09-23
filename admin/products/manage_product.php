@@ -52,6 +52,11 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 <input name="models" id="models" type="text" class="form-control rounded-0" value="<?php echo isset($models) ? $models : ''; ?>" required>
 			</div>
 
+			<div class="form-group">
+				<label for="available_colors" class="control-label">Available Colors <small>(comma-separated, e.g., Red, Blue, Black)</small></label>
+				<input name="available_colors" id="available_colors" type="text" class="form-control rounded-0" value="<?php echo isset($available_colors) ? htmlspecialchars($available_colors) : ''; ?>">
+			</div>
+
             <!-- Template selection -->
             <div class="form-group">
                 <label for="template" class="control-label">Template</label>
@@ -76,7 +81,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 
 			<div class="form-group">
 				<label for="price" class="control-label">Price</label>
-                <input name="price" id="price" type="number" step="0.01" min="0" class="form-control form-control-sm text-right" value="<?php echo isset($price) ? $price : ''; ?>" required>
+				<input name="price" id="price" type="text" class="form-control form-control-sm text-right" value="<?php echo isset($price) ? $price : ''; ?>" placeholder="000000.00" required>
 			</div>
 
             <!-- ABC Classification Fields -->
@@ -225,12 +230,30 @@ $(document).ready(function(){
         }
     });
 
-    // Price formatting
+    // Price input handling: allow large numbers while typing; format on blur
+    $('#price').on('focus', function(){
+        // remove commas for editing
+        $(this).val($(this).val().replace(/,/g, ''));
+    });
     $('#price').on('input', function(){
-        let val = $(this).val().replace(/,/g, '').replace(/[^0-9.]/g, '');
-        if(val){
-            let num = parseFloat(val).toFixed(2);
-            $(this).val(num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','));
+        let v = $(this).val();
+        // keep digits and a single dot
+        v = v.replace(/[^0-9.]/g, '');
+        const d = v.indexOf('.');
+        if(d !== -1){
+            v = v.slice(0, d + 1) + v.slice(d + 1).replace(/\./g, '');
+        }
+        $(this).val(v);
+    });
+    $('#price').on('blur', function(){
+        let v = $(this).val().replace(/,/g, '');
+        if(!v){ return; }
+        const num = parseFloat(v);
+        if(!isNaN(num)){
+            const fixed = num.toFixed(2);
+            const parts = fixed.split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            $(this).val(parts.join('.'));
         }
     });
 
@@ -239,6 +262,9 @@ $(document).ready(function(){
         var _this = $(this);
         $('.err-msg').remove();
         start_loader();
+        // sanitize price: remove commas before submit
+        var rawPrice = $('#price').val();
+        if(rawPrice){ $('#price').val(rawPrice.replace(/,/g, '')); }
         $.ajax({
             url:_base_url_+"classes/Master.php?f=save_product",
             data: new FormData($(this)[0]),

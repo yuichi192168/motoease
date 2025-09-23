@@ -21,6 +21,9 @@
                             <div class="col flex-grow-1">
                                 <h6 class="mb-0"><?= $row['name'] ?></h6>
                                 <small class="text-muted"><?= $row['brand'] ?> - <?= $row['category'] ?></small><br>
+                                <?php if(!empty($row['color'])): ?>
+                                <small class="text-muted">Color: <?= htmlspecialchars($row['color']) ?></small><br>
+                                <?php endif; ?>
                                 <small class="text-muted">Qty: <?= $row['quantity'] ?> x ₱<?= number_format($row['price'],2) ?></small>
                             </div>
                             <div class="col-auto">

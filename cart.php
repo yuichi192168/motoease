@@ -48,6 +48,9 @@
                                 </a>
                                 <small><?= $row['brand'] ?></small><br>
                                 <small><?= $row['category'] ?></small><br>
+                                <?php if(!empty($row['color'])): ?>
+                                <small class="text-muted">Color: <?= htmlspecialchars($row['color']) ?></small><br>
+                                <?php endif; ?>
                                 
                                 <!-- Stock availability info -->
                                 <?php if($available < $row['quantity']): ?>

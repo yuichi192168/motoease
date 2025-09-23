@@ -79,12 +79,12 @@ Class Master extends DBConnection {
 	}
 	
 	// Cart functions
-	function save_to_cart(){
+    function save_to_cart(){
 		$_POST['client_id'] = $this->settings->userdata('id');
 		extract($_POST);
 		
 		// Validate inputs
-		if(empty($client_id) || empty($product_id) || empty($quantity) || $quantity <= 0){
+        if(empty($client_id) || empty($product_id) || empty($quantity) || $quantity <= 0){
 			$resp['status'] = 'failed';
 			$resp['msg'] = "Invalid input parameters.";
 			return json_encode($resp);
@@ -94,6 +94,9 @@ Class Master extends DBConnection {
 		$client_id = $this->conn->real_escape_string($client_id);
 		$product_id = $this->conn->real_escape_string($product_id);
 		$quantity = $this->conn->real_escape_string($quantity);
+        $color = isset($color) ? trim($color) : NULL;
+        if($color !== NULL && $color === '') $color = NULL;
+        $color_sql = $color !== NULL ? "'".$this->conn->real_escape_string($color)."'" : "NULL";
 		
 		// Check if product exists and is active
 		$product_check = $this->conn->query("SELECT id, name, price FROM `product_list` WHERE id = '{$product_id}' AND delete_flag = 0 AND status = 1");
@@ -114,7 +117,7 @@ Class Master extends DBConnection {
 		$available = $stocks - $out;
 		
 		// Check if product is already in cart
-		$cart_check = $this->conn->query("SELECT id, quantity FROM `cart_list` WHERE client_id = '{$client_id}' AND product_id = '{$product_id}'");
+        $cart_check = $this->conn->query("SELECT id, quantity FROM `cart_list` WHERE client_id = '{$client_id}' AND product_id = '{$product_id}' AND ((color IS NULL AND {$color_sql} IS NULL) OR color = {$color_sql})");
 		
 		if($cart_check->num_rows > 0){
 			// Product already in cart, update quantity
@@ -128,7 +131,7 @@ Class Master extends DBConnection {
 				return json_encode($resp);
 			}
 			
-			$sql = "UPDATE `cart_list` SET quantity = '{$new_quantity}' WHERE id = '{$cart_item['id']}'";
+            $sql = "UPDATE `cart_list` SET quantity = '{$new_quantity}' WHERE id = '{$cart_item['id']}'";
 		} else {
 			// New product in cart
 			if($quantity > $available){
@@ -137,7 +140,7 @@ Class Master extends DBConnection {
 				return json_encode($resp);
 			}
 			
-			$sql = "INSERT INTO `cart_list` (client_id, product_id, quantity) VALUES ('{$client_id}', '{$product_id}', '{$quantity}')";
+            $sql = "INSERT INTO `cart_list` (client_id, product_id, color, quantity) VALUES ('{$client_id}', '{$product_id}', {$color_sql}, '{$quantity}')";
 		}
 		
 		$save = $this->conn->query($sql);
@@ -169,7 +172,7 @@ Class Master extends DBConnection {
 		$quantity = $this->conn->real_escape_string($quantity);
 		
 		// Get current cart item
-		$cart_item = $this->conn->query("SELECT c.*, p.name FROM cart_list c 
+        $cart_item = $this->conn->query("SELECT c.*, p.name FROM cart_list c 
 										INNER JOIN product_list p ON c.product_id = p.id 
 										WHERE c.id = '{$cart_id}' AND c.client_id = '{$client_id}'");
 		
@@ -301,15 +304,18 @@ Class Master extends DBConnection {
 			
 			$order_id = $this->conn->insert_id;
 			
-			// Get cart items and create order items
-			$cart_query = $this->conn->query("SELECT c.*, p.name, p.price FROM cart_list c 
+            // Get cart items and create order items
+            $cart_query = $this->conn->query("SELECT c.*, p.name, p.price FROM cart_list c 
 											 INNER JOIN product_list p ON c.product_id = p.id 
 											 WHERE c.client_id = '{$client_id}'");
 			
 			while($item = $cart_query->fetch_assoc()){
 				$order_item_data = "order_id = '{$order_id}', 
 								   product_id = '{$item['product_id']}', 
-								   quantity = '{$item['quantity']}'";
+                                   quantity = '{$item['quantity']}'";
+                if(!empty($item['color'])){
+                    $order_item_data .= ", color = '".$this->conn->real_escape_string($item['color'])."'";
+                }
 				
 				$create_item = $this->conn->query("INSERT INTO order_items SET {$order_item_data}");
 				

@@ -87,6 +87,32 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                             <div class="pl-4"><?= isset($models) ? $models : '' ?></div>
                         </div>
                     </div>
+                    <?php 
+                        $colors = [];
+                        if(isset($available_colors) && trim($available_colors) !== ''){
+                            foreach(explode(',', $available_colors) as $c){
+                                $c = trim($c);
+                                if($c !== '') $colors[] = $c;
+                            }
+                        }
+                    ?>
+                    <?php if(!empty($colors)): ?>
+                    <div class="row mt-2">
+                        <div class="col-md-12">
+                            <small class="mx-2 text-muted">Available Colors</small>
+                            <div class="pl-4">
+                                <div class="d-flex flex-wrap" id="color_options">
+                                    <?php foreach($colors as $c): ?>
+                                    <div class="custom-control custom-radio mr-3 mb-2">
+                                        <input type="radio" id="color_<?= md5($c) ?>" name="selected_color" class="custom-control-input" value="<?= htmlspecialchars($c) ?>">
+                                        <label class="custom-control-label" for="color_<?= md5($c) ?>"><?= htmlspecialchars($c) ?></label>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                     <div class="row">
                         <div class="col-md-6">
                             <small class="mx-2 text-muted">Price</small>
@@ -257,6 +283,17 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                 <h5><?= isset($name) ? $name : '' ?></h5>
                                 <p class="text-muted">Price: ₱<?= number_format(isset($price) ? $price : 0,2) ?></p>
                                 <p class="text-muted">Available: <?= $available ?> units</p>
+                                <?php if(!empty($colors)): ?>
+                                <div class="form-group">
+                                    <label for="swal_color">Color:</label>
+                                    <select id="swal_color" class="form-control" required>
+                                        <option value="" selected disabled>Choose color</option>
+                                        <?php foreach($colors as $c): ?>
+                                            <option value="<?= htmlspecialchars($c) ?>"><?= htmlspecialchars($c) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <?php endif; ?>
                                 <div class="form-group">
                                     <label for="quantity">Quantity:</label>
                                     <input type="number" id="quantity" class="form-control" value="1" min="1" max="<?= $available ?>" style="width: 100px; margin: 0 auto;">
@@ -268,22 +305,40 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                         cancelButtonText: 'Cancel',
                         preConfirm: () => {
                             const quantity = document.getElementById('quantity').value;
+                            <?php if(!empty($colors)): ?>
+                            const color = document.getElementById('swal_color').value;
+                            if(!color){
+                                Swal.showValidationMessage('Please choose a color');
+                                return false;
+                            }
+                            <?php endif; ?>
                             if (quantity < 1 || quantity > <?= $available ?>) {
                                 Swal.showValidationMessage('Please enter a valid quantity (1-<?= $available ?>)');
                                 return false;
                             }
-                            return quantity;
+                            return {
+                                quantity: quantity,
+                                <?php if(!empty($colors)): ?>
+                                color: color
+                                <?php else: ?>
+                                color: null
+                                <?php endif; ?>
+                            };
                         }
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            const quantity = result.value;
+                            const quantity = result.value.quantity;
+                            const color = result.value.color;
                             start_loader();
                     $.ajax({
                         url:_base_url_+"classes/Master.php?f=save_to_cart",
                         method:'POST',
                                 data:{
                                     product_id: '<?= isset($id) ? $id : "" ?>',
-                                    quantity: quantity
+                                    quantity: quantity,
+                                    <?php if(!empty($colors)): ?>
+                                    color: color
+                                    <?php endif; ?>
                                 },
                         dataType:'json',
                         error:err=>{

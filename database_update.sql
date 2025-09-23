@@ -240,3 +240,17 @@ CREATE TABLE IF NOT EXISTS `audit_log` (
 OPTIMIZE TABLE `client_list`, `order_list`, `service_requests`, `customer_transactions`, `or_cr_documents`;
 
 -- End of database update script
+ 
+-- 21. Product color variations (idempotent)
+ALTER TABLE `product_list`
+ADD COLUMN IF NOT EXISTS `available_colors` varchar(255) DEFAULT NULL AFTER `models`;
+
+ALTER TABLE `cart_list`
+ADD COLUMN IF NOT EXISTS `color` varchar(50) DEFAULT NULL AFTER `product_id`;
+
+ALTER TABLE `order_items`
+ADD COLUMN IF NOT EXISTS `color` varchar(50) DEFAULT NULL AFTER `product_id`;
+
+-- Ensure unique cart items per color
+ALTER TABLE `cart_list`
+ADD UNIQUE KEY IF NOT EXISTS `uniq_cart_client_product_color` (`client_id`,`product_id`,`color`);
