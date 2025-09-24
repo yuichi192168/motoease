@@ -1,6 +1,7 @@
 <?php
 require_once(__DIR__ . '/../config.php');
 $ids = isset($_GET['ids']) ? array_filter(array_map('intval', explode(',', $_GET['ids']))) : [];
+
 if(empty($ids)){
     echo '<div class="content py-5 mt-3"><div class="container"><div class="alert alert-info">No products selected for comparison.</div></div></div>';
     exit;
