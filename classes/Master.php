@@ -785,7 +785,7 @@ Class Master extends DBConnection {
 		extract($_POST);
 		$data = "";
 		foreach($_POST as $k=> $v){
-			if(in_array($k,array('client_id','service_type','mechanic_id','status'))){
+			if(in_array($k,array('client_id','mechanic_id','status'))){
 				if(!empty($data)){ $data .= ", "; }
 
 				$data .= " `{$k}` = '{$v}'";
@@ -802,7 +802,7 @@ Class Master extends DBConnection {
 			$rid = empty($id) ? $this->conn->insert_id : $id ;
 			$data = "";
 			foreach($_POST as $k=> $v){
-				if(!in_array($k,array('id','client_id','service_type','mechanic_id','status'))){
+				if(!in_array($k,array('id','client_id','mechanic_id','status'))){
 					if(!empty($data)){ $data .= ", "; }
 					if(is_array($_POST[$k]))
 					$v = implode(",",$_POST[$k]);

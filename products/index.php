@@ -112,8 +112,8 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                                         <i class="fa fa-tags"></i> <b><?= number_format($row['price'],2) ?></b>
                                     </span>
                                     <div class="position-absolute" style="top:6px; right:6px;">
-                                        <label class="badge badge-light mb-0" style="cursor:pointer;">
-                                            <input type="checkbox" class="compare-checkbox" data-id="<?= $row['id'] ?>" style="vertical-align:middle;"> Compare
+                                        <label class="badge mb-0" style="cursor:pointer; background:#111; color:#fff; border:1px solid #2c2c2c;">
+                                            <input type="checkbox" class="compare-checkbox" data-id="<?= $row['id'] ?>" style="vertical-align:middle;"> <span style="color:#dc3545;font-weight:600;">Compare</span>
                                         </label>
                                     </div>
                                 </div>

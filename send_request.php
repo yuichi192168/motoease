@@ -61,13 +61,6 @@ require_once('config.php');
                         <?php endwhile; ?>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label for="service_type" class="control-label">Request Type</label>
-                    <select name="service_type" id="service_type" class="form-select form-select-sm select2 rounded-0" required>
-                        <option>Drop Off</option>
-                        <option>Pick Up</option>
-                    </select>
-                </div>
                 <div class="form-group" style="display:none">
                     <label for="pickup_address" class="control-label">Pick up Address</label>
                     <textarea rows="3" name="pickup_address" id="pickup_address" class="form-control form-control-sm rounded-0" style="resize:none"></textarea>
@@ -89,17 +82,7 @@ require_once('config.php');
             placeholder:"Please Select Here",
             dropdownParent: $('#uni_modal')
         })
-        $('#service_type').change(function(){
-            var type = $(this).val().toLowerCase()
-            if(type == 'pick up'){
-                $('#pickup_address').parent().show()
-                $('#pickup_address').attr('required',true)
-            }else{
-                $('#pickup_address').parent().hide()
-                $('#pickup_address').attr('required',false)
-            }
-                
-        })
+        // request type removed
 
         // Vehicle registration number validation
         $('#vehicle_registration_number').on('input', function() {

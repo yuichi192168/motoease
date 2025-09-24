@@ -14,8 +14,16 @@ while($row = $qry->fetch_assoc()){ $products[] = $row; }
 <div class="content py-5 mt-3">
     <div class="container">
         <h3 class="mb-3">Compare Models</h3>
+        <style>
+            /* Theme: red (#dc3545 primary) and black accents */
+            .compare-table thead th{background:#dc3545;color:#fff;border-color:#c82333}
+            .compare-table td,.compare-table th{vertical-align:middle}
+            .color-badge{display:inline-flex;align-items:center;padding:2px 8px;border:1px solid #2c2c2c;border-radius:14px;font-size:.86rem;margin:0 6px 6px 0;background:#111;color:#fff}
+            .color-badge img{width:18px;height:18px;border-radius:3px;margin-right:6px;object-fit:cover;border:1px solid #444;background:#fff}
+            .price-cell{font-weight:700;color:#dc3545}
+        </style>
         <div class="table-responsive">
-            <table class="table table-bordered">
+            <table class="table table-bordered table-hover table-striped compare-table">
                 <thead>
                     <tr>
                         <th>Feature</th>
@@ -46,7 +54,7 @@ while($row = $qry->fetch_assoc()){ $products[] = $row; }
                     <tr>
                         <th>Price</th>
                         <?php foreach($products as $p): ?>
-                        <td>₱<?= number_format($p['price'],2) ?></td>
+                        <td class="price-cell">₱<?= number_format($p['price'],2) ?></td>
                         <?php endforeach; ?>
                     </tr>
                     <tr>
@@ -58,9 +66,11 @@ while($row = $qry->fetch_assoc()){ $products[] = $row; }
                             if($sw && $sw->num_rows>0){
                                 echo '<div class="d-flex flex-wrap">';
                                 while($s=$sw->fetch_assoc()){
-                                    echo '<div class="mr-1 mb-1" title="'.htmlspecialchars($s['color']).'">';
-                                    echo '<img src="'.validate_image($s['image_path']).'" style="width:22px;height:22px;object-fit:cover;border:1px solid #ddd;border-radius:3px;">';
-                                    echo '</div>';
+                                    $cTxt = htmlspecialchars($s['color']);
+                                    echo '<span class="color-badge" title="'.$cTxt.'">';
+                                    echo '<img src="'.validate_image($s['image_path']).'" alt="'.$cTxt.'">';
+                                    echo '<span>'.$cTxt.'</span>';
+                                    echo '</span>';
                                 }
                                 echo '</div>';
                             } else {

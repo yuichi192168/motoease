@@ -7,27 +7,19 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         }
     }
 }
+// Default brand to Honda
+$honda_id = null;
+$bq = $conn->query("SELECT id FROM brand_list WHERE name='Honda' ORDER BY id ASC LIMIT 1");
+if($bq && $bq->num_rows>0){ $honda_id = $bq->fetch_array()[0]; }
 ?>
 <div class="card card-outline card-info rounded-0">
 	<div class="card-header">
 		<h3 class="card-title"><?php echo isset($id) ? "Update ": "Create New " ?> Product</h3>
 	</div>
 	<div class="card-body">
-		<form action="" id="product-form">
-			<input type="hidden" name ="id" value="<?php echo isset($id) ? $id : '' ?>">
-            
-            <div class="form-group">
-				<label for="brand_id" class="control-label">Brand</label>
-                <select name="brand_id" id="brand_id" class="custom-select select2">
-                    <option value="" <?= !isset($brand_id) ? "selected" : "" ?> disabled></option>
-                    <?php 
-                    $brands = $conn->query("SELECT * FROM brand_list where delete_flag = 0 ".(isset($brand_id) ? " or id = '{$brand_id}'" : "")." order by `name` asc ");
-                    while($row= $brands->fetch_assoc()):
-                    ?>
-                    <option value="<?= $row['id'] ?>" <?= isset($brand_id) && $brand_id == $row['id'] ? "selected" : "" ?>><?= $row['name'] ?> <?= $row['delete_flag'] == 1 ? "<small>Deleted</small>" : "" ?></option>
-                    <?php endwhile; ?>
-                </select>
-			</div>
+        <form action="" id="product-form">
+            <input type="hidden" name ="id" value="<?php echo isset($id) ? $id : '' ?>">
+            <input type="hidden" name="brand_id" value="<?php echo isset($brand_id) ? $brand_id : ($honda_id ?? ''); ?>">
             
             <div class="form-group">
 				<label for="category_id" class="control-label">Category</label>

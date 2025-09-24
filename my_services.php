@@ -5,58 +5,42 @@
         <div class="card card-outline card-dark shadow rounded-0">
             <div class="card-body">
                 <div class="container-fluid">
-                    <table class="table table-stripped table-bordered">
-                        <colgroup>
-                            <col width="5%">
-                            <col width="20%">
-                            <col width="25%">
-                            <col width="20%">
-                            <col width="15%">
-                            <col width="15%">
-                        </colgroup>
-                        <thead>
-                            <tr class="bg-gradient-dark text-light">
-                                <th class="text-center">#</th>
-                                <th class="text-center">Date Requested</th>
-                                <th class="text-center">Mechanic</th>
-                                <th class="text-center">Service Type</th>
-                                <th class="text-center">Status</th>
-                                <th class="text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <div class="row">
                             <?php 
-                            $i = 1;
                             $mechanic = $conn->query("SELECT * FROM mechanics_list where id in (SELECT mechanic_id FROM `service_requests` where client_id = '{$_settings->userdata('id')}')");
-                            $mechanic_arr = array_column($mechanic->fetch_all(MYSQLI_ASSOC),'name','id');
+                        $mechanic_arr = $mechanic && $mechanic->num_rows>0 ? array_column($mechanic->fetch_all(MYSQLI_ASSOC),'name','id') : [];
                             $orders = $conn->query("SELECT * FROM `service_requests` where client_id = '{$_settings->userdata('id')}' order by unix_timestamp(date_created) desc ");
                             while($row = $orders->fetch_assoc()):
-                            ?>
-                                <tr>
-                                    <td class="text-center"><?= $i++ ?></td>
-                                    <td><?= date("Y-m-d H:i", strtotime($row['date_created'])) ?></td>
-                                    <td><p class="truncate-1 m-0"><?= isset($mechanic_arr[$row['mechanic_id']]) ? $mechanic_arr[$row['mechanic_id']] : "N/A" ?></p></td>
-                                    <td class=""><?= $row['service_type'] ?></td>
-                                    <td class="text-center">
-                                        <?php if($row['status'] == 1): ?>
-                                        <span class="badge badge-primary rounded-pill px-3">Confirmed</span>
-                                        <?php elseif($row['status'] == 2): ?>
-                                            <span class="badge badge-warning rounded-pill px-3">On-progress</span>
-                                        <?php elseif($row['status'] == 3): ?>
-                                            <span class="badge badge-success rounded-pill px-3">Done</span>
-                                        <?php elseif($row['status'] == 4): ?>
-                                            <span class="badge badge-danger rounded-pill px-3">Cancelled</span>
-                                        <?php else: ?>
-                                            <span class="badge badge-secondary rounded-pill px-3">Pending</span>
+                            $status_badge = '<span class="badge badge-secondary rounded-pill px-3">Pending</span>';
+                            if($row['status'] == 1) $status_badge = '<span class="badge badge-primary rounded-pill px-3">Confirmed</span>';
+                            elseif($row['status'] == 2) $status_badge = '<span class="badge badge-warning rounded-pill px-3">On-progress</span>';
+                            elseif($row['status'] == 3) $status_badge = '<span class="badge badge-success rounded-pill px-3">Done</span>';
+                            elseif($row['status'] == 4) $status_badge = '<span class="badge badge-danger rounded-pill px-3">Cancelled</span>';
+                        ?>
+                        <div class="col-md-6 mb-3">
+                            <div class="border rounded p-3 h-100">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="text-muted small">Date Requested</div>
+                                    <div class="font-weight-bold"><?= date("Y-m-d H:i", strtotime($row['date_created'])) ?></div>
+                                </div>
+                                <div class="mb-1">
+                                    <div class="text-muted small">Mechanic</div>
+                                    <div><?= isset($mechanic_arr[$row['mechanic_id']]) ? $mechanic_arr[$row['mechanic_id']] : 'N/A' ?></div>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="text-muted small">Status</div>
+                                    <div><?= $status_badge ?></div>
+                                </div>
+                                <div class="text-right">
+                                    <button class="btn btn-sm btn-primary view_data" type="button" data-id="<?= $row['id'] ?>"><i class="fa fa-eye"></i> View</button>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endwhile; ?>
+                        <?php if($orders->num_rows <= 0): ?>
+                        <div class="col-12 text-center text-muted">No service requests yet.</div>
                                         <?php endif; ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <button class="btn btn-flat btn-sm btn-default border view_data" type="button" data-id="<?= $row['id'] ?>"><i class="fa fa-eye"></i> View</button>
-                                    </td>
-                                </tr>
-                            <?php endwhile; ?>
-                        </tbody>
-                    </table>
+                    </div>
                 </div>
             </div>
         </div>

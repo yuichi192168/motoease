@@ -123,7 +123,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 <?php endif; ?>
                 
                 <!-- Order Management -->
-                <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'admin_assistant'])): ?>
+                <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'admin_assistant', 'service_admin'])): ?>
                 <li class="nav-item">
                     <a href="./?page=orders" class="nav-link <?php echo $page == 'orders' ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-shopping-cart"></i>
@@ -133,7 +133,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 <?php endif; ?>
                 
                 <!-- Reports -->
-                <?php if(in_array($role_type, ['admin', 'branch_supervisor'])): ?>
+                <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'service_admin'])): ?>
                 <li class="nav-item <?php echo in_array($page, ['report', 'user_log_history']) ? 'menu-open' : '' ?>">
                     <a href="#" class="nav-link <?php echo in_array($page, ['report', 'user_log_history']) ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-chart-bar"></i>

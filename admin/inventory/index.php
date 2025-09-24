@@ -16,8 +16,7 @@
 			<table class="table table-bordered table-stripped">
 				<colgroup>
 					<col width="10%">
-					<col width="15%">
-					<col width="25%">
+                    <col width="25%">
 					<col width="25%">
 					<col width="10%">
 					<col width="15%">
@@ -26,7 +25,6 @@
 					<tr>
 						<th>#</th>
 						<th>Date Created</th>
-						<th>Brand</th>
 						<th>Product</th>
 						<th>Quantity</th>
 						<th>Action</th>
@@ -35,7 +33,7 @@
 				<tbody>
 					<?php 
 					$i = 1;
-						$qry = $conn->query("SELECT p.*,b.name as brand from `product_list` p inner join brand_list b on p.brand_id = b.id where p.delete_flag = 0 order by (p.`name`) asc ");
+                        $qry = $conn->query("SELECT p.* from `product_list` p where p.delete_flag = 0 order by (p.`name`) asc ");
 						while($row = $qry->fetch_assoc()):
 							$row['stocks'] = $conn->query("SELECT SUM(quantity) FROM stock_list where product_id = '{$row['id']}'")->fetch_array()[0];
 							$row['out'] = $conn->query("SELECT SUM(quantity) FROM order_items where product_id = '{$row['id']}' and order_id in (SELECT id FROM order_list where `status` != 5) ")->fetch_array()[0];
@@ -46,7 +44,6 @@
 						<tr>
 							<td class="text-center"><?php echo $i++; ?></td>
 							<td><?php echo date("Y-m-d H:i",strtotime($row['date_created'])) ?></td>
-							<td><?php echo ucwords($row['brand']) ?></td>
 							<td><?php echo ucwords($row['name']) ?></td>
 							<td class="text-right"><?= number_format($row['available']) ?></td>
 							<td align="center">
@@ -55,11 +52,13 @@
 				                    <span class="sr-only">Toggle Dropdown</span>
 				                  </button>
 				                  <div class="dropdown-menu" role="menu">
-                                    <a class="dropdown-item" href="?page=products/view_product&id=<?php echo $row['id'] ?>"><span class="fa fa-eye text-dark"></span> View</a>
+                                    <a class="dropdown-item" href="?page=inventory/view_stock&id=<?php echo $row['id'] ?>"><span class="fa fa-boxes text-dark"></span> View Stock</a>
 				                    <div class="dropdown-divider"></div>
-				                    <a class="dropdown-item" href="?page=products/manage_product&id=<?php echo $row['id'] ?>"><span class="fa fa-edit text-primary"></span> Edit</a>
+                                    <a class="dropdown-item" href="javascript:void(0)" onclick="uni_modal('Add Stock','inventory/manage_stock.php?product_id=<?php echo $row['id'] ?>')"><span class="fa fa-plus text-primary"></span> Add Stock</a>
 				                    <div class="dropdown-divider"></div>
 				                    <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-trash text-danger"></span> Delete</a>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item" href="?page=inventory/abc_analysis"><span class="fa fa-chart-pie text-danger"></span> ABC Analysis</a>
 				                  </div>
 							</td>
 						</tr>
@@ -104,4 +103,216 @@
 			}
 		})
 	}
+</script>
+				                    <span class="sr-only">Toggle Dropdown</span>
+
+				                  </button>
+
+				                  <div class="dropdown-menu" role="menu">
+
+                                    <a class="dropdown-item" href="?page=products/view_product&id=<?php echo $row['id'] ?>"><span class="fa fa-eye text-dark"></span> View</a>
+
+				                    <div class="dropdown-divider"></div>
+
+				                    <a class="dropdown-item" href="?page=products/manage_product&id=<?php echo $row['id'] ?>"><span class="fa fa-edit text-primary"></span> Edit</a>
+
+				                    <div class="dropdown-divider"></div>
+
+				                    <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-trash text-danger"></span> Delete</a>
+
+				                  </div>
+
+							</td>
+
+						</tr>
+
+					<?php endwhile; ?>
+
+				</tbody>
+
+			</table>
+
+		</div>
+
+		</div>
+
+	</div>
+
+</div>
+
+<script>
+
+	$(document).ready(function(){
+
+		$('#add_new').click(function(){
+
+			uni_modal("Add New Stock","inventory/manage_stock.php")
+
+		})
+
+		$('.delete_data').click(function(){
+
+			_conf("Are you sure to delete this product permanently?","delete_product",[$(this).attr('data-id')])
+
+		})
+
+        $('.table th, .table td').addClass("align-middle px-2 py-1")
+
+		$('.table').dataTable();
+
+		$('.table').dataTable();
+
+	})
+
+	function delete_product($id){
+
+		start_loader();
+
+		$.ajax({
+
+			url:_base_url_+"classes/Master.php?f=delete_product",
+
+			method:"POST",
+
+			data:{id: $id},
+
+			dataType:"json",
+
+			error:err=>{
+
+				console.log(err)
+
+				alert_toast("An error occured.",'error');
+
+				end_loader();
+
+			},
+
+			success:function(resp){
+
+				if(typeof resp== 'object' && resp.status == 'success'){
+
+					location.reload();
+
+				}else{
+
+					alert_toast("An error occured.",'error');
+
+					end_loader();
+
+				}
+
+			}
+
+		})
+
+	}
+
+</script>
+
+
+				                    <span class="sr-only">Toggle Dropdown</span>
+
+				                  </button>
+
+				                  <div class="dropdown-menu" role="menu">
+
+                                    <a class="dropdown-item" href="?page=products/view_product&id=<?php echo $row['id'] ?>"><span class="fa fa-eye text-dark"></span> View</a>
+
+				                    <div class="dropdown-divider"></div>
+
+				                    <a class="dropdown-item" href="?page=products/manage_product&id=<?php echo $row['id'] ?>"><span class="fa fa-edit text-primary"></span> Edit</a>
+
+				                    <div class="dropdown-divider"></div>
+
+				                    <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-trash text-danger"></span> Delete</a>
+
+				                  </div>
+
+							</td>
+
+						</tr>
+
+					<?php endwhile; ?>
+
+				</tbody>
+
+			</table>
+
+		</div>
+
+		</div>
+
+	</div>
+
+</div>
+
+<script>
+
+	$(document).ready(function(){
+
+		$('#add_new').click(function(){
+
+			uni_modal("Add New Stock","inventory/manage_stock.php")
+
+		})
+
+		$('.delete_data').click(function(){
+
+			_conf("Are you sure to delete this product permanently?","delete_product",[$(this).attr('data-id')])
+
+		})
+
+        $('.table th, .table td').addClass("align-middle px-2 py-1")
+
+		$('.table').dataTable();
+
+		$('.table').dataTable();
+
+	})
+
+	function delete_product($id){
+
+		start_loader();
+
+		$.ajax({
+
+			url:_base_url_+"classes/Master.php?f=delete_product",
+
+			method:"POST",
+
+			data:{id: $id},
+
+			dataType:"json",
+
+			error:err=>{
+
+				console.log(err)
+
+				alert_toast("An error occured.",'error');
+
+				end_loader();
+
+			},
+
+			success:function(resp){
+
+				if(typeof resp== 'object' && resp.status == 'success'){
+
+					location.reload();
+
+				}else{
+
+					alert_toast("An error occured.",'error');
+
+					end_loader();
+
+				}
+
+			}
+
+		})
+
+	}
+
 </script>

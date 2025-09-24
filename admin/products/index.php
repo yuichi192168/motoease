@@ -16,7 +16,6 @@
 			<table class="table table-bordered table-stripped">
 				<colgroup>
 					<col width="5%">
-					<col width="15%">
 					<col width="30%">
 					<col width="25%">
 					<col width="10%">
@@ -26,7 +25,6 @@
 					<tr>
 						<th>#</th>
 						<th>Date Created</th>
-						<th>Brand</th>
 						<th>Name</th>
 						<th>Price</th>
 						<th>Status</th>
@@ -36,7 +34,7 @@
 				<tbody>
 					<?php 
 					$i = 1;
-						$qry = $conn->query("SELECT p.*,b.name as brand from `product_list` p inner join brand_list b on p.brand_id = b.id where p.delete_flag = 0 order by (p.`name`) asc ");
+                        $qry = $conn->query("SELECT p.* from `product_list` p where p.delete_flag = 0 order by (p.`name`) asc ");
 						while($row = $qry->fetch_assoc()):
 							foreach($row as $k=> $v){
 								$row[$k] = trim(stripslashes($v));
@@ -45,7 +43,6 @@
 						<tr>
 							<td class="text-center"><?php echo $i++; ?></td>
 							<td><?php echo date("Y-m-d H:i",strtotime($row['date_created'])) ?></td>
-							<td><?php echo ucwords($row['brand']) ?></td>
 							<td><?php echo ucwords($row['name']) ?></td>
 							<td class="text-right"><?= number_format($row['price'],2) ?></td>
 							<td class="text-center">

@@ -1,4 +1,8 @@
 <?php
+// Ensure DB connection when accessed directly (e.g., from Inventory list links)
+if(!isset($conn)){
+    require_once(dirname(__DIR__,2).'/config.php');
+}
 if(isset($_GET['id']) && $_GET['id'] > 0){
     $qry = $conn->query("SELECT p.*, b.name as brand,c.category from `product_list` p inner join brand_list b on p.brand_id = b.id inner join categories c on p.category_id = c.id where p.id = '{$_GET['id']}' ");
     if($qry->num_rows > 0){
@@ -41,8 +45,8 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                         </div>
                         <div class="row">
                             <div class="col-md-6">
-                                <small class="mx-2 text-muted">Brand Name</small>
-                                <div class="pl-4"><?= isset($brand) ? $brand : '' ?></div>
+                                <small class="mx-2 text-muted">Product Name</small>
+                                <div class="pl-4"><?= isset($name) ? $name : '' ?></div>
                             </div>
                             <div class="col-md-6">
                                 <small class="mx-2 text-muted">Category</small>
@@ -51,7 +55,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                         </div>
                         <div class="row">
                             <div class="col-md-12">
-                                <small class="mx-2 text-muted">Compatible Models</small>
+                                <small class="mx-2 text-muted">Compatible Motorcycle</small>
                                 <div class="pl-4"><?= isset($models) ? $models : '' ?></div>
                             </div>
                         </div>
