@@ -53,6 +53,8 @@ if(isset($_GET['id'])){
                                 <span class="badge badge-warning px-3 rounded-pill">On the Way</span>
                             <?php elseif($status == 4): ?>
                                 <span class="badge badge-default bg-gradient-teal px-3 rounded-pill">Delivered</span>
+                            <?php elseif($status == 6): ?>
+                                <span class="badge badge-success px-3 rounded-pill">Claimed</span>
                             <?php else: ?>
                                 <span class="badge badge-danger px-3 rounded-pill">Cancelled</span>
                             <?php endif; ?>

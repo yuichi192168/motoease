@@ -73,8 +73,8 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                     </div>
                     <div class="row">
                         <div class="col-md-6">
-                            <small class="mx-2 text-muted">Brand Name</small>
-                            <div class="pl-4"><?= isset($brand) ? $brand : '' ?></div>
+                            <small class="mx-2 text-muted">Product Name</small>
+                            <div class="pl-4"><?= isset($name) ? $name : '' ?></div>
                         </div>
                         <div class="col-md-6">
                             <small class="mx-2 text-muted">Category</small>
@@ -83,7 +83,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                     </div>
                     <div class="row">
                         <div class="col-md-12">
-                            <small class="mx-2 text-muted">Compatible Models</small>
+                            <small class="mx-2 text-muted">Compatible Motorcycle</small>
                             <div class="pl-4"><?= isset($models) ? $models : '' ?></div>
                         </div>
                     </div>
@@ -101,6 +101,8 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                         <div class="col-md-12">
                             <small class="mx-2 text-muted">Available Colors</small>
                             <div class="pl-4">
+                                <button class="btn btn-sm btn-outline-secondary mb-2" type="button" data-toggle="collapse" data-target="#colorsCollapse">Show/Hide Colors</button>
+                                <div id="colorsCollapse" class="collapse show">
                                 <div class="d-flex flex-wrap align-items-center" id="color_options">
                                     <?php 
                                     $swatches = $conn->query("SELECT color, image_path FROM product_color_images WHERE product_id = '".$id."'");
@@ -119,6 +121,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                         <span><?= htmlspecialchars($c) ?></span>
                                     </label>
                                     <?php endforeach; ?>
+                                </div>
                                 </div>
                             </div>
                         </div>
@@ -160,7 +163,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                     </div>
                     <div class="row">
                         <div class="col-md-12">
-                            <small class="mx-2 text-muted">Description</small>
+                            <small class="mx-2 text-muted">Specifications</small>
                             <div class="pl-4">
                                 <?= isset($description) ? html_entity_decode($description) : '' ?>
                             </div>

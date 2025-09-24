@@ -143,6 +143,47 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
         
         <!-- Recent Transactions removed -->
         
+        <!-- Service History -->
+        <div class="card card-outline card-success shadow rounded-0 mt-4">
+            <div class="card-header">
+                <h4 class="card-title"><b>Service History</b></h4>
+            </div>
+            <div class="card-body">
+                <?php 
+                $service_history = $conn->query("SELECT s.*, GROUP_CONCAT(sl.service SEPARATOR ', ') as services FROM service_requests s LEFT JOIN service_list sl ON FIND_IN_SET(sl.id, s.service_id) > 0 WHERE s.client_id = '{$_settings->userdata('id')}' ORDER BY s.date_created DESC");
+                if($service_history && $service_history->num_rows > 0): ?>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Request #</th>
+                                <th>Services</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while($sh = $service_history->fetch_assoc()): ?>
+                            <tr>
+                                <td>#<?= $sh['id'] ?></td>
+                                <td><?= $sh['services'] ?: 'N/A' ?></td>
+                                <td>
+                                    <span class="badge badge-<?= $sh['status'] == 3 ? 'success' : ($sh['status'] == 2 ? 'warning' : ($sh['status'] == 1 ? 'primary' : ($sh['status'] == 4 ? 'danger' : 'secondary'))) ?>">
+                                        <?= $sh['status'] == 3 ? 'Done' : ($sh['status'] == 2 ? 'On Progress' : ($sh['status'] == 1 ? 'Confirmed' : ($sh['status'] == 4 ? 'Cancelled' : 'Pending'))) ?>
+                                    </span>
+                                </td>
+                                <td><?= date('M d, Y', strtotime($sh['date_created'])) ?></td>
+                            </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php else: ?>
+                <p class="text-muted text-center">No service history yet.</p>
+                <?php endif; ?>
+            </div>
+        </div>
+
         <!-- OR/CR Documents -->
         <div class="card card-outline card-warning shadow rounded-0 mt-4">
             <div class="card-header">

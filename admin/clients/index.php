@@ -14,10 +14,11 @@
 				<colgroup>
 					<col width="5%">
 					<col width="15%">
-					<col width="30%">
 					<col width="25%">
-					<col width="10%">
+					<col width="20%">
 					<col width="15%">
+					<col width="10%">
+					<col width="10%">
 				</colgroup>
 				<thead>
 					<tr>
@@ -25,6 +26,7 @@
 						<th>Date Created</th>
 						<th>Name</th>
 						<th>Contact</th>
+						<th>OR/CR</th>
 						<th>Status</th>
 						<th>Action</th>
 					</tr>
@@ -48,7 +50,23 @@
 								<?php echo $row['email'] ?>
 								</p>
 							</td>
-							<td class="text-center">
+						<td>
+							<?php 
+							$doc = $conn->query("SELECT id, status FROM or_cr_documents WHERE client_id = '{$row['id']}' ORDER BY date_created DESC LIMIT 1");
+							if($doc && $doc->num_rows>0){
+								$or = $doc->fetch_assoc();
+								$badge = 'secondary';
+								if($or['status'] == 'released') $badge = 'success';
+								elseif($or['status'] == 'pending') $badge = 'warning';
+								elseif($or['status'] == 'expired') $badge = 'danger';
+								echo '<span class="badge badge-'. $badge .'">'. ucfirst($or['status']) .'</span> ';
+								echo '<a href="./?page=orcr_documents&client_id='. $row['id'] .'" class="btn btn-xs btn-info ml-2">View</a>';
+							}else{
+								echo '<span class="text-muted">No OR/CR</span> <a href="./?page=orcr_documents&client_id='. $row['id'] .'" class="btn btn-xs btn-outline-info ml-2">Add</a>';
+							}
+							?>
+						</td>
+						<td class="text-center">
                                 <?php if($row['status'] == 1): ?>
                                     <span class="badge badge-success rounded-pill px-3">Active</span>
                                 <?php else: ?>

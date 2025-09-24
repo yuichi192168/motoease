@@ -65,27 +65,12 @@ if($bq && $bq->num_rows>0){ $honda_id = $bq->fetch_array()[0]; }
 				<div id="colorImagesContainer"></div>
 			</div>
 
-            <!-- Template selection -->
-            <div class="form-group">
-                <label for="template" class="control-label">Template</label>
-                <select id="template" class="custom-select">
-                    <option value="" selected disabled>Select a Template</option>
-                    <option value="motorcycle">Motorcycle</option>
-                    <option value="motorcycle_helmet">Motorcycle Helmet</option>
-                    <option value="crash_guard">Crash Guard</option>
-                    <option value="steering_damper">Steering Damper</option>
-                    <option value="exhaust_system">Exhaust System</option>
-                    <option value="brake_system">Brake System</option>
-                    <option value="lighting">Lighting System</option>
-                    <option value="performance">Performance Kit</option>
-                </select>
-                <small class="form-text text-muted">Choosing a template will auto-fill the description field.</small>
-            </div>
+            <!-- Template selection removed to enforce specific descriptions per variation -->
 
             <div class="form-group">
-				<label for="description" class="control-label">Description</label>
+                <label for="description" class="control-label">Specifications</label>
                 <textarea name="description" id="description" type="text" class="form-control rounded-0 summernote" required><?php echo isset($description) ? $description : ''; ?></textarea>
-			</div>
+            </div>
 
 			<div class="form-group">
 				<label for="price" class="control-label">Price</label>
@@ -177,39 +162,6 @@ if($bq && $bq->num_rows>0){ $honda_id = $bq->fetch_array()[0]; }
 </div>
 
 <script>
-const templates = {
-    motorcycle: {
-        description: `<p><strong>Complete Motorcycle</strong></p>
-        <p>Experience the thrill and freedom of the open road with this high-performance motorcycle. Features include:</p>
-        <ul>
-            <li>Powerful engine for smooth acceleration</li>
-            <li>Durable frame and suspension for stability</li>
-            <li>Fuel-efficient design for longer rides</li>
-            <li>Modern styling with aerodynamic design</li>
-            <li>Equipped with essential safety features like brakes and lights</li>
-        </ul>
-        <p>Perfect choice for both daily commuting and weekend adventures.</p>`
-    },
-    motorcycle_helmet: {
-        description: `<p><strong>Premium Motorcycle Helmet</strong></p>
-        <p>Ride safely and comfortably with this top-quality motorcycle helmet. Features include:</p>
-        <ul>
-            <li>DOT and ECE certified for maximum safety</li>
-            <li>Lightweight yet durable shell construction</li>
-            <li>Removable and washable inner lining for hygiene</li>
-            <li>Adjustable visor with anti-scratch and anti-fog coating</li>
-            <li>Ergonomic design for comfortable long rides</li>
-        </ul>
-        <p>Essential gear for every rider to ensure safety without compromising style.</p>`
-    },
-    crash_guard: { description: `<p><strong>High-Quality Crash Guard</strong></p><p>This premium crash guard provides excellent protection for your motorcycle's engine and body parts...</p>` },
-    steering_damper: { description: `<p><strong>Performance Steering Damper</strong></p><p>Enhance your motorcycle's stability and handling...</p>` },
-    exhaust_system: { description: `<p><strong>Performance Exhaust System</strong></p><p>Upgrade your motorcycle's performance and sound...</p>` },
-    brake_system: { description: `<p><strong>High-Performance Brake System</strong></p><p>Upgrade your motorcycle's braking performance...</p>` },
-    lighting: { description: `<p><strong>LED Lighting System</strong></p><p>Illuminate your path with this advanced LED lighting system...</p>` },
-    performance: { description: `<p><strong>Performance Enhancement Kit</strong></p><p>Boost your motorcycle's performance...</p>` }
-};
-
 window.displayImg = function(input,_this) {
     if (input.files && input.files[0]) {
         var reader = new FileReader();
@@ -230,13 +182,7 @@ $(document).ready(function(){
         placeholder:"Please Select Here"
     });
 
-    // Auto-fill description
-    $('#template').change(function(){
-        let selected = $(this).val();
-        if(templates[selected]){
-            $('#description').summernote('code', templates[selected].description);
-        }
-    });
+    // Template autofill removed
 
     // Dynamic color image inputs based on available_colors
     function renderColorImageInputs(){

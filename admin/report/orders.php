@@ -96,12 +96,14 @@ $date_end = isset($_GET['date_end']) ? $_GET['date_end'] :  date("Y-m-d") ;
                     <?php elseif($row['status'] == 1): ?>
                         <span class="badge badge-primary px-3 rounded-pill">Packed</span>
                     <?php elseif($row['status'] == 2): ?>
-                        <!-- <span class="badge badge-success px-3 rounded-pill">For Delivery</span>
+                        <span class="badge badge-success px-3 rounded-pill">For Delivery</span>
                     <?php elseif($row['status'] == 3): ?>
                         <span class="badge badge-warning px-3 rounded-pill">On the Way</span>
                     <?php elseif($row['status'] == 4): ?>
                         <span class="badge badge-default bg-gradient-teal px-3 rounded-pill">Delivered</span>
-                    <?php else: ?> -->
+                    <?php elseif($row['status'] == 6): ?>
+                        <span class="badge badge-success px-3 rounded-pill">Claimed</span>
+                    <?php else: ?>
                         <span class="badge badge-danger px-3 rounded-pill">Cancelled</span>
                     <?php endif; ?>
                 </td>

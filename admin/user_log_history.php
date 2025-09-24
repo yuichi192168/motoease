@@ -72,7 +72,8 @@
 						<option value="service">Service Requests</option>
 						<option value="transaction">Transactions</option>
 						<option value="login">Login Activity</option>
-						<option value="order">Orders</option>
+                        <option value="order">Orders</option>
+                        <option value="login">Staff Logins</option>
 					</select>
 				</div>
 				<div class="col-md-3">
@@ -140,7 +141,7 @@
 					LIMIT 50
 				");
 				
-				// Combine and sort all activities
+                // Combine and sort all activities
 				$activities = [];
 				
 				while($sr = $service_requests->fetch_assoc()) {
@@ -179,7 +180,21 @@
 					];
 				}
 				
-				// Sort by date (newest first)
+                // Staff login activity (last 30 days)
+                $staff_logins = $conn->query("SELECT id, firstname, lastname, last_login FROM users WHERE last_login >= DATE_SUB(NOW(), INTERVAL 30 DAY) ORDER BY last_login DESC");
+                while($lg = $staff_logins->fetch_assoc()){
+                    $activities[] = [
+                        'type' => 'login',
+                        'date' => $lg['last_login'],
+                        'user_id' => $lg['id'],
+                        'user_name' => $lg['firstname'].' '.$lg['lastname'],
+                        'action' => 'Staff Login',
+                        'details' => 'Logged into the admin dashboard',
+                        'id' => $lg['id']
+                    ];
+                }
+
+                // Sort by date (newest first)
 				usort($activities, function($a, $b) {
 					return strtotime($b['date']) - strtotime($a['date']);
 				});
@@ -326,6 +341,7 @@ function getOrderStatus($status) {
 		case 2: return 'For Delivery';
 		case 3: return 'On the Way';
 		case 4: return 'Delivered';
+		case 6: return 'Claimed';
 		case 5: return 'Cancelled';
 		default: return 'Unknown';
 	}

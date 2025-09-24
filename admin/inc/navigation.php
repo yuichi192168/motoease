@@ -44,7 +44,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                     <ul class="nav nav-treeview">
                         <?php if(in_array($role_type, ['admin'])): ?>
                         <li class="nav-item">
-                            <a href="./?page=user" class="nav-link <?php echo $page == 'user' ? 'active' : '' ?>">
+                            <a href="./?page=user/list" class="nav-link <?php echo ($page == 'user' || $page == 'user/list') ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>System Users</p>
                             </a>
@@ -218,13 +218,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 </li>
                 <?php endif; ?>
                 
-                <!-- Logout -->
-                <li class="nav-item">
-                    <a href="<?php echo base_url.'admin/logout.php' ?>" class="nav-link text-danger">
-                        <i class="nav-icon fas fa-sign-out-alt"></i>
-                        <p>Logout</p>
-                    </a>
-                </li>
+                
             </ul>
         </nav>
         <!-- /.sidebar-menu -->

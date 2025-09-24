@@ -47,6 +47,8 @@ if(isset($_GET['id'])){
                         <span class="badge badge-warning px-3 rounded-pill">On the Way</span>
                     <?php elseif($status == 4): ?>
                         <span class="badge badge-default bg-gradient-teal px-3 rounded-pill">Delivered</span>
+                    <?php elseif($status == 6): ?>
+                        <span class="badge badge-success px-3 rounded-pill">Claimed</span>
                     <?php else: ?>
                         <span class="badge badge-danger px-3 rounded-pill">Cancelled</span>
                     <?php endif; ?>
@@ -118,6 +120,9 @@ if(isset($_GET['id'])){
             <?php if(isset($status)  && $status == 0): ?>
             <button class="btn btn-danger btn-flat btn-sm" id="btn-cancel" type="button">Cancel Order</button>
             <?php endif; ?>
+            <?php if(isset($status)  && in_array($status, [4])): ?>
+            <button class="btn btn-success btn-flat btn-sm" id="btn-claim" type="button">Mark as Claimed</button>
+            <?php endif; ?>
             <button class="btn btn-dark btn-flat btn-sm" type="button" data-dismiss="modal"><i class="fa fa-times"></i> Close</button>
         </div>
     </div>
@@ -131,6 +136,34 @@ if(isset($_GET['id'])){
         $.ajax({
             url:_base_url_+'classes/master.php?f=cancel_order',
             data:{id : "<?= isset($id) ? $id : '' ?>"},
+            method:'POST',
+            dataType:'json',
+            error:err=>{
+                console.error(err)
+                alert_toast('An error occurred.','error')
+                end_loader()
+            },
+            success:function(resp){
+                if(resp.status == 'success'){
+                    location.reload()
+                }else if(!!resp.msg){
+                    alert_toast(resp.msg,'error')
+                }else{
+                    alert_toast('An error occurred.','error')
+                }
+                end_loader();
+            }
+        })
+    }
+
+    $('#btn-claim').click(function(){
+        _conf("Confirm this order has been claimed?","claim_order",[])
+    })
+    function claim_order(){
+        start_loader();
+        $.ajax({
+            url:_base_url_+'classes/master.php?f=update_order_status',
+            data:{id : "<?= isset($id) ? $id : '' ?>", status: 6},
             method:'POST',
             dataType:'json',
             error:err=>{
