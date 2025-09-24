@@ -67,11 +67,67 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
             <div class="card-body">
                 <div class="container">
                     <div class="row">
-                        <div class="col-md-12 text-center">
-                            <img id="mainProductImage" src="<?= validate_image(isset($image_path) ? $image_path : "") ?>" alt="Product Image <?= isset($name) ? $name : "" ?>" class="img-thumbnail product-img">
+                        <div class="col-12">
+                            <style>
+                                .color-carousel{position:relative; overflow:hidden; padding:0 40px;}
+                                @media (max-width: 767.98px){ .color-carousel{ padding:0 10px; } }
+                                .color-track{display:flex; transition:transform .35s ease; will-change:transform;}
+                                .color-slide{flex:0 0 calc(100% - 60px); margin-right:20px; display:flex; justify-content:center; align-items:center;}
+                                @media (max-width: 767.98px){ .color-slide{ flex:0 0 calc(100% - 30px); margin-right:10px; } }
+                                .color-slide img{max-width:100%; height:auto; object-fit:contain; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,.06);}
+                                .nav-btn{position:absolute; top:50%; transform:translateY(-50%); background:#fff; border:1px solid #ddd; width:36px; height:36px; border-radius:18px; display:none; justify-content:center; align-items:center; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.1);}
+                                .nav-btn:active{transform:translateY(-50%) scale(.98);} 
+                                .nav-prev{left:6px;} .nav-next{right:6px;}
+                                @media (min-width: 768px){ .nav-btn{display:flex;} }
+                                .color-dots{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:10px;}
+                                .color-dot{width:28px;height:28px;border:1px solid #ccc;border-radius:4px; overflow:hidden; cursor:pointer; position:relative;}
+                                .color-dot img{width:100%;height:100%;object-fit:cover;}
+                                .color-dot.active{outline:2px solid #007bff; outline-offset:2px;}
+                                .color-label{text-align:center; font-size:.9rem; color:#6c757d; margin-top:6px; min-height:1.2em;}
+                            </style>
+                            <?php 
+                                $colors = [];
+                                if(isset($available_colors) && trim($available_colors) !== ''){
+                                    foreach(explode(',', $available_colors) as $c){ $c = trim($c); if($c !== '') $colors[] = $c; }
+                                }
+                                $swatches = $conn->query("SELECT color, image_path FROM product_color_images WHERE product_id = '".$id."'");
+                                $hasSw = $swatches && $swatches->num_rows>0; 
+                                $colorToImg = [];
+                                if($hasSw){ while($s=$swatches->fetch_assoc()){ $colorToImg[trim(strtolower($s['color']))]=$s['image_path']; } }
+                                // Build slide list
+                                $slides = [];
+                                if(!empty($colors)){
+                                    foreach($colors as $c){
+                                        $key = strtolower(trim($c));
+                                        $img = isset($colorToImg[$key]) ? $colorToImg[$key] : (isset($image_path) ? $image_path : '');
+                                        $slides[] = ['color'=>$c, 'img'=>$img];
+                                    }
+                                } else {
+                                    $slides[] = ['color'=> isset($name) ? $name : 'Default', 'img'=> (isset($image_path) ? $image_path : '')];
+                                }
+                            ?>
+                            <div class="color-carousel" id="colorCarousel" data-index="0">
+                                <div class="color-track" id="colorTrack">
+                                    <?php foreach($slides as $s): ?>
+                                        <div class="color-slide" data-color="<?= htmlspecialchars($s['color']) ?>">
+                                            <img src="<?= validate_image($s['img']) ?>" loading="lazy" alt="<?= htmlspecialchars($s['color']) ?> - <?= isset($name) ? htmlspecialchars($name) : '' ?>">
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <button type="button" class="nav-btn nav-prev" id="ccPrev" aria-label="Previous">‹</button>
+                                <button type="button" class="nav-btn nav-next" id="ccNext" aria-label="Next">›</button>
+                            </div>
+                            <div class="color-dots" id="colorDots">
+                                <?php foreach($slides as $idx=>$s): ?>
+                                    <div class="color-dot<?= $idx==0 ? ' active':'' ?>" data-idx="<?= $idx ?>" title="<?= htmlspecialchars($s['color']) ?>">
+                                        <img src="<?= validate_image($s['img']) ?>" loading="lazy" alt="<?= htmlspecialchars($s['color']) ?>">
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <div class="color-label" id="colorLabel"><?= htmlspecialchars($slides[0]['color']) ?></div>
                         </div>
                     </div>
-                    <div class="row">
+                    <div class="row mt-2">
                         <div class="col-md-6">
                             <small class="mx-2 text-muted">Product Name</small>
                             <div class="pl-4"><?= isset($name) ? $name : '' ?></div>
@@ -87,46 +143,6 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                             <div class="pl-4"><?= isset($models) ? $models : '' ?></div>
                         </div>
                     </div>
-                    <?php 
-                        $colors = [];
-                        if(isset($available_colors) && trim($available_colors) !== ''){
-                            foreach(explode(',', $available_colors) as $c){
-                                $c = trim($c);
-                                if($c !== '') $colors[] = $c;
-                            }
-                        }
-                    ?>
-                    <?php if(!empty($colors)): ?>
-                    <div class="row mt-2">
-                        <div class="col-md-12">
-                            <small class="mx-2 text-muted">Available Colors</small>
-                            <div class="pl-4">
-                                <button class="btn btn-sm btn-outline-secondary mb-2" type="button" data-toggle="collapse" data-target="#colorsCollapse">Show/Hide Colors</button>
-                                <div id="colorsCollapse" class="collapse show">
-                                <div class="d-flex flex-wrap align-items-center" id="color_options">
-                                    <?php 
-                                    $swatches = $conn->query("SELECT color, image_path FROM product_color_images WHERE product_id = '".$id."'");
-                                    $hasSw = $swatches && $swatches->num_rows>0; 
-                                    $colorToImg = [];
-                                    if($hasSw){ while($s=$swatches->fetch_assoc()){ $colorToImg[trim(strtolower($s['color']))]=$s['image_path']; } }
-                                    foreach($colors as $c): 
-                                        $key = strtolower(trim($c));
-                                        $sw = isset($colorToImg[$key]) ? $colorToImg[$key] : '';
-                                    ?>
-                                    <label class="mr-3 mb-2 d-flex align-items-center" style="cursor:pointer;">
-                                        <input type="radio" class="mr-1 color-radio" name="selected_color" value="<?= htmlspecialchars($c) ?>">
-                                        <?php if($sw): ?>
-                                        <img src="<?= validate_image($sw) ?>" alt="<?= htmlspecialchars($c) ?>" style="width:28px;height:28px;object-fit:cover;border:1px solid #ddd;border-radius:3px;" class="mr-1">
-                                        <?php endif; ?>
-                                        <span><?= htmlspecialchars($c) ?></span>
-                                    </label>
-                                    <?php endforeach; ?>
-                                </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endif; ?>
                     <div class="row">
                         <div class="col-md-6">
                             <small class="mx-2 text-muted">Price</small>
