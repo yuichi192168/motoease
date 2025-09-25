@@ -96,6 +96,10 @@
                     $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Place Order');
                 },
                 success:function(resp){
+                    // Always clear loader first
+                    end_loader();
+                    $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Place Order');
+                    
                     if(typeof resp =='object' && resp.status == 'success'){
                         // Show success message with order details
                         Swal.fire({
@@ -124,12 +128,8 @@
                         _this.prepend(el);
                         el.show('slow');
                         $("html, body").animate({ scrollTop: _this.closest('.card').offset().top }, "fast");
-                        end_loader();
-                        $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Place Order');
                     }else{
-                        alert_toast("An error occurred",'error');
-                        end_loader();
-                        $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Place Order');
+                        alert_toast("An error occurred while processing your order.", 'error');
                         console.log(resp);
                     }
                 }

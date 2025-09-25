@@ -118,6 +118,91 @@
             max-height: 50vh;
         }
     }
+
+    /* Fix sidebar brand text overflow */
+    .brand-text {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 180px;
+        display: inline-block;
+        font-size: 0.9rem;
+        line-height: 1.2;
+        font-weight: 500;
+    }
+
+    .brand-link {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+    }
+
+    .brand-image {
+        margin-right: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    /* Responsive sidebar text */
+    @media (max-width: 768px) {
+        .brand-text {
+            max-width: 120px;
+            font-size: 0.8rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .brand-text {
+            max-width: 100px;
+            font-size: 0.75rem;
+        }
+    }
+
+    /* Ensure sidebar doesn't break layout */
+    .main-sidebar {
+        width: 250px;
+        transition: width 0.3s ease;
+    }
+
+    .sidebar-collapse .main-sidebar {
+        width: 70px;
+    }
+
+    .sidebar-collapse .brand-text {
+        display: none;
+    }
+
+    /* Fix page title overflow in content area */
+    .content-header h1 {
+        font-size: 1.5rem;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+
+    /* Improve navbar layout */
+    .main-header .navbar-nav {
+        flex-wrap: nowrap;
+    }
+
+    .main-header .navbar-nav .nav-link {
+        padding: 0.5rem 0.75rem;
+        white-space: nowrap;
+    }
+
+    /* Better mobile handling */
+    @media (max-width: 576px) {
+        .main-header .navbar-nav .nav-link {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .main-header .navbar-nav .badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.4rem;
+        }
+    }
     </style>
 
      <!-- jQuery -->

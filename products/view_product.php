@@ -69,21 +69,102 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                     <div class="row">
                         <div class="col-12">
                             <style>
-                                .color-carousel{position:relative; overflow:hidden; padding:0 40px;}
-                                @media (max-width: 767.98px){ .color-carousel{ padding:0 10px; } }
-                                .color-track{display:flex; transition:transform .35s ease; will-change:transform;}
-                                .color-slide{flex:0 0 calc(100% - 60px); margin-right:20px; display:flex; justify-content:center; align-items:center;}
-                                @media (max-width: 767.98px){ .color-slide{ flex:0 0 calc(100% - 30px); margin-right:10px; } }
-                                .color-slide img{max-width:100%; height:auto; object-fit:contain; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,.06);}
-                                .nav-btn{position:absolute; top:50%; transform:translateY(-50%); background:#fff; border:1px solid #ddd; width:36px; height:36px; border-radius:18px; display:none; justify-content:center; align-items:center; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.1);}
-                                .nav-btn:active{transform:translateY(-50%) scale(.98);} 
-                                .nav-prev{left:6px;} .nav-next{right:6px;}
-                                @media (min-width: 768px){ .nav-btn{display:flex;} }
-                                .color-dots{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:10px;}
-                                .color-dot{width:28px;height:28px;border:1px solid #ccc;border-radius:4px; overflow:hidden; cursor:pointer; position:relative;}
-                                .color-dot img{width:100%;height:100%;object-fit:cover;}
-                                .color-dot.active{outline:2px solid #007bff; outline-offset:2px;}
-                                .color-label{text-align:center; font-size:.9rem; color:#6c757d; margin-top:6px; min-height:1.2em;}
+                                .color-carousel{
+                                    position: relative; 
+                                    overflow: hidden; 
+                                    padding: 0 40px;
+                                }
+                                @media (max-width: 767.98px){ 
+                                    .color-carousel{ 
+                                        padding: 0 10px; 
+                                    } 
+                                }
+                                .color-track{
+                                    display: flex; 
+                                    transition: transform 0.3s ease;
+                                }
+                                .color-slide{
+                                    flex: 0 0 100%; 
+                                    display: flex; 
+                                    justify-content: center; 
+                                    align-items: center;
+                                    min-height: 300px;
+                                }
+                                @media (max-width: 767.98px){ 
+                                    .color-slide{ 
+                                        min-height: 250px;
+                                    } 
+                                }
+                                .color-slide img{
+                                    max-width: 100%; 
+                                    height: auto; 
+                                    object-fit: contain; 
+                                    border-radius: 6px; 
+                                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                                }
+                                .nav-btn{
+                                    position: absolute; 
+                                    top: 50%; 
+                                    transform: translateY(-50%); 
+                                    background: #fff; 
+                                    border: 1px solid #ddd; 
+                                    width: 40px; 
+                                    height: 40px; 
+                                    border-radius: 50%; 
+                                    display: none; 
+                                    justify-content: center; 
+                                    align-items: center; 
+                                    cursor: pointer; 
+                                    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+                                    font-size: 18px;
+                                    color: #333;
+                                    z-index: 10;
+                                }
+                                .nav-btn:hover{
+                                    background: #f8f9fa;
+                                    border-color: #007bff;
+                                    color: #007bff;
+                                }
+                                .nav-prev{left: 10px;} 
+                                .nav-next{right: 10px;}
+                                @media (min-width: 768px){ 
+                                    .nav-btn{display: flex;} 
+                                }
+                                .color-dots{
+                                    display: flex; 
+                                    flex-wrap: wrap; 
+                                    gap: 8px; 
+                                    justify-content: center; 
+                                    margin-top: 15px;
+                                }
+                                .color-dot{
+                                    width: 30px;
+                                    height: 30px;
+                                    border: 2px solid #ccc;
+                                    border-radius: 4px; 
+                                    overflow: hidden; 
+                                    cursor: pointer; 
+                                    transition: all 0.2s ease;
+                                }
+                                .color-dot:hover{
+                                    border-color: #007bff;
+                                }
+                                .color-dot img{
+                                    width: 100%;
+                                    height: 100%;
+                                    object-fit: cover;
+                                }
+                                .color-dot.active{
+                                    border-color: #007bff;
+                                    box-shadow: 0 0 0 2px rgba(0,123,255,0.3);
+                                }
+                                .color-label{
+                                    text-align: center; 
+                                    font-size: 0.9rem; 
+                                    color: #6c757d; 
+                                    margin-top: 8px; 
+                                    min-height: 1.2em;
+                                }
                             </style>
                             <?php 
                                 $colors = [];
@@ -440,6 +521,64 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
             $('#mainProductImage').attr('src', _base_url_ + map[color]);
         }
     });
+    
+    // Simple Color Carousel Functionality
+    let currentSlide = 0;
+    const slides = $('.color-slide');
+    const totalSlides = slides.length;
+    
+    function updateCarousel() {
+        const track = $('#colorTrack');
+        const translateX = -currentSlide * 100;
+        track.css('transform', `translateX(${translateX}%)`);
+        
+        // Update dots
+        $('.color-dot').removeClass('active');
+        $(`.color-dot[data-idx="${currentSlide}"]`).addClass('active');
+        
+        // Update label
+        const currentColor = slides.eq(currentSlide).data('color');
+        $('#colorLabel').text(currentColor);
+        
+        // Update button states
+        if (currentSlide === 0) {
+            $('#ccPrev').hide();
+        } else {
+            $('#ccPrev').show();
+        }
+        
+        if (currentSlide === totalSlides - 1) {
+            $('#ccNext').hide();
+        } else {
+            $('#ccNext').show();
+        }
+    }
+    
+    // Navigation button handlers
+    $('#ccPrev').click(function() {
+        if (currentSlide > 0) {
+            currentSlide--;
+            updateCarousel();
+        }
+    });
+    
+    $('#ccNext').click(function() {
+        if (currentSlide < totalSlides - 1) {
+            currentSlide++;
+            updateCarousel();
+        }
+    });
+    
+    // Dot navigation
+    $('.color-dot').click(function() {
+        currentSlide = parseInt($(this).data('idx'));
+        updateCarousel();
+    });
+    
+    // Initialize carousel
+    if (totalSlides > 0) {
+        updateCarousel();
+    }
     
     function loadReviews(){
         $.ajax({

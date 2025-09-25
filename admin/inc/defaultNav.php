@@ -58,7 +58,22 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'home';
     <!-- Brand Logo -->
     <a href="./" class="brand-link">
         <img src="<?php echo validate_image($_settings->info('cover')) ?>" alt="System Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
-        <span class="brand-text font-weight-light"><?php echo $_settings->info('name') ?></span>
+        <span class="brand-text font-weight-light" title="<?php echo $_settings->info('name') ?>">
+            <?php 
+            $short_name = $_settings->info('short_name');
+            if(!empty($short_name)) {
+                echo $short_name;
+            } else {
+                // Create a shorter version if no short name is set
+                $full_name = $_settings->info('name');
+                if(strlen($full_name) > 20) {
+                    echo "Star Honda BPSMS";
+                } else {
+                    echo $full_name;
+                }
+            }
+            ?>
+        </span>
     </a>
 
     <!-- Sidebar -->

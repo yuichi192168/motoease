@@ -176,12 +176,12 @@ switch ($action) {
 	break;
 	case 'delete':
 		echo $users->delete_users();
+	break;
 	case 'save_client':
 		echo $users->save_client();
 	break;
 	case 'delete_client':
 		echo $users->delete_client();
-	break;
 	break;
 	default:
 		// echo $sysset->index();

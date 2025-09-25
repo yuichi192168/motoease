@@ -234,37 +234,52 @@ $(document).ready(function(){
 		var dateFrom = $('#date_from').val();
 		var dateTo = $('#date_to').val();
 		
+		var visibleCount = 0;
+		
 		$('.log-entry').each(function() {
 			var entry = $(this);
 			var show = true;
 			
-			// User filter
-			if(userFilter && entry.data('user') != userFilter) {
+			// User filter - check if user filter is set and matches
+			if(userFilter && userFilter !== '' && entry.data('user') != userFilter) {
 				show = false;
 			}
 			
-			// Activity filter
-			if(activityFilter && entry.data('type') != activityFilter) {
+			// Activity filter - check if activity filter is set and matches
+			if(activityFilter && activityFilter !== '' && entry.data('type') != activityFilter) {
 				show = false;
 			}
 			
-			// Date filter
+			// Date filter - improved date comparison
 			if(dateFrom || dateTo) {
-				var entryDate = entry.data('date').split(' ')[0]; // Get date part only
-				if(dateFrom && entryDate < dateFrom) {
-					show = false;
-				}
-				if(dateTo && entryDate > dateTo) {
-					show = false;
+				var entryDate = entry.data('date');
+				if(entryDate) {
+					// Handle both datetime and date-only formats
+					var entryDateOnly = entryDate.split(' ')[0];
+					
+					if(dateFrom && entryDateOnly < dateFrom) {
+						show = false;
+					}
+					if(dateTo && entryDateOnly > dateTo) {
+						show = false;
+					}
 				}
 			}
 			
 			if(show) {
 				entry.show();
+				visibleCount++;
 			} else {
 				entry.hide();
 			}
 		});
+		
+		// Show message if no logs are visible
+		if(visibleCount === 0) {
+			$('#activity_logs').append('<div class="text-center py-5" id="no-logs-message"><i class="fa fa-info-circle fa-3x text-muted mb-3"></i><p class="text-muted">No activity logs found for the selected filters.</p></div>');
+		} else {
+			$('#no-logs-message').remove();
+		}
 	}
 	
 	// Bind filter events
