@@ -139,19 +139,19 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                                     </div>
                                     <?php endif; ?> -->
                                 </div>
-                                <div class="card-body border-top">
-                                    <h4 class="card-title my-0"><b><?= $row['name'] ?></b></h4><br>
-                                    <small class="text-muted"><?= $row['brand'] ?></small><br>
-                                    <small class="text-muted"><?= $row['category'] ?></small>
-                                    <p class="m-0 truncate-5"><?= strip_tags(html_entity_decode($row['description'])) ?></p>
+                                <div class="card-body border-top d-flex flex-column">
+                                    <h4 class="card-title my-0 line-clamp-1"><b><?= $row['name'] ?></b></h4>
+                                    <small class="text-muted line-clamp-1"><?= $row['brand'] ?></small>
+                                    <small class="text-muted line-clamp-1"><?= $row['category'] ?></small>
+                                    <p class="m-0 line-clamp-2 flex-grow-1"><?= strip_tags(html_entity_decode($row['description'])) ?></p>
                                     
                                     <!-- Color Selection -->
                                     <?php 
                                     $swatches = $conn->query("SELECT color, image_path FROM product_color_images WHERE product_id = '{$row['id']}'");
                                     if($swatches && $swatches->num_rows > 0): ?>
-                                    <div class="mt-2">
+                                    <div class="mt-2 color-selection-container">
                                         <small class="text-muted">Available Colors:</small>
-                                        <div class="d-flex flex-wrap mt-1">
+                                        <div class="d-flex flex-wrap mt-1 color-options">
                                             <?php while($sw = $swatches->fetch_assoc()): ?>
                                             <div class="color-option mr-1 mb-1" data-color="<?= htmlspecialchars($sw['color']) ?>" data-image="<?= validate_image($sw['image_path']) ?>" title="<?= htmlspecialchars($sw['color']) ?>">
                                                 <img src="<?= validate_image($sw['image_path']) ?>" alt="<?= htmlspecialchars($sw['color']) ?>" style="width:20px; height:20px; object-fit:cover; border:1px solid #ddd; border-radius:50%;">
@@ -267,6 +267,48 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
     transform: scale(1.05);
 }
 
+/* Line Clamp Styles for Consistent Card Heights */
+.line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+    max-height: 1.2em;
+}
+
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+    max-height: 2.4em;
+}
+
+.line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+    max-height: 3.6em;
+}
+
+/* Card Body Flex Layout */
+.card-body {
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+}
+
+.card-body .mt-3 {
+    margin-top: auto !important;
+}
+
 /* Stock Status Badges - Red and Black Theme */
 .badge-success {
     background: linear-gradient(135deg, #dc3545, #c82333);
@@ -298,12 +340,23 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
 }
 
 /* Color Selection Styles - Red and Black Theme */
+.color-selection-container {
+    max-height: 60px;
+    overflow: hidden;
+}
+
+.color-options {
+    max-height: 40px;
+    overflow: hidden;
+}
+
 .color-option {
     cursor: pointer;
     transition: all 0.3s ease;
     border: 2px solid transparent;
     border-radius: 50%;
     padding: 2px;
+    flex-shrink: 0;
 }
 
 .color-option:hover {
