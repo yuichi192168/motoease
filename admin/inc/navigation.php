@@ -171,6 +171,33 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 </li>
                 <?php endif; ?>
                 
+                <!-- Services & Categories Management -->
+                <?php if(in_array($role_type, ['admin'])): ?>
+                <li class="nav-item <?php echo in_array($page, ['maintenance/category','maintenance/services','maintenance/manage_category','maintenance/manage_service']) ? 'menu-open' : '' ?>">
+                    <a href="#" class="nav-link <?php echo in_array($page, ['maintenance/category','maintenance/services','maintenance/manage_category','maintenance/manage_service']) ? 'active' : '' ?>">
+                        <i class="nav-icon fas fa-cogs"></i>
+                        <p>
+                            Management
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="./?page=maintenance/category" class="nav-link <?php echo in_array($page, ['maintenance/category','maintenance/manage_category']) ? 'active' : '' ?>">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Categories</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="./?page=maintenance/services" class="nav-link <?php echo in_array($page, ['maintenance/services','maintenance/manage_service']) ? 'active' : '' ?>">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Services</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <?php endif; ?>
+                
                 <!-- System Settings -->
                 <?php if(in_array($role_type, ['admin'])): ?>
                 <li class="nav-item">

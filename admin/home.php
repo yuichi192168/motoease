@@ -145,3 +145,75 @@
     </div>
   </div>
 </div>
+
+<!-- Quick Actions Section -->
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="card card-outline card-primary">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-bolt"></i> Quick Actions
+        </h3>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-4 col-sm-6 mb-3">
+            <a href="?page=maintenance/services" class="btn btn-success btn-block btn-lg">
+              <i class="fas fa-plus"></i><br>
+              <strong>Add New Service</strong><br>
+              <small>Create a new service</small>
+            </a>
+          </div>
+          <div class="col-md-4 col-sm-6 mb-3">
+            <a href="?page=products/manage_product" class="btn btn-primary btn-block btn-lg">
+              <i class="fas fa-box"></i><br>
+              <strong>Add Product</strong><br>
+              <small>Add new motorcycle part</small>
+            </a>
+          </div>
+          <div class="col-md-4 col-sm-6 mb-3">
+            <a href="?page=orders" class="btn btn-info btn-block btn-lg">
+              <i class="fas fa-th-list"></i><br>
+              <strong>Manage Orders</strong><br>
+              <small>Add or edit categories</small>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.btn-block {
+  height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 15px;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.btn-block:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.btn-block i {
+  font-size: 1.5rem;
+  margin-bottom: 5px;
+}
+
+.btn-block strong {
+  font-size: 1rem;
+  margin-bottom: 3px;
+}
+
+.btn-block small {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+</style>
