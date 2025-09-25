@@ -32,19 +32,41 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         font-weight: bold;
     }
     .stock-available {
-        background-color: #d4edda;
-        color: #155724;
-        border: 1px solid #c3e6cb;
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        color: white;
+        border: 1px solid #dc3545;
     }
     .stock-low {
-        background-color: #fff3cd;
-        color: #856404;
-        border: 1px solid #ffeaa7;
+        background: linear-gradient(135deg, #fd7e14, #e8590c);
+        color: white;
+        border: 1px solid #fd7e14;
     }
     .stock-out {
-        background-color: #f8d7da;
-        color: #721c24;
-        border: 1px solid #f5c6cb;
+        background: linear-gradient(135deg, #000000, #343a40);
+        color: white;
+        border: 1px solid #000000;
+    }
+    
+    /* Red and Black Theme for Product View */
+    .btn-primary {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        border: none;
+    }
+    
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #c82333, #a71e2a);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+    }
+    
+    .btn-outline-primary {
+        border: 2px solid #dc3545;
+        color: #dc3545;
+    }
+    
+    .btn-outline-primary:hover {
+        background: #dc3545;
+        color: white;
     }
 </style>
 <div class="content py-5 mt-3">

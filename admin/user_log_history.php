@@ -70,7 +70,7 @@
 					<select id="activity_filter" class="form-control form-control-sm">
 						<option value="">All Activities</option>
 						<option value="service">Service Requests</option>
-						<option value="transaction">Transactions</option>
+						<!-- <option value="transaction">Transactions</option> -->
 						<option value="login">Login Activity</option>
                         <option value="order">Orders</option>
                         <option value="login">Staff Logins</option>

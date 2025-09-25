@@ -10,8 +10,30 @@
         font-size: 0.8em;
     }
     .stock-info {
-        color: #28a745;
+        color: #dc3545;
         font-size: 0.8em;
+    }
+    
+    /* Red and Black Theme for Cart */
+    .btn-primary {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        border: none;
+    }
+    
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #c82333, #a71e2a);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+    }
+    
+    .addon-checkbox:checked {
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
+    
+    .form-check-input:checked {
+        background-color: #dc3545;
+        border-color: #dc3545;
     }
 </style>
 <div class="content py-5 mt-3">
@@ -48,11 +70,71 @@
                                 </a>
                                 <small><?= $row['brand'] ?></small><br>
                                 <small><?= $row['category'] ?></small><br>
-                                <?php if(!empty($row['color'])): ?>
-                                <small class="text-muted">Color: <?= htmlspecialchars($row['color']) ?></small><br>
+                                
+                                <!-- Stock Availability -->
+                                <?php if($available > 10): ?>
+                                    <small class="stock-info"><i class="fa fa-check-circle"></i> In Stock (<?= $available ?> available)</small>
+                                <?php elseif($available > 0): ?>
+                                    <small class="stock-warning"><i class="fa fa-exclamation-triangle"></i> Low Stock (<?= $available ?> available)</small>
+                                <?php else: ?>
+                                    <small class="stock-warning"><i class="fa fa-times-circle"></i> Out of Stock</small>
                                 <?php endif; ?>
                                 
-                                <!-- Stock availability info -->
+                                <!-- Color Selection -->
+                                <?php if(!empty($row['color'])): ?>
+                                    <br><small class="text-muted">Color: <strong><?= htmlspecialchars($row['color']) ?></strong></small>
+                                <?php endif; ?>
+                                
+                                <!-- Add-ons Section -->
+                                <div class="add-ons-section mt-2">
+                                    <small class="text-muted">Recommended Motorcycle Parts:</small>
+                                    <div class="add-ons-options">
+                                        <?php 
+                                        // Get suggested motorcycle parts based on product category
+                                        $suggested_parts = $conn->query("SELECT p.*, b.name as brand, c.category FROM product_list p 
+                                                                        INNER JOIN brand_list b ON p.brand_id = b.id 
+                                                                        INNER JOIN categories c ON p.category_id = c.id 
+                                                                        WHERE p.delete_flag = 0 AND p.status = 1 
+                                                                        AND c.category IN ('Motorcycle Parts', 'Oils', 'Accessories') 
+                                                                        AND p.id != '{$row['product_id']}'
+                                                                        ORDER BY RAND() LIMIT 6");
+                                        
+                                        if($suggested_parts && $suggested_parts->num_rows > 0):
+                                            $part_count = 0;
+                                            while($part = $suggested_parts->fetch_assoc()):
+                                                $part_count++;
+                                                if($part_count % 3 == 1): ?>
+                                                    <div class="row">
+                                                <?php endif; ?>
+                                                <div class="col-md-4 mb-1">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input addon-checkbox" type="checkbox" 
+                                                               value="<?= $part['id'] ?>" 
+                                                               data-product="<?= $row['product_id'] ?>" 
+                                                               id="part_<?= $part['id'] ?>_<?= $row['id'] ?>" 
+                                                               data-price="<?= $part['price'] ?>"
+                                                               data-part-name="<?= htmlspecialchars($part['name']) ?>">
+                                                        <label class="form-check-label" for="part_<?= $part['id'] ?>_<?= $row['id'] ?>">
+                                                            <small><strong><?= htmlspecialchars($part['name']) ?></strong></small><br>
+                                                            <small class="text-muted"><?= $part['brand'] ?> - <?= $part['category'] ?></small><br>
+                                                            <small class="text-success">(+₱<?= number_format($part['price'], 2) ?>)</small>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <?php if($part_count % 3 == 0): ?>
+                                                    </div>
+                                                <?php endif;
+                                            endwhile;
+                                            if($part_count % 3 != 0): ?>
+                                                </div>
+                                            <?php endif;
+                                        else: ?>
+                                            <div class="text-muted">
+                                                <small>No additional parts available at the moment.</small>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
                                 <?php if($available < $row['quantity']): ?>
                                     <div class="stock-warning">
                                         <i class="fa fa-exclamation-triangle"></i> 
@@ -100,10 +182,26 @@
                 <?php endif; ?>
                 <div class="d-flex align-items-center w-100 border">
                     <div class="col-auto flex-grow-1 flex-shrink-1 px-1 py-1">
-                            <h3 class="text-center">TOTAL</h3>
+                            <h4 class="text-center">SUBTOTAL</h4>
                     </div>
                     <div class="col-auto text-right">
-                        <h3><b><?= number_format($total,2) ?></b></h3>
+                        <h4><b>₱<?= number_format($total,2) ?></b></h4>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center w-100 border">
+                    <div class="col-auto flex-grow-1 flex-shrink-1 px-1 py-1">
+                            <h4 class="text-center text-success">ADD-ONS TOTAL</h4>
+                    </div>
+                    <div class="col-auto text-right">
+                        <h4 class="text-success"><b id="addons_total_display">₱0.00</b></h4>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center w-100 border border-primary">
+                    <div class="col-auto flex-grow-1 flex-shrink-1 px-1 py-1">
+                            <h3 class="text-center text-primary">GRAND TOTAL</h3>
+                    </div>
+                    <div class="col-auto text-right">
+                        <h3 class="text-primary"><b id="grand_total">₱<?= number_format($total,2) ?></b></h3>
                     </div>
                 </div>
             </div>
@@ -159,7 +257,20 @@
         })
         $('#checkout').click(function(){
             if($('#cart-list .cart-item').length > 0){
-                location.href="./?p=place_order"
+                // Get add-ons data from localStorage
+                var selectedAddons = localStorage.getItem('selected_addons') || '';
+                var selectedAddonDetails = localStorage.getItem('selected_addon_details') || '[]';
+                var addonsTotal = localStorage.getItem('addons_total') || '0';
+                
+                // Pass add-ons data to checkout page
+                var url = './?p=place_order';
+                if(selectedAddons) {
+                    url += '&addons=' + encodeURIComponent(selectedAddons);
+                    url += '&addon_details=' + encodeURIComponent(selectedAddonDetails);
+                    url += '&addons_total=' + encodeURIComponent(addonsTotal);
+                }
+                
+                location.href = url;
             }else{
                 alert_toast('Shopping cart is empty.','error')
             }
@@ -189,4 +300,44 @@
             }
         })
     }
+    
+    // Add-ons functionality
+    $('.addon-checkbox').change(function() {
+        updateAddonsTotal();
+    });
+    
+    function updateAddonsTotal() {
+        var total = 0;
+        var selectedAddons = [];
+        var selectedAddonDetails = [];
+        
+        $('.addon-checkbox:checked').each(function() {
+            var price = parseFloat($(this).data('price'));
+            var value = $(this).val();
+            var partName = $(this).data('part-name');
+            total += price;
+            selectedAddons.push(value);
+            selectedAddonDetails.push({
+                id: value,
+                name: partName,
+                price: price
+            });
+        });
+        
+        // Update display
+        $('#addons_total_display').text('₱' + total.toFixed(2));
+        
+        // Update grand total
+        var subtotal = parseFloat('<?= $total ?>');
+        var grandTotal = subtotal + total;
+        $('#grand_total').text('₱' + grandTotal.toFixed(2));
+        
+        // Store add-ons data for checkout
+        localStorage.setItem('selected_addons', selectedAddons.join(','));
+        localStorage.setItem('selected_addon_details', JSON.stringify(selectedAddonDetails));
+        localStorage.setItem('addons_total', total);
+    }
+    
+    // Initialize addons total
+    updateAddonsTotal();
 </script>

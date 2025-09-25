@@ -2,7 +2,7 @@
 <hr>
 <div class="row">
   <!-- Total Brands -->
-  <div class="col-12 col-sm-6 col-md-3">
+  <!-- <div class="col-12 col-sm-6 col-md-3">
     <div class="info-box">
       <span class="info-box-icon bg-dark elevation-1"><i class="fas fa-copyright"></i></span>
       <div class="info-box-content">
@@ -15,7 +15,7 @@
         </span>
       </div>
     </div>
-  </div>
+  </div> -->
 
   <!-- Total Category -->
   <div class="col-12 col-sm-6 col-md-3">

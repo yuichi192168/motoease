@@ -11,7 +11,7 @@
 	<div class="card-body">
 		<div class="container-fluid">
 			<div class="row">
-				<div class="col-md-3">
+				<!-- <div class="col-md-3">
 					<div class="info-box bg-primary">
 						<span class="info-box-icon"><i class="fas fa-copyright"></i></span>
 						<div class="info-box-content">
@@ -24,7 +24,7 @@
 							</span>
 						</div>
 					</div>
-				</div>
+				</div> -->
 				<div class="col-md-3">
 					<div class="info-box bg-success">
 						<span class="info-box-icon"><i class="fas fa-th-list"></i></span>

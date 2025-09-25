@@ -67,13 +67,14 @@ Class Master extends DBConnection {
 	
 	function delete_category(){
 		extract($_POST);
+		$resp = array();
 		$del = $this->conn->query("UPDATE `categories` set delete_flag = 1 where id = '{$id}'");
 		if($del){
 			$resp['status'] = 'success';
 			$this->settings->set_flashdata('success',"Category successfully deleted.");
 		}else{
 			$resp['status'] = 'failed';
-			$resp['error'] = $this->conn->error;
+			$resp['msg'] = $this->conn->error;
 		}
 		return json_encode($resp);
 	}
@@ -289,7 +290,12 @@ Class Master extends DBConnection {
 											  WHERE c.client_id = '{$client_id}'");
 			$total_amount = $total_query->fetch_assoc()['total'];
 			
+			// Add add-ons total if provided
+			$addons_total = isset($_POST['addons_total']) ? floatval($_POST['addons_total']) : 0;
+			$total_amount += $addons_total;
+			
 			// Create order - only use columns that exist in the database
+			$addons_data = isset($_POST['addons']) ? $this->conn->real_escape_string($_POST['addons']) : '';
             $order_data = "client_id = '{$client_id}', 
                            ref_code = '{$ref_code}', 
                            total_amount = '{$total_amount}', 
@@ -321,6 +327,31 @@ Class Master extends DBConnection {
 				
 				if(!$create_item){
 					throw new Exception("Failed to create order item: " . $this->conn->error);
+				}
+			}
+			
+			// Add selected add-ons as separate order items
+			if(!empty($addons_data) && $addons_total > 0){
+				$addons_list = explode(',', $addons_data);
+				foreach($addons_list as $addon_id){
+					$addon_id = trim($addon_id);
+					if(!empty($addon_id)){
+						// Get addon details
+						$addon_query = $this->conn->query("SELECT * FROM product_list WHERE id = '{$addon_id}'");
+						if($addon_query && $addon_query->num_rows > 0){
+							$addon = $addon_query->fetch_assoc();
+							
+							$addon_item_data = "order_id = '{$order_id}', 
+											   product_id = '{$addon_id}', 
+											   quantity = 1";
+							
+							$create_addon_item = $this->conn->query("INSERT INTO order_items SET {$addon_item_data}");
+							
+							if(!$create_addon_item){
+								throw new Exception("Failed to create addon item: " . $this->conn->error);
+							}
+						}
+					}
 				}
 			}
 			
@@ -589,13 +620,14 @@ Class Master extends DBConnection {
 	}
 	function delete_product(){
 		extract($_POST);
+		$resp = array();
 		$del = $this->conn->query("UPDATE `product_list` set `delete_flag` = 1  where id = '{$id}'");
 		if($del){
 			$resp['status'] = 'success';
 			$this->settings->set_flashdata('success',"Product successfully deleted.");
 		}else{
 			$resp['status'] = 'failed';
-			$resp['error'] = $this->conn->error;
+			$resp['msg'] = $this->conn->error;
 		}
 		return json_encode($resp);
 
@@ -643,13 +675,14 @@ Class Master extends DBConnection {
 	
 	function delete_service(){
 		extract($_POST);
+		$resp = array();
 		$del = $this->conn->query("UPDATE `service_list` set delete_flag = 1 where id = '{$id}'");
 		if($del){
 			$resp['status'] = 'success';
 			$this->settings->set_flashdata('success',"Service successfully deleted.");
 		}else{
 			$resp['status'] = 'failed';
-			$resp['error'] = $this->conn->error;
+			$resp['msg'] = $this->conn->error;
 		}
 		return json_encode($resp);
 	}
@@ -715,13 +748,14 @@ Class Master extends DBConnection {
 	
 	function delete_brand(){
 		extract($_POST);
+		$resp = array();
 		$del = $this->conn->query("UPDATE `brand_list` set delete_flag = 1 where id = '{$id}'");
 		if($del){
 			$resp['status'] = 'success';
 			$this->settings->set_flashdata('success',"Brand successfully deleted.");
 		}else{
 			$resp['status'] = 'failed';
-			$resp['error'] = $this->conn->error;
+			$resp['msg'] = $this->conn->error;
 		}
 		return json_encode($resp);
 	}
@@ -767,13 +801,14 @@ Class Master extends DBConnection {
 	
 	function delete_mechanic(){
 		extract($_POST);
+		$resp = array();
 		$del = $this->conn->query("UPDATE `mechanics_list` set delete_flag = 1 where id = '{$id}'");
 		if($del){
 			$resp['status'] = 'success';
 			$this->settings->set_flashdata('success',"Mechanic successfully deleted.");
 		}else{
 			$resp['status'] = 'failed';
-			$resp['error'] = $this->conn->error;
+			$resp['msg'] = $this->conn->error;
 		}
 		return json_encode($resp);
 	}
@@ -847,13 +882,14 @@ Class Master extends DBConnection {
 	
 	function delete_request(){
 		extract($_POST);
+		$resp = array();
 		$del = $this->conn->query("DELETE FROM `service_requests` where id = '{$id}'");
 		if($del){
 			$resp['status'] = 'success';
 			$this->settings->set_flashdata('success',"Request successfully deleted.");
 		}else{
 			$resp['status'] = 'failed';
-			$resp['error'] = $this->conn->error;
+			$resp['msg'] = $this->conn->error;
 		}
 		return json_encode($resp);
 	}

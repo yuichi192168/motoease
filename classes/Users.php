@@ -70,6 +70,7 @@ Class Users extends DBConnection {
 	}
 	public function delete_users(){
 		extract($_POST);
+		$resp = array();
 		$avatar = $this->conn->query("SELECT avatar FROM users where id = '{$id}'")->fetch_array()['avatar'];
 		$qry = $this->conn->query("DELETE FROM users where id = $id");
 		if($qry){
@@ -184,6 +185,7 @@ Class Users extends DBConnection {
 
 	function delete_client(){
 		extract($_POST);
+		$resp = array();
 		$del = $this->conn->query("UPDATE `client_list` set delete_flag = 1 where id='{$id}'");
 		if($del){
 			$resp['status'] = 'success';

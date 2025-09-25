@@ -38,10 +38,33 @@
                         </div>
                         <?php endif; ?>
                         
+                        <?php 
+                        // Get add-ons data from URL parameters
+                        $addons = isset($_GET['addons']) ? $_GET['addons'] : '';
+                        $addon_details = isset($_GET['addon_details']) ? json_decode($_GET['addon_details'], true) : [];
+                        $addons_total = isset($_GET['addons_total']) ? floatval($_GET['addons_total']) : 0;
+                        $grand_total = $total + $addons_total;
+                        ?>
+                        
+                        <?php if($addons_total > 0): ?>
+                        <div class="d-flex justify-content-between align-items-center w-100 border-top pt-3 mt-3">
+                            <h5 class="mb-0">Subtotal:</h5>
+                            <h4 class="mb-0">₱<?= number_format($total,2) ?></h4>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center w-100 pt-2">
+                            <h5 class="mb-0 text-success">Add-ons Total:</h5>
+                            <h4 class="mb-0 text-success">₱<?= number_format($addons_total,2) ?></h4>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center w-100 border-top pt-3 mt-3">
+                            <h5 class="mb-0">Grand Total:</h5>
+                            <h4 class="mb-0 text-primary">₱<?= number_format($grand_total,2) ?></h4>
+                        </div>
+                        <?php else: ?>
                         <div class="d-flex justify-content-between align-items-center w-100 border-top pt-3 mt-3">
                             <h5 class="mb-0">Total Amount:</h5>
                             <h4 class="mb-0 text-primary">₱<?= number_format($total,2) ?></h4>
                         </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -49,11 +72,25 @@
             <!-- Checkout Form -->
             <div class="col-md-6">
                 <div class="card card-outline card-dark shadow rounded-0">
-                    <!-- <div class="card-header">
-                        <h4 class="card-title">Checkout Information</h4>
-                    </div> -->
+                    <div class="card-header">
+                        <h4 class="card-title">Complete Your Order</h4>
+                    </div>
                     <div class="card-body">
+                        <?php if($addons_total > 0 && !empty($addon_details)): ?>
+                        <div class="alert alert-info">
+                            <h6><i class="fa fa-info-circle"></i> Selected Motorcycle Parts:</h6>
+                            <ul class="mb-2">
+                                <?php foreach($addon_details as $addon): ?>
+                                <li><strong><?= htmlspecialchars($addon['name']) ?></strong> - ₱<?= number_format($addon['price'], 2) ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                            <small class="text-muted">Total add-ons: ₱<?= number_format($addons_total, 2) ?></small>
+                        </div>
+                        <?php endif; ?>
+                        
                         <form action="" id="place_order">
+                            <input type="hidden" name="addons" value="<?= htmlspecialchars($addons) ?>">
+                            <input type="hidden" name="addons_total" value="<?= $addons_total ?>">
                             
                             <div class="form-group text-right">
                                 <button class="btn btn-flat btn-primary" type="submit" id="place_order_btn">
@@ -109,6 +146,7 @@
                                     <i class="fa fa-check-circle text-success" style="font-size: 4rem;"></i>
                                     <h4 class="mt-3">Reference Code: <strong>${resp.ref_code}</strong></h4>
                                     <p class="text-muted">Please save this reference code for tracking your order.</p>
+                                    <p class="text-muted">Your motorcycle parts and accessories will be included in your order.</p>
                                 </div>
                             `,
                             icon: 'success',
@@ -137,3 +175,97 @@
         });
     });
 </script>
+<style>
+/* Add-ons Styling */
+.addons-section {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.addon-category {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.addon-category h6 {
+    color: #dc3545;
+    font-weight: bold;
+    border-bottom: 2px solid #dc3545;
+    padding-bottom: 5px;
+}
+
+.form-check {
+    padding: 10px;
+    border: 1px solid #e9ecef;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+}
+
+.form-check:hover {
+    border-color: #dc3545;
+    background: #fff5f5;
+}
+
+.form-check-input:checked {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.form-check-label {
+    cursor: pointer;
+    width: 100%;
+}
+
+.addons-total {
+    background: #dc3545;
+    color: white;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.addons-total h5 {
+    color: white;
+    font-weight: bold;
+}
+
+/* Red and Black Theme for Checkout */
+.btn-primary {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #c82333, #a71e2a);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+}
+
+.text-primary {
+    color: #dc3545 !important;
+}
+
+.card-outline.card-info {
+    border-color: #dc3545;
+}
+
+.card-outline.card-info .card-header {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+}
+
+.card-outline.card-dark {
+    border-color: #343a40;
+}
+
+.card-outline.card-dark .card-header {
+    background: linear-gradient(135deg, #343a40, #000000);
+    color: white;
+}
+</style>
