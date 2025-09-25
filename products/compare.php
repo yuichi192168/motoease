@@ -17,10 +17,45 @@ while($row = $qry->fetch_assoc()){ $products[] = $row; }
         <style>
             /* Theme: red (#dc3545 primary) and black accents */
             .compare-table thead th{background:#dc3545;color:#fff;border-color:#c82333}
-            .compare-table td,.compare-table th{vertical-align:middle}
+            .compare-table td,.compare-table th{vertical-align:top;padding:12px 8px}
             .color-badge{display:inline-flex;align-items:center;padding:2px 8px;border:1px solid #2c2c2c;border-radius:14px;font-size:.86rem;margin:0 6px 6px 0;background:#111;color:#fff}
             .color-badge img{width:18px;height:18px;border-radius:3px;margin-right:6px;object-fit:cover;border:1px solid #444;background:#fff}
             .price-cell{font-weight:700;color:#dc3545}
+            
+            /* Bulleted list improvements */
+            .compare-table ul.list-unstyled {
+                margin: 0;
+                padding-left: 0;
+            }
+            .compare-table ul.list-unstyled li {
+                margin-bottom: 4px;
+                line-height: 1.4;
+                font-size: 0.9rem;
+            }
+            .compare-table ul.list-unstyled li:last-child {
+                margin-bottom: 0;
+            }
+            
+            /* Model bullets - red dots */
+            .compare-table ul.list-unstyled li i.fa-circle {
+                vertical-align: middle;
+            }
+            
+            /* Specification bullets - green checkmarks */
+            .compare-table ul.list-unstyled li i.fa-check-circle {
+                vertical-align: middle;
+            }
+            
+            /* Responsive improvements */
+            @media (max-width: 768px) {
+                .compare-table td, .compare-table th {
+                    padding: 8px 4px;
+                    font-size: 0.85rem;
+                }
+                .compare-table ul.list-unstyled li {
+                    font-size: 0.8rem;
+                }
+            }
         </style>
         <div class="table-responsive">
             <table class="table table-bordered table-hover table-striped compare-table">
@@ -40,9 +75,31 @@ while($row = $qry->fetch_assoc()){ $products[] = $row; }
                         <?php endforeach; ?>
                     </tr>
                     <tr>
-                        <th>Model</th>
+                        <th>Models</th>
                         <?php foreach($products as $p): ?>
-                        <td><?= htmlspecialchars($p['models']) ?></td>
+                        <td>
+                            <?php 
+                            $models = $p['models'];
+                            if(!empty($models)) {
+                                // Split models by common delimiters and create bulleted list
+                                $modelList = preg_split('/[,;|\n\r]+/', $models);
+                                $modelList = array_filter(array_map('trim', $modelList));
+                                if(count($modelList) > 1) {
+                                    echo '<ul class="list-unstyled mb-0">';
+                                    foreach($modelList as $model) {
+                                        if(!empty(trim($model))) {
+                                            echo '<li><i class="fa fa-circle" style="font-size: 6px; color: #dc3545; margin-right: 8px;"></i>' . htmlspecialchars(trim($model)) . '</li>';
+                                        }
+                                    }
+                                    echo '</ul>';
+                                } else {
+                                    echo htmlspecialchars($models);
+                                }
+                            } else {
+                                echo '—';
+                            }
+                            ?>
+                        </td>
                         <?php endforeach; ?>
                     </tr>
                     <tr>
@@ -81,9 +138,31 @@ while($row = $qry->fetch_assoc()){ $products[] = $row; }
                         <?php endforeach; ?>
                     </tr>
                     <tr>
-                        <th>Description</th>
+                        <th>Specifications</th>
                         <?php foreach($products as $p): ?>
-                        <td><?= strip_tags(html_entity_decode($p['description'])) ?></td>
+                        <td>
+                            <?php 
+                            $description = strip_tags(html_entity_decode($p['description']));
+                            if(!empty($description)) {
+                                // Split specifications by common delimiters and create bulleted list
+                                $specList = preg_split('/[,;|\n\r]+/', $description);
+                                $specList = array_filter(array_map('trim', $specList));
+                                if(count($specList) > 1) {
+                                    echo '<ul class="list-unstyled mb-0">';
+                                    foreach($specList as $spec) {
+                                        if(!empty(trim($spec))) {
+                                            echo '<li><i class="fa fa-check-circle" style="font-size: 8px; color: #28a745; margin-right: 8px;"></i>' . htmlspecialchars(trim($spec)) . '</li>';
+                                        }
+                                    }
+                                    echo '</ul>';
+                                } else {
+                                    echo htmlspecialchars($description);
+                                }
+                            } else {
+                                echo '—';
+                            }
+                            ?>
+                        </td>
                         <?php endforeach; ?>
                     </tr>
                 </tbody>

@@ -35,8 +35,13 @@ $unread_notifications = $conn->query("SELECT COUNT(*) as count FROM notification
                     <div class="card-body">
                         <div class="row align-items-center">
                             <div class="col-md-8">
-                                <h3 class="mb-1">Welcome back, <?= ucwords($customer['firstname'] . ' ' . $customer['lastname']) ?>!</h3>
-                                <p class="text-muted mb-0">Manage your account, view orders, and track your services all in one place.</p>
+                                <div class="d-flex align-items-center">
+                                    <img src="<?php echo validate_image($customer['avatar']) ?>" class="img-circle elevation-2 me-3" style="width: 60px; height: 60px; object-fit: cover;" alt="Avatar">
+                                    <div>
+                                        <h3 class="mb-1">Welcome back, <?= ucwords($customer['firstname'] . ' ' . $customer['lastname']) ?>!</h3>
+                                        <p class="text-muted mb-0">Manage your account, view orders, and track your services all in one place.</p>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col-md-4 text-right"></div>
                         </div>

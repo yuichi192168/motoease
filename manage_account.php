@@ -22,6 +22,23 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
 ?>
 <div class="content py-5 mt-3">
     <div class="container">
+        <!-- Welcome Section with Avatar -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card card-outline card-primary shadow rounded-0">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <img src="<?php echo validate_image($_settings->userdata('avatar')) ?>" class="img-circle elevation-2 me-3" style="width: 60px; height: 60px; object-fit: cover;" alt="Avatar">
+                            <div>
+                                <h3 class="mb-1">Account Management</h3>
+                                <p class="text-muted mb-0">Welcome, <?= ucwords($_settings->userdata('firstname') . ' ' . $_settings->userdata('lastname')) ?>! Manage your profile and account settings.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Quick Actions (balance removed) -->
         <div class="row mb-4">
             <div class="col-md-12">
@@ -81,7 +98,17 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                             <div class="form-group col-md-6">
                                 <input type="email" name="email" id="email" placeholder="Enter Email Address" class="form-control form-control-sm form-control-border" required value="<?= isset($email) ? $email : "" ?>">
                                 <small class="ml-3">Email Address</small>
-                        </div>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <div class="custom-file">
+                                    <input type="file" class="custom-file-input" id="avatar" name="img" onchange="displayImg(this,$(this))" accept="image/*">
+                                    <label class="custom-file-label" for="avatar">Choose Profile Picture</label>
+                                </div>
+                                <small class="ml-3">Profile Picture (Optional)</small>
+                            </div>
+                            <div class="form-group col-md-6 d-flex justify-content-center">
+                                <img src="<?php echo validate_image(isset($avatar) ? $avatar :'') ?>" alt="Avatar Preview" id="cimg" class="img-fluid img-thumbnail" style="height: 100px; width: 100px; object-fit: cover; border-radius: 50%;">
+                            </div>
                             <div class="form-group col-md-12">
                                 <textarea name="address" id="address" rows="3" placeholder="Enter Complete Address" class="form-control form-control-sm form-control-border" required><?= isset($address) ? $address : "" ?></textarea>
                                 <small class="ml-3">Complete Address</small>
@@ -150,7 +177,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
             </div>
             <div class="card-body">
                 <?php 
-                $service_history = $conn->query("SELECT s.*, GROUP_CONCAT(sl.service SEPARATOR ', ') as services FROM service_requests s LEFT JOIN service_list sl ON FIND_IN_SET(sl.id, s.service_id) > 0 WHERE s.client_id = '{$_settings->userdata('id')}' ORDER BY s.date_created DESC");
+                $service_history = $conn->query("SELECT s.*, s.service_type, s.vehicle_name, s.vehicle_registration_number FROM service_requests s WHERE s.client_id = '{$_settings->userdata('id')}' ORDER BY s.date_created DESC");
                 if($service_history && $service_history->num_rows > 0): ?>
                 <div class="table-responsive">
                     <table class="table table-bordered table-striped">
@@ -166,7 +193,24 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                             <?php while($sh = $service_history->fetch_assoc()): ?>
                             <tr>
                                 <td>#<?= $sh['id'] ?></td>
-                                <td><?= $sh['services'] ?: 'N/A' ?></td>
+                                <td>
+                                    <?php 
+                                    $service_display = '';
+                                    if (!empty($sh['service_type'])) {
+                                        $service_display = $sh['service_type'];
+                                        if (!empty($sh['vehicle_name'])) {
+                                            $service_display .= ' - ' . $sh['vehicle_name'];
+                                        }
+                                        if (!empty($sh['vehicle_registration_number'])) {
+                                            $service_display .= ' (' . $sh['vehicle_registration_number'] . ')';
+                                        }
+                                    } else {
+                                        // Fallback: show request ID if no service type
+                                        $service_display = 'Service Request #' . $sh['id'];
+                                    }
+                                    echo $service_display;
+                                    ?>
+                                </td>
                                 <td>
                                     <span class="badge badge-<?= $sh['status'] == 3 ? 'success' : ($sh['status'] == 2 ? 'warning' : ($sh['status'] == 1 ? 'primary' : ($sh['status'] == 4 ? 'danger' : 'secondary'))) ?>">
                                         <?= $sh['status'] == 3 ? 'Done' : ($sh['status'] == 2 ? 'On Progress' : ($sh['status'] == 1 ? 'Confirmed' : ($sh['status'] == 4 ? 'Cancelled' : 'Pending'))) ?>
@@ -321,6 +365,17 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
 </div>
 
 <script>
+function displayImg(input,_this) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function (e) {
+        	$('#cimg').attr('src', e.target.result);
+        }
+
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
     $(function(){
         $('.pass_type').click(function(){
             var type = $(this).attr('data-type')

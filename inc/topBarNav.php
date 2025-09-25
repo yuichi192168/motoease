@@ -38,8 +38,9 @@
                         </a>
                       </div>
                       <div class="navbar-nav nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                          <i class="fa fa-user"></i> Hello, <?= $_settings->userdata('email') ?>
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                          <img src="<?php echo validate_image($_settings->userdata('avatar')) ?>" class="rounded-circle me-2" style="width: 25px; height: 25px; object-fit: cover;" alt="Avatar">
+                          <span>Hello, <?= $_settings->userdata('firstname') ? ucwords($_settings->userdata('firstname')) : $_settings->userdata('email') ?></span>
                         </a>
                         <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
                           <a class="dropdown-item" href="./?p=my_orders">My Orders</a>

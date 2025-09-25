@@ -98,7 +98,7 @@
               <h5 class="mb-0">Create an Account</h5>
             </div>
             <div class="card-body">
-              <form id="register-frm" method="post" novalidate>
+              <form id="register-frm" method="post" enctype="multipart/form-data" novalidate>
                 <input type="hidden" name="id">
 
                 <div class="row">
@@ -138,6 +138,17 @@
                     <label for="email" class="small">Email *</label>
                     <input type="email" name="email" id="email" class="form-control form-control-sm" placeholder="jsmith@sample.com" required>
                     <div class="error-msg" id="email-error"></div>
+                  </div>
+                  <div class="form-group col-md-6">
+                    <label for="avatar" class="small">Profile Picture</label>
+                    <div class="custom-file">
+                      <input type="file" class="custom-file-input" id="avatar" name="img" onchange="displayImg(this,$(this))" accept="image/*">
+                      <label class="custom-file-label" for="avatar">Choose file</label>
+                    </div>
+                    <small class="text-muted">Optional - Upload your profile picture</small>
+                  </div>
+                  <div class="form-group col-md-6 d-flex justify-content-center">
+                    <img src="assets/img/no-image-available.png" alt="Avatar Preview" id="cimg" class="img-fluid img-thumbnail" style="height: 100px; width: 100px; object-fit: cover; border-radius: 50%;">
                   </div>
                   <div class="form-group col-md-6">
                     <label for="password" class="small">Password *</label>
@@ -180,6 +191,17 @@
     <script src="<?= base_url ?>plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
 
     <script>
+function displayImg(input,_this) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function (e) {
+        	$('#cimg').attr('src', e.target.result);
+        }
+
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
 $(document).ready(function(){
 
   // End loader

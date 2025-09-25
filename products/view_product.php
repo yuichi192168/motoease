@@ -280,6 +280,17 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
             <div class="card-body">
                 <div id="reviews_summary" class="mb-3 text-muted"></div>
                 <div id="reviews_list"></div>
+                <div id="reviews_collapsible" class="collapse" style="display: none;">
+                    <div id="reviews_additional"></div>
+                </div>
+                <div id="reviews_controls" class="text-center mt-3" style="display: none;">
+                    <button id="show_more_reviews" class="btn btn-outline-primary btn-sm">
+                        <i class="fa fa-chevron-down"></i> Show More Reviews
+                    </button>
+                    <button id="show_less_reviews" class="btn btn-outline-secondary btn-sm" style="display: none;">
+                        <i class="fa fa-chevron-up"></i> Show Less
+                    </button>
+                </div>
                 <hr>
                 <div class="review-form">
                     <h6 class="mb-2">Leave a Review</h6>
@@ -580,6 +591,19 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         updateCarousel();
     }
     
+    // Review collapsible functionality
+    $('#show_more_reviews').click(function(){
+        $('#reviews_collapsible').slideDown(300);
+        $('#show_more_reviews').hide();
+        $('#show_less_reviews').show();
+    });
+    
+    $('#show_less_reviews').click(function(){
+        $('#reviews_collapsible').slideUp(300);
+        $('#show_less_reviews').hide();
+        $('#show_more_reviews').show();
+    });
+    
     function loadReviews(){
         $.ajax({
             url: _base_url_ + "classes/Master.php?f=get_reviews",
@@ -587,7 +611,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
             data: {
                 target_type: 'product',
                 target_id: '<?= isset($id) ? $id : "" ?>',
-                limit: 10,
+                limit: 1000, // Fetch all reviews
                 offset: 0
             },
             dataType: "json",
@@ -599,24 +623,50 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                     let s = resp.count + ' review' + (resp.count==1?'':'s');
                     if(resp.count>0){ s += ' • Avg ' + (resp.avg_rating||0) + '/5'; }
                     $('#reviews_summary').text(s);
+                    
                     if(resp.reviews.length > 0){
+                        const initialDisplayCount = 3; // Show first 3 reviews initially
+                        const allReviews = resp.reviews;
+                        const initialReviews = allReviews.slice(0, initialDisplayCount);
+                        const additionalReviews = allReviews.slice(initialDisplayCount);
+                        
+                        // Display initial reviews
                         var html = '';
-                        $.each(resp.reviews, function(idx, r){
-                            const name = r.reviewer_name ? r.reviewer_name : 'Customer';
-                            const stars = '★★★★★'.slice(0, r.rating) + '☆☆☆☆☆'.slice(0, 5 - r.rating);
-                            html += '<div class="mb-3">';
-                            html += '<div><strong>'+ name +'</strong> <span class="text-warning">'+ stars +'</span></div>';
-                            if(r.comment){ html += '<div class="text-muted">'+ $('<div>').text(r.comment).html() +'</div>'; }
-                            html += '<div class="text-xs text-muted">'+ r.date_created +'</div>';
-                            html += '</div>';
+                        $.each(initialReviews, function(idx, r){
+                            html += generateReviewHTML(r);
                         });
                         $('#reviews_list').html(html);
+                        
+                        // Display additional reviews in collapsible section
+                        if(additionalReviews.length > 0){
+                            var additionalHtml = '';
+                            $.each(additionalReviews, function(idx, r){
+                                additionalHtml += generateReviewHTML(r);
+                            });
+                            $('#reviews_additional').html(additionalHtml);
+                            $('#reviews_controls').show();
+                        }
                     } else {
                         $('#reviews_list').html('<p class="text-muted">No reviews yet. Be the first to review this product.</p>');
                     }
                 }
             }
         });
+    }
+    
+    function generateReviewHTML(r){
+        const name = r.reviewer_name ? r.reviewer_name : 'Customer';
+        const stars = '★★★★★'.slice(0, r.rating) + '☆☆☆☆☆'.slice(0, 5 - r.rating);
+        var html = '<div class="mb-3 p-3 border rounded" style="background-color: #f8f9fa;">';
+        html += '<div class="d-flex justify-content-between align-items-start mb-2">';
+        html += '<div><strong>'+ name +'</strong> <span class="text-warning">'+ stars +'</span></div>';
+        html += '<small class="text-muted">'+ r.date_created +'</small>';
+        html += '</div>';
+        if(r.comment){ 
+            html += '<div class="text-muted">'+ $('<div>').text(r.comment).html() +'</div>'; 
+        }
+        html += '</div>';
+        return html;
     }
 
     function loadProductRecommendations(){

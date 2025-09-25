@@ -14,7 +14,8 @@
 				<colgroup>
 					<col width="5%">
 					<col width="15%">
-					<col width="25%">
+					<col width="5%">
+					<col width="20%">
 					<col width="20%">
 					<col width="15%">
 					<col width="10%">
@@ -24,6 +25,7 @@
 					<tr>
 						<th>#</th>
 						<th>Date Created</th>
+						<th>Avatar</th>
 						<th>Name</th>
 						<th>Contact</th>
 						<th>OR/CR</th>
@@ -43,6 +45,9 @@
 						<tr>
 							<td class="text-center"><?php echo $i++; ?></td>
 							<td><?php echo date("Y-m-d H:i",strtotime($row['date_created'])) ?></td>
+							<td class="text-center">
+								<img src="<?php echo validate_image($row['avatar']) ?>" class="img-circle elevation-2" style="width: 40px; height: 40px; object-fit: cover;" alt="Avatar">
+							</td>
 							<td><?php echo ucwords($row['fullname']) ?></td>
 							<td>
 								<p class="m-0 lh-1">

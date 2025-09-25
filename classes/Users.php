@@ -100,6 +100,37 @@ Class Users extends DBConnection {
 			}
 			unset($_POST['oldpassword']);
 		}
+		
+		// Handle avatar upload
+		if(isset($_FILES['img']) && $_FILES['img']['error'] == 0){
+			$upload_dir = "uploads/";
+			if(!is_dir($upload_dir)){
+				mkdir($upload_dir, 0777, true);
+			}
+			
+			// Validate file type
+			$allowed_types = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+			$file_extension = strtolower(pathinfo($_FILES['img']['name'], PATHINFO_EXTENSION));
+			
+			if(in_array($file_extension, $allowed_types)){
+				$file_name = time() . '_' . uniqid() . '.' . $file_extension;
+				$file_path = $upload_dir . $file_name;
+				$full_path = base_app . $file_path;
+				
+				if(move_uploaded_file($_FILES['img']['tmp_name'], $full_path)){
+					$_POST['avatar'] = $file_path;
+				} else {
+					$resp['status'] = 'failed';
+					$resp['msg'] = 'Failed to upload avatar image.';
+					return json_encode($resp);
+				}
+			} else {
+				$resp['status'] = 'failed';
+				$resp['msg'] = 'Invalid file type. Please upload JPG, PNG, GIF, or WEBP images only.';
+				return json_encode($resp);
+			}
+		}
+		
 		extract($_POST);
 		$data = "";
 		foreach($_POST as $k => $v){
