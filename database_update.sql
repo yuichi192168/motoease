@@ -1,3 +1,19 @@
+-- Login security enhancements: attempts tracking and account lock
+-- Applies to both admin users (`users`) and customers (`client_list`).
+
+-- Add columns if they do not already exist
+ALTER TABLE `users`
+    ADD COLUMN IF NOT EXISTS `login_attempts` INT NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS `is_locked` TINYINT(1) NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS `locked_until` DATETIME NULL DEFAULT NULL,
+    ADD COLUMN IF NOT EXISTS `last_login` DATETIME NULL DEFAULT NULL;
+
+ALTER TABLE `client_list`
+    ADD COLUMN IF NOT EXISTS `login_attempts` INT NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS `is_locked` TINYINT(1) NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS `locked_until` DATETIME NULL DEFAULT NULL,
+    ADD COLUMN IF NOT EXISTS `last_login` DATETIME NULL DEFAULT NULL;
+
 -- Customer Feedback & Engagement: reviews table
 CREATE TABLE IF NOT EXISTS `reviews` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,

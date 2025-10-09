@@ -53,6 +53,12 @@ $(document).ready(function() {
                             _frm.prepend(_msg)
                             _frm.find('input').addClass('is-invalid')
                             $('[name="username"]').focus()
+                        } else if (resp.status == 'locked') {
+                            var _frm = $('#login-frm')
+                            var _msg = "<div class='alert alert-warning text-dark err_msg'><i class='fa fa-lock'></i> " + resp.msg + "</div>"
+                            _frm.prepend(_msg)
+                            _frm.find('input').addClass('is-invalid')
+                            $('[name="username"]').focus()
                         }
                         end_loader()
                     }

@@ -32,34 +32,67 @@ window.update_cart_count = function($count = 0) {
 }
 
 $(document).ready(function() {
-    // Login
+    // Login (admin) - mirror client behavior for locked message
     $('#login-frm').submit(function(e) {
             e.preventDefault()
-            start_loader()
+            var _this = $(this)
             if ($('.err_msg').length > 0)
                 $('.err_msg').remove()
+            var el = $('<div class="alert err_msg">')
+            el.hide()
+            start_loader()
             $.ajax({
                 url: _base_url_ + 'classes/Login.php?f=login',
                 method: 'POST',
                 data: $(this).serialize(),
+                dataType: 'json',
                 error: err => {
                     console.log(err)
-
+                    el.text('An error occured')
+                    el.addClass('alert-danger')
+                    _this.append(el)
+                    el.show('slow')
+                    end_loader()
                 },
                 success: function(resp) {
-                    if (resp) {
-                        resp = JSON.parse(resp)
+                    try {
+                        if (typeof resp === 'string') {
+                            resp = JSON.parse(resp)
+                        }
                         if (resp.status == 'success') {
                             location.replace(_base_url_ + 'admin');
-                        } else if (resp.status == 'incorrect') {
-                            var _frm = $('#login-frm')
-                            var _msg = "<div class='alert alert-danger text-white err_msg'><i class='fa fa-exclamation-triangle'></i> Incorrect username or password</div>"
-                            _frm.prepend(_msg)
-                            _frm.find('input').addClass('is-invalid')
+                        } else if (resp.status == 'locked') {
+                            el.text(resp.msg)
+                            el.addClass('alert-warning')
+                            _this.append(el)
+                            el.show('slow')
+                            _this.find('input').addClass('is-invalid')
+                            $('[name="username"]').focus()
+                        } else if (resp.status == 'incorrect' || !!resp.msg) {
+                            el.text(resp.msg || 'Incorrect username or password')
+                            el.addClass('alert-danger')
+                            _this.append(el)
+                            el.show('slow')
+                            _this.find('input').addClass('is-invalid')
+                            $('[name="username"]').focus()
+                        } else {
+                            el.text('An error occured')
+                            el.addClass('alert-danger')
+                            _this.append(el)
+                            el.show('slow')
+                            _this.find('input').addClass('is-invalid')
                             $('[name="username"]').focus()
                         }
-                        end_loader()
+                    } catch (e) {
+                        console.log('JSON Parse Error:', e, 'Response:', resp)
+                        el.text('An error occured while processing the response')
+                        el.addClass('alert-danger')
+                        _this.append(el)
+                        el.show('slow')
+                        _this.find('input').addClass('is-invalid')
+                        $('[name="username"]').focus()
                     }
+                    end_loader()
                 }
             })
         })

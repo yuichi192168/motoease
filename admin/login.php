@@ -73,17 +73,46 @@
 </div>
 <!-- /.login-box -->
 
-<!-- jQuery -->
-<script src="plugins/jquery/jquery.min.js"></script>
-<!-- Bootstrap 4 -->
-<script src="plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
-<!-- AdminLTE App -->
-<script src="dist/js/adminlte.min.js"></script>
+<!-- Scripts are already included via admin/inc/header.php. Avoid reloading jQuery/AdminLTE to preserve event handlers. -->
 
 <script>
   $(document).ready(function(){
     end_loader();
-  })
+
+    $('#login-frm').submit(function(e){
+      e.preventDefault();
+      var _this = $(this);
+      
+      _this.find('.btn-primary').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Signing In...');
+      
+      $.ajax({
+        url: '../classes/Login.php?f=login',
+        data: $(this).serialize(),
+        method: 'POST',
+        dataType: 'json',
+        error: function(err) {
+          console.log(err);
+          alert('An error occurred.');
+          _this.find('.btn-primary').prop('disabled', false).html('Sign In');
+        },
+        success: function(resp) {
+          if(resp.status == 'success') {
+            location.replace('./');
+          } else if(resp.status == 'locked') {
+            // Show locked account message as alert
+            alert('Account Locked: ' + resp.msg);
+            _this.find('.btn-primary').prop('disabled', false).html('Sign In');
+          } else if(resp.status == 'incorrect') {
+            alert('Incorrect username or password.');
+            _this.find('.btn-primary').prop('disabled', false).html('Sign In');
+          } else {
+            alert('An error occurred.');
+            _this.find('.btn-primary').prop('disabled', false).html('Sign In');
+          }
+        }
+      });
+    });
+  });
 </script>
 </body>
 </html>

@@ -32,20 +32,25 @@ class Login extends DBConnection {
 		return false;
 	}
 	
-	private function updateLoginAttempts($table, $field, $value, $success = false) {
-		if($success) {
-			$this->conn->query("UPDATE {$table} SET login_attempts = 0, is_locked = 0, locked_until = NULL WHERE {$field} = '{$value}'");
-		} else {
-			$this->conn->query("UPDATE {$table} SET login_attempts = login_attempts + 1 WHERE {$field} = '{$value}'");
-			
-			// Check if account should be locked (after 5 failed attempts)
-			$attempts = $this->conn->query("SELECT login_attempts FROM {$table} WHERE {$field} = '{$value}'")->fetch_assoc()['login_attempts'];
-			if($attempts >= 5) {
-				$lock_until = date('Y-m-d H:i:s', strtotime('+30 minutes'));
-				$this->conn->query("UPDATE {$table} SET is_locked = 1, locked_until = '{$lock_until}' WHERE {$field} = '{$value}'");
-			}
-		}
-	}
+    private function updateLoginAttempts($table, $field, $value, $success = false) {
+        if($success) {
+            $this->conn->query("UPDATE {$table} SET login_attempts = 0, is_locked = 0, locked_until = NULL WHERE {$field} = '{$value}'");
+            return false;
+        } else {
+            $this->conn->query("UPDATE {$table} SET login_attempts = login_attempts + 1 WHERE {$field} = '{$value}'");
+            
+            // Check if account should be locked (after 3 failed attempts)
+            $attemptsRow = $this->conn->query("SELECT login_attempts FROM {$table} WHERE {$field} = '{$value}'")->fetch_assoc();
+            $attempts = isset($attemptsRow['login_attempts']) ? (int)$attemptsRow['login_attempts'] : 0;
+            if($attempts >= 3) {
+                // Lock for 1 minute as requested
+                $lock_until = date('Y-m-d H:i:s', strtotime('+1 minute'));
+                $this->conn->query("UPDATE {$table} SET is_locked = 1, locked_until = '{$lock_until}' WHERE {$field} = '{$value}'");
+                return true;
+            }
+            return false;
+        }
+    }
 	
 	public function login(){
 		extract($_POST);
@@ -76,12 +81,16 @@ class Login extends DBConnection {
 			$this->conn->query("UPDATE users SET last_login = NOW() WHERE username = '{$username}'");
 			
 		return json_encode(array('status'=>'success'));
-		}else{
-			// Increment failed login attempts
-			$this->updateLoginAttempts('users', 'username', $username, false);
-			
-		return json_encode(array('status'=>'incorrect','last_qry'=>"SELECT * from users where username = '$username' and `password` = md5('$password') "));
-		}
+        }else{
+            // Increment failed login attempts and detect if locked now
+            $lockedNow = $this->updateLoginAttempts('users', 'username', $username, false);
+            if ($lockedNow) {
+                $lockMsg = $this->checkAccountLock('users', 'username', $username);
+                return json_encode(array('status'=>'locked','msg'=>$lockMsg ?: 'Account is locked.'));
+            }
+            
+            return json_encode(array('status'=>'incorrect','last_qry'=>"SELECT * from users where username = '$username' and `password` = md5('$password') "));
+        }
 	}
 	public function logout(){
 		if($this->settings->sess_des()){
@@ -124,15 +133,20 @@ class Login extends DBConnection {
 				$resp['status'] = 'failed';
 				$resp['msg'] = ' Your Account has been blocked by the management.';
 			}
-		}else{
-			// Increment failed login attempts
-			$this->updateLoginAttempts('client_list', 'email', $email, false);
-			
-			$resp['status'] = 'failed';
-			$resp['msg'] = ' Incorrect Email or Password.';
-			$resp['error'] = $this->conn->error;
-			$resp['res'] = $result;
-		}
+        }else{
+            // Increment failed login attempts and detect if locked now
+            $lockedNow = $this->updateLoginAttempts('client_list', 'email', $email, false);
+            if ($lockedNow) {
+                $lockMsg = $this->checkAccountLock('client_list', 'email', $email);
+                $resp['status'] = 'locked';
+                $resp['msg'] = $lockMsg ?: 'Account is locked.';
+            } else {
+                $resp['status'] = 'failed';
+                $resp['msg'] = ' Incorrect Email or Password.';
+                $resp['error'] = $this->conn->error;
+                $resp['res'] = $result;
+            }
+        }
 		return json_encode($resp);
 	}
 	public function logout_client(){
