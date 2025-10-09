@@ -423,7 +423,7 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
     left:50%;
     transform:translateX(-50%);
     z-index:9999;
-    background:#fff;
+    background:#ffffff;
     border:1px solid #ddd;
     border-radius:30px;
     padding:8px 12px;
