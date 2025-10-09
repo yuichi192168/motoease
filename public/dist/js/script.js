@@ -28,6 +28,35 @@ window.update_cart_count = function($count = 0) {
 }
 
 $(document).ready(function() {
+    function startLockCountdown($form, $alertEl, lockedUntilTs) {
+        try {
+            if (!lockedUntilTs) return;
+            var $btn = $form.find('button[type="submit"], .btn-primary').first();
+            var endMs = (typeof lockedUntilTs === 'number' ? lockedUntilTs : parseInt(lockedUntilTs, 10)) * 1000;
+            var timerId = null;
+            var update = function() {
+                var remaining = Math.max(0, endMs - Date.now());
+                var totalSec = Math.floor(remaining / 1000);
+                var mm = String(Math.floor(totalSec / 60)).padStart(2, '0');
+                var ss = String(totalSec % 60).padStart(2, '0');
+                var baseMsg = $alertEl.data('baseMsg') || $alertEl.text();
+                $alertEl.data('baseMsg', baseMsg);
+                $alertEl.text(baseMsg.replace(/(\s*\(\d{2}:\d{2}\))?$/, '') + ' (' + mm + ':' + ss + ')');
+                if (remaining <= 0) {
+                    clearInterval(timerId);
+                    if ($btn.length) $btn.prop('disabled', false).text($btn.data('origText') || $btn.text());
+                    $alertEl.remove();
+                    $form.find('input').removeClass('is-invalid');
+                }
+            };
+            if ($btn.length) {
+                $btn.data('origText', $btn.text());
+                $btn.prop('disabled', true).text('Locked');
+            }
+            update();
+            timerId = setInterval(update, 1000);
+        } catch (e) { console.log('Countdown init error', e); }
+    }
     // Login
     $('#login-frm').submit(function(e) {
             e.preventDefault()
@@ -55,10 +84,14 @@ $(document).ready(function() {
                             $('[name="username"]').focus()
                         } else if (resp.status == 'locked') {
                             var _frm = $('#login-frm')
-                            var _msg = "<div class='alert alert-warning text-dark err_msg'><i class='fa fa-lock'></i> " + resp.msg + "</div>"
-                            _frm.prepend(_msg)
+                            var el = $("<div class='alert alert-warning text-dark err_msg'></div>")
+                            el.html("<i class='fa fa-lock'></i> " + (resp.msg || 'Account is locked.'))
+                            _frm.prepend(el)
                             _frm.find('input').addClass('is-invalid')
                             $('[name="username"]').focus()
+                            if (resp.locked_until_ts) {
+                                startLockCountdown(_frm, el, resp.locked_until_ts)
+                            }
                         }
                         end_loader()
                     }
@@ -90,6 +123,16 @@ $(document).ready(function() {
                 success: function(resp) {
                     if (resp.status == 'success') {
                         location.replace(_base_url_);
+                    } else if (resp.status == 'locked') {
+                        el.html("<i class='fa fa-lock'></i> " + (resp.msg || 'Account is locked.'))
+                        el.addClass('alert-warning')
+                        _this.append(el)
+                        el.show('slow')
+                        _this.find('input').addClass('is-invalid')
+                        $('[name="email"]').focus()
+                        if (resp.locked_until_ts) {
+                            startLockCountdown(_this, el, resp.locked_until_ts)
+                        }
                     } else if (!!resp.msg) {
                         el.text(resp.msg)
                         el.addClass('alert-danger')

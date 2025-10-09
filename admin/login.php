@@ -99,8 +99,35 @@
           if(resp.status == 'success') {
             location.replace('./');
           } else if(resp.status == 'locked') {
-            // Show locked account message as alert
-            alert('Account Locked: ' + resp.msg);
+            if ($('.err_msg').length > 0) $('.err_msg').remove();
+            var el = $('<div class="alert alert-warning err_msg">');
+            el.html('<i class="fa fa-lock"></i> ' + (resp.msg || 'Account is locked.'));
+            $('#login-frm').prepend(el);
+            // countdown if provided
+            if (resp.locked_until_ts) {
+              (function startLockCountdown(){
+                try {
+                  var $form = $('#login-frm');
+                  var $btn = $form.find('.btn-primary');
+                  var endMs = parseInt(resp.locked_until_ts, 10) * 1000;
+                  $btn.prop('disabled', true).data('orig','Sign In').text('Locked');
+                  var timer = setInterval(function(){
+                    var remaining = Math.max(0, endMs - Date.now());
+                    var total = Math.floor(remaining/1000);
+                    var mm = String(Math.floor(total/60)).padStart(2,'0');
+                    var ss = String(total%60).padStart(2,'0');
+                    var base = el.data('base') || el.text();
+                    el.data('base', base);
+                    el.text(base.replace(/(\s*\(\d{2}:\d{2}\))?$/, '') + ' ('+mm+':'+ss+')');
+                    if (remaining <= 0) {
+                      clearInterval(timer);
+                      $btn.prop('disabled', false).text('Sign In');
+                      el.remove();
+                    }
+                  }, 1000);
+                } catch(e) { console.log(e); }
+              })();
+            }
             _this.find('.btn-primary').prop('disabled', false).html('Sign In');
           } else if(resp.status == 'incorrect') {
             alert('Incorrect username or password.');

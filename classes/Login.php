@@ -22,7 +22,12 @@ class Login extends DBConnection {
 			$data = $check->fetch_assoc();
 			if($data['is_locked'] == 1) {
 				if($data['locked_until'] && strtotime($data['locked_until']) > time()) {
-					return "Account is locked until " . date('M d, Y H:i', strtotime($data['locked_until']));
+					$lockedUntilTs = strtotime($data['locked_until']);
+					return array(
+						'msg' => "Account is locked until " . date('M d, Y H:i', $lockedUntilTs),
+						'locked_until' => $data['locked_until'],
+						'locked_until_ts' => $lockedUntilTs
+					);
 				} else {
 					// Unlock account if lock period has expired
 					$this->conn->query("UPDATE {$table} SET is_locked = 0, locked_until = NULL, login_attempts = 0 WHERE {$field} = '{$value}'");
@@ -59,7 +64,7 @@ class Login extends DBConnection {
 		// Check if account is locked
 		$lock_check = $this->checkAccountLock('users', 'username', $username);
 		if($lock_check) {
-			return json_encode(array('status'=>'locked', 'msg'=>$lock_check));
+			return json_encode(array('status'=>'locked', 'msg'=> is_array($lock_check) ? $lock_check['msg'] : $lock_check, 'locked_until' => is_array($lock_check) ? $lock_check['locked_until'] : null, 'locked_until_ts' => is_array($lock_check) ? $lock_check['locked_until_ts'] : null));
 		}
 		
 		$stmt = $this->conn->prepare("SELECT * from users where username = ? and `password` = ? ");
@@ -83,11 +88,16 @@ class Login extends DBConnection {
 		return json_encode(array('status'=>'success'));
         }else{
             // Increment failed login attempts and detect if locked now
-            $lockedNow = $this->updateLoginAttempts('users', 'username', $username, false);
-            if ($lockedNow) {
-                $lockMsg = $this->checkAccountLock('users', 'username', $username);
-                return json_encode(array('status'=>'locked','msg'=>$lockMsg ?: 'Account is locked.'));
-            }
+			$lockedNow = $this->updateLoginAttempts('users', 'username', $username, false);
+			if ($lockedNow) {
+				$lockInfo = $this->checkAccountLock('users', 'username', $username);
+				return json_encode(array(
+					'status' => 'locked',
+					'msg' => is_array($lockInfo) ? $lockInfo['msg'] : ($lockInfo ?: 'Account is locked.'),
+					'locked_until' => is_array($lockInfo) ? $lockInfo['locked_until'] : null,
+					'locked_until_ts' => is_array($lockInfo) ? $lockInfo['locked_until_ts'] : null
+				));
+			}
             
             return json_encode(array('status'=>'incorrect','last_qry'=>"SELECT * from users where username = '$username' and `password` = md5('$password') "));
         }
@@ -104,7 +114,7 @@ class Login extends DBConnection {
 		// Check if account is locked
 		$lock_check = $this->checkAccountLock('client_list', 'email', $email);
 		if($lock_check) {
-			return json_encode(array('status'=>'locked', 'msg'=>$lock_check));
+			return json_encode(array('status'=>'locked', 'msg'=> is_array($lock_check) ? $lock_check['msg'] : $lock_check, 'locked_until' => is_array($lock_check) ? $lock_check['locked_until'] : null, 'locked_until_ts' => is_array($lock_check) ? $lock_check['locked_until_ts'] : null));
 		}
 		
 		$stmt = $this->conn->prepare("SELECT * from client_list where email = ? and `password` =? and delete_flag = ?  ");
@@ -135,12 +145,14 @@ class Login extends DBConnection {
 			}
         }else{
             // Increment failed login attempts and detect if locked now
-            $lockedNow = $this->updateLoginAttempts('client_list', 'email', $email, false);
-            if ($lockedNow) {
-                $lockMsg = $this->checkAccountLock('client_list', 'email', $email);
-                $resp['status'] = 'locked';
-                $resp['msg'] = $lockMsg ?: 'Account is locked.';
-            } else {
+			$lockedNow = $this->updateLoginAttempts('client_list', 'email', $email, false);
+			if ($lockedNow) {
+				$lockInfo = $this->checkAccountLock('client_list', 'email', $email);
+				$resp['status'] = 'locked';
+				$resp['msg'] = is_array($lockInfo) ? $lockInfo['msg'] : ($lockInfo ?: 'Account is locked.');
+				$resp['locked_until'] = is_array($lockInfo) ? $lockInfo['locked_until'] : null;
+				$resp['locked_until_ts'] = is_array($lockInfo) ? $lockInfo['locked_until_ts'] : null;
+			} else {
                 $resp['status'] = 'failed';
                 $resp['msg'] = ' Incorrect Email or Password.';
                 $resp['error'] = $this->conn->error;
