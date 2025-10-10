@@ -43,24 +43,52 @@
 
     <!-- Global Admin Dashboard CSS Fixes -->
     <style>
-    /* Fix scrolling issues across all admin pages */
+    /* Fix scrolling issues across all admin pages - Remove multiple scroll bars */
+    body {
+        overflow-x: hidden !important;
+    }
+
+    .wrapper {
+        overflow: hidden !important;
+    }
+
     .content-wrapper {
         overflow-y: auto !important;
+        overflow-x: hidden !important;
         height: calc(100vh - 60px) !important;
         padding-bottom: 20px;
     }
 
     .main-content {
         min-height: calc(100vh - 60px);
+        overflow: hidden !important;
+    }
+
+    .content {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        height: calc(100vh - 60px);
+        padding: 0 !important;
     }
 
     .card-body {
         overflow-x: auto;
+        overflow-y: visible !important;
     }
 
     .table-responsive {
-        max-height: 70vh;
+        max-height: 60vh;
         overflow-y: auto;
+        overflow-x: auto;
+    }
+
+    /* Remove duplicate scroll bars from nested containers */
+    .container-fluid {
+        overflow: visible !important;
+    }
+
+    .row {
+        overflow: visible !important;
     }
 
     /* Ensure proper spacing */
@@ -72,6 +100,7 @@
     .modal-body {
         max-height: 60vh;
         overflow-y: auto;
+        overflow-x: hidden;
     }
 
     /* Improve table readability */
@@ -94,18 +123,28 @@
     /* Fix sidebar scrolling */
     .main-sidebar {
         overflow-y: auto;
+        overflow-x: hidden;
         height: 100vh;
-    }
-
-    /* Ensure content area is scrollable */
-    .content {
-        overflow-y: auto;
-        height: calc(100vh - 60px);
     }
 
     /* Fix DataTables scrolling */
     .dataTables_wrapper {
         overflow-x: auto;
+        overflow-y: visible !important;
+    }
+
+    .dataTables_scrollBody {
+        overflow-y: auto !important;
+        overflow-x: auto !important;
+    }
+
+    /* Remove scroll bars from specific problematic elements */
+    .card {
+        overflow: visible !important;
+    }
+
+    .card-header {
+        overflow: visible !important;
     }
 
     /* Better responsive design */
@@ -117,6 +156,29 @@
         .table-responsive {
             max-height: 50vh;
         }
+        
+        .content {
+            height: calc(100vh - 120px) !important;
+        }
+    }
+
+    /* Hide scroll bars but keep functionality */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
     }
 
     /* Fix sidebar brand text overflow */

@@ -65,6 +65,26 @@ class SystemSettings extends DBConnection{
 				$qry = $this->conn->query("INSERT into system_info set meta_value = '{$fname}',meta_field = 'cover' ");
 			}
 		}
+		if(isset($_FILES['main_logo']) && $_FILES['main_logo']['tmp_name'] != ''){
+			$fname = 'uploads/'.strtotime(date('y-m-d H:i')).'_'.$_FILES['main_logo']['name'];
+			$move = move_uploaded_file($_FILES['main_logo']['tmp_name'],'../'. $fname);
+			if(isset($_SESSION['system_info']['main_logo'])){
+				$qry = $this->conn->query("UPDATE system_info set meta_value = '{$fname}' where meta_field = 'main_logo' ");
+				if(is_file('../'.$_SESSION['system_info']['main_logo'])) unlink('../'.$_SESSION['system_info']['main_logo']);
+			}else{
+				$qry = $this->conn->query("INSERT into system_info set meta_value = '{$fname}',meta_field = 'main_logo' ");
+			}
+		}
+		if(isset($_FILES['secondary_logo']) && $_FILES['secondary_logo']['tmp_name'] != ''){
+			$fname = 'uploads/'.strtotime(date('y-m-d H:i')).'_'.$_FILES['secondary_logo']['name'];
+			$move = move_uploaded_file($_FILES['secondary_logo']['tmp_name'],'../'. $fname);
+			if(isset($_SESSION['system_info']['secondary_logo'])){
+				$qry = $this->conn->query("UPDATE system_info set meta_value = '{$fname}' where meta_field = 'secondary_logo' ");
+				if(is_file('../'.$_SESSION['system_info']['secondary_logo'])) unlink('../'.$_SESSION['system_info']['secondary_logo']);
+			}else{
+				$qry = $this->conn->query("INSERT into system_info set meta_value = '{$fname}',meta_field = 'secondary_logo' ");
+			}
+		}
 		
 		$update = $this->update_system_info();
 		$flash = $this->set_flashdata('success','System Info Successfully Updated.');

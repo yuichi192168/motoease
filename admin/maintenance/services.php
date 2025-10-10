@@ -18,8 +18,9 @@
 						<col width="5%">
 						<col width="15%">
 						<col width="20%">
-						<col width="30%">
-						<col width="15%">
+						<col width="25%">
+						<col width="10%">
+						<col width="10%">
 						<col width="10%">
 					</colgroup>
 					<thead>
@@ -28,6 +29,7 @@
 							<th>Date Created</th>
 							<th>Service Name</th>
 							<th>Description</th>
+							<th>Est. Time</th>
 							<th>Status</th>
 							<th>Action</th>
 						</tr>
@@ -46,6 +48,13 @@
 								<td><?php echo $row['service'] ?></td>
 								<td>
 									<p class="truncate-3 m-0 lh-1"><small><?php echo $row['description'] ?></small></p>
+								</td>
+								<td class="text-center">
+									<?php if(isset($row['estimated_hours']) && $row['estimated_hours'] > 0): ?>
+										<span class="badge badge-info"><?php echo $row['estimated_hours']; ?>h</span>
+									<?php else: ?>
+										<span class="text-muted">Not set</span>
+									<?php endif; ?>
 								</td>
 								<td class="text-center">
 									<?php if($row['status'] == 1): ?>
@@ -69,12 +78,12 @@
 						<?php endwhile; ?>
 						<?php if($qry->num_rows <= 0): ?>
 						<tr>
-							<td colspan="6" class="text-center">No services found.</td>
+							<td colspan="7" class="text-center">No services found.</td>
 						</tr>
 						<?php endif; ?>
 						<?php } catch (Exception $e) { ?>
 						<tr>
-							<td colspan="6" class="text-center text-danger">Error loading services: <?php echo $e->getMessage(); ?></td>
+							<td colspan="7" class="text-center text-danger">Error loading services: <?php echo $e->getMessage(); ?></td>
 						</tr>
 						<?php } ?>
 					</tbody>

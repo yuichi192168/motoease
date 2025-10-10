@@ -36,6 +36,13 @@
                             <dl>
                                 <dt><?php echo $row['service'] ?></dt>
                                 <dd class="truncate-3 text-muted lh-1"><small><?php echo $row['description'] ?></small></dd>
+                                <?php if(isset($row['estimated_hours']) && $row['estimated_hours'] > 0): ?>
+                                <dd class="mt-2">
+                                    <span class="badge badge-info">
+                                        <i class="fa fa-clock"></i> Est. <?php echo $row['estimated_hours']; ?>h
+                                    </span>
+                                </dd>
+                                <?php endif; ?>
                             </dl>
                         </div>
                     </a>

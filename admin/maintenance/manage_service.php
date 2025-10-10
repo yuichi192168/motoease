@@ -24,6 +24,11 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 <textarea name="description" id="" cols="30" rows="2" class="form-control form no-resize summernote"><?php echo isset($description) ? html_entity_decode(stripslashes($description)) : ''; ?></textarea>
 			</div>
             <div class="form-group">
+				<label for="estimated_hours" class="control-label">Estimated Hours</label>
+                <input type="number" name="estimated_hours" id="estimated_hours" class="form-control" value="<?php echo isset($estimated_hours) ? $estimated_hours : ''; ?>" step="0.5" min="0" placeholder="e.g., 2.5">
+                <small class="text-muted">Enter estimated completion time in hours (e.g., 2.5 for 2 hours 30 minutes)</small>
+			</div>
+            <div class="form-group">
 				<label for="status" class="control-label">Status</label>
                 <select name="status" id="status" class="custom-select selevt">
                 <option value="1" <?php echo isset($status) && $status == 1 ? 'selected' : '' ?>>Active</option>

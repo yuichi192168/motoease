@@ -12,19 +12,165 @@
 	</div>
 	<div class="card-body">
 		<div class="container-fluid">
-			<div class="alert alert-info mb-0">
-				Account balance and transaction management UI has been removed.
-				You can still manage customer profiles and OR/CR documents.
+			<div class="table-responsive">
+				<table class="table table-bordered table-stripped">
+					<colgroup>
+						<col width="5%">
+						<col width="20%">
+						<col width="15%">
+						<col width="15%">
+						<col width="15%">
+						<col width="15%">
+						<col width="15%">
+					</colgroup>
+					<thead>
+						<tr>
+							<th>#</th>
+							<th>Customer</th>
+							<th>Total Balance</th>
+							<th>Installment Plan</th>
+							<th>Paid Amount</th>
+							<th>Unpaid Amount</th>
+							<th>Action</th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php 
+						try {
+							$i = 1;
+							$qry = $conn->query("SELECT c.*, 
+												COALESCE(SUM(o.total_amount), 0) as total_balance,
+												COALESCE(SUM(CASE WHEN o.status = 4 THEN o.total_amount ELSE 0 END), 0) as paid_amount,
+												COALESCE(SUM(CASE WHEN o.status != 4 AND o.status != 5 THEN o.total_amount ELSE 0 END), 0) as unpaid_amount
+												FROM `client_list` c 
+												LEFT JOIN order_list o ON c.id = o.client_id 
+												WHERE c.delete_flag = 0 
+												GROUP BY c.id 
+												ORDER BY c.lastname, c.firstname");
+							while($row = $qry->fetch_assoc()):
+								$installment_plan = "₱" . number_format($row['total_balance'] / 6, 2) . "/month for 6 months";
+								if($row['total_balance'] == 0) $installment_plan = "No balance";
+						?>
+							<tr>
+								<td class="text-center"><?php echo $i++; ?></td>
+								<td>
+									<strong><?php echo ucwords($row['lastname'] . ', ' . $row['firstname'] . ' ' . $row['middlename']) ?></strong><br>
+									<small class="text-muted"><?php echo $row['email'] ?></small>
+								</td>
+								<td class="text-right">
+									<strong>₱<?php echo number_format($row['total_balance'], 2) ?></strong>
+								</td>
+								<td class="text-center">
+									<small><?php echo $installment_plan ?></small>
+								</td>
+								<td class="text-right text-success">
+									<strong>₱<?php echo number_format($row['paid_amount'], 2) ?></strong>
+								</td>
+								<td class="text-right text-danger">
+									<strong>₱<?php echo number_format($row['unpaid_amount'], 2) ?></strong>
+								</td>
+								<td align="center">
+									<button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">
+										Action
+										<span class="sr-only">Toggle Dropdown</span>
+									</button>
+									<div class="dropdown-menu" role="menu">
+										<a class="dropdown-item adjust_balance" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
+											<span class="fa fa-edit text-primary"></span> Adjust Balance
+										</a>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item view_transactions" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>">
+											<span class="fa fa-list text-info"></span> View Transactions
+										</a>
+									</div>
+								</td>
+							</tr>
+						<?php endwhile; ?>
+						<?php if($qry->num_rows <= 0): ?>
+						<tr>
+							<td colspan="7" class="text-center">No customer accounts found.</td>
+						</tr>
+						<?php endif; ?>
+						<?php } catch (Exception $e) { ?>
+						<tr>
+							<td colspan="7" class="text-center text-danger">Error loading customer accounts: <?php echo $e->getMessage(); ?></td>
+						</tr>
+						<?php } ?>
+					</tbody>
+				</table>
 			</div>
-			
-			<!-- Account balance table removed -->
 		</div>
 	</div>
 </div>
 
-<!-- Adjust Balance Modal removed -->
+<!-- Adjust Balance Modal -->
+<div class="modal fade" id="adjustBalanceModal" tabindex="-1" role="dialog">
+	<div class="modal-dialog modal-md" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h4 class="modal-title">Adjust Customer Balance</h4>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<form id="adjustBalanceForm">
+					<input type="hidden" name="client_id" id="adjust_client_id">
+					<div class="form-group">
+						<label>Customer Name</label>
+						<input type="text" class="form-control" id="adjust_customer_name" readonly>
+					</div>
+					<div class="form-group">
+						<label>Current Balance</label>
+						<input type="text" class="form-control" id="current_balance" readonly>
+					</div>
+					<div class="form-group">
+						<label>Adjustment Type</label>
+						<select name="adjustment_type" class="form-control" required>
+							<option value="add">Add Amount</option>
+							<option value="subtract">Subtract Amount</option>
+							<option value="set">Set New Balance</option>
+						</select>
+					</div>
+					<div class="form-group">
+						<label>Amount</label>
+						<input type="number" name="amount" class="form-control" step="0.01" min="0" required>
+					</div>
+					<div class="form-group">
+						<label>Reason</label>
+						<textarea name="reason" class="form-control" rows="3" placeholder="Reason for adjustment"></textarea>
+					</div>
+				</form>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+				<button type="submit" form="adjustBalanceForm" class="btn btn-primary">Save Changes</button>
+			</div>
+		</div>
+	</div>
+</div>
 
-<!-- View Transactions Modal removed -->
+<!-- View Transactions Modal -->
+<div class="modal fade" id="viewTransactionsModal" tabindex="-1" role="dialog">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h4 class="modal-title">Customer Transactions</h4>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<div id="transactions_list">
+					<!-- Transactions will be loaded here -->
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+			</div>
+		</div>
+	</div>
+</div>
 
 <style>
 /* Fix scrolling issues */

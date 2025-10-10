@@ -17,7 +17,7 @@ if(isset($_GET['id'])){
             <label for="status" class="control-label">Status</label>
             <select name="status" id="status" class="custom-select form-control-sm">
                 <option value="0" <?= isset($status) && $status == 0 ? 'selected' : "" ?>>Pending</option>
-                <option value="1" <?= isset($status) && $status == 1 ? 'selected' : "" ?>>Packed</option>
+                <option value="1" <?= isset($status) && $status == 1 ? 'selected' : "" ?>>Ready for pickup</option>
                 <option value="6" <?= isset($status) && $status == 6 ? 'selected' : "" ?>>Claimed</option>
                 <option value="5" <?= isset($status) && $status == 5 ? 'selected' : "" ?>>Cancelled</option>
             </select>

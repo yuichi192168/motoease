@@ -162,6 +162,18 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a href="./?page=invoices" class="nav-link <?php echo $page == 'invoices' ? 'active' : '' ?>">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Invoices & Receipts</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="./?page=orcr_documents" class="nav-link <?php echo $page == 'orcr_documents' ? 'active' : '' ?>">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>OR/CR Documents</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a href="./?page=user_log_history" class="nav-link <?php echo $page == 'user_log_history' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>User Activity Log</p>
@@ -220,8 +232,8 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 
                 <!-- Customer Account Management -->
                 <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'admin_assistant'])): ?>
-                <li class="nav-item <?php echo in_array($page, ['customer_accounts','orcr_documents']) ? 'menu-open' : '' ?>">
-                    <a href="#" class="nav-link <?php echo in_array($page, ['customer_accounts','orcr_documents']) ? 'active' : '' ?>">
+                <li class="nav-item <?php echo in_array($page, ['customer_accounts']) ? 'menu-open' : '' ?>">
+                    <a href="#" class="nav-link <?php echo in_array($page, ['customer_accounts']) ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-user-cog"></i>
                         <p>
                             Customer Accounts
@@ -235,12 +247,6 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                                 <p>Account Balances</p>
                             </a>
                         </li> -->
-                        <li class="nav-item">
-                            <a href="./?page=orcr_documents" class="nav-link <?php echo $page == 'orcr_documents' ? 'active' : '' ?>">
-                                <i class="far fa-circle nav-icon"></i>
-                                <p>OR/CR Documents</p>
-                            </a>
-                        </li>
                     </ul>
                 </li>
                 <?php endif; ?>

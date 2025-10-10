@@ -12,6 +12,59 @@
 	</div>
 	<div class="card-body">
 		<div class="container-fluid">
+			<!-- Filter Section -->
+			<div class="row mb-3">
+				<div class="col-md-12">
+					<div class="card card-outline card-info">
+						<div class="card-header">
+							<h5 class="card-title">Filter Options</h5>
+						</div>
+						<div class="card-body">
+							<form id="filter-form">
+								<div class="row">
+									<div class="col-md-3">
+										<div class="form-group">
+											<label>Date Start</label>
+											<input type="date" class="form-control form-control-sm" name="date_start" value="<?= date('Y-m-d', strtotime('-30 days')) ?>">
+										</div>
+									</div>
+									<div class="col-md-3">
+										<div class="form-group">
+											<label>Date End</label>
+											<input type="date" class="form-control form-control-sm" name="date_end" value="<?= date('Y-m-d') ?>">
+										</div>
+									</div>
+									<div class="col-md-3">
+										<div class="form-group">
+											<label>Status</label>
+											<select class="form-control form-control-sm" name="status">
+												<option value="">All Status</option>
+												<option value="pending">Pending</option>
+												<option value="released">Released</option>
+												<option value="expired">Expired</option>
+											</select>
+										</div>
+									</div>
+									<div class="col-md-3">
+										<div class="form-group">
+											<label>&nbsp;</label>
+											<div>
+												<button type="submit" class="btn btn-primary btn-sm">
+													<i class="fa fa-filter"></i> Filter
+												</button>
+												<button type="button" class="btn btn-success btn-sm" id="print_reports">
+													<i class="fa fa-print"></i> Print Report
+												</button>
+											</div>
+										</div>
+									</div>
+								</div>
+							</form>
+						</div>
+					</div>
+				</div>
+			</div>
+			
 			<div class="row mb-3">
 				<div class="col-md-3">
 					<div class="info-box bg-primary">
@@ -21,7 +74,7 @@
 							<span class="info-box-number">
 								<?php 
 									try {
-										$total_docs = $conn->query("SELECT COUNT(*) as total FROM or_cr_documents")->fetch_assoc()['total'];
+										$total_docs = $conn->query("SELECT COUNT(*) as total FROM or_cr_documents WHERE status != 'expired'")->fetch_assoc()['total'];
 										echo number_format($total_docs);
 									} catch (Exception $e) {
 										echo "0";
@@ -39,7 +92,7 @@
 							<span class="info-box-number">
 								<?php 
 									try {
-										$released_docs = $conn->query("SELECT COUNT(*) as total FROM or_cr_documents WHERE status = 'released'")->fetch_assoc()['total'];
+										$released_docs = $conn->query("SELECT COUNT(*) as total FROM or_cr_documents WHERE status = 'released' AND status != 'expired'")->fetch_assoc()['total'];
 										echo number_format($released_docs);
 									} catch (Exception $e) {
 										echo "0";
@@ -57,26 +110,8 @@
 							<span class="info-box-number">
 								<?php 
 									try {
-										$pending_docs = $conn->query("SELECT COUNT(*) as total FROM or_cr_documents WHERE status = 'pending'")->fetch_assoc()['total'];
+										$pending_docs = $conn->query("SELECT COUNT(*) as total FROM or_cr_documents WHERE status = 'pending' AND status != 'expired'")->fetch_assoc()['total'];
 										echo number_format($pending_docs);
-									} catch (Exception $e) {
-										echo "0";
-									}
-								?>
-							</span>
-						</div>
-					</div>
-				</div>
-				<div class="col-md-3">
-					<div class="info-box bg-danger">
-						<span class="info-box-icon"><i class="fas fa-exclamation-triangle"></i></span>
-						<div class="info-box-content">
-							<span class="info-box-text">Expired</span>
-							<span class="info-box-number">
-								<?php 
-									try {
-										$expired_docs = $conn->query("SELECT COUNT(*) as total FROM or_cr_documents WHERE status = 'expired'")->fetch_assoc()['total'];
-										echo number_format($expired_docs);
 									} catch (Exception $e) {
 										echo "0";
 									}
@@ -121,6 +156,7 @@
 												CONCAT(c.lastname, ', ', c.firstname, ' ', c.middlename) as customer_name
 												FROM `or_cr_documents` d 
 												INNER JOIN client_list c ON d.client_id = c.id 
+												WHERE d.status != 'expired' 
 												ORDER BY d.date_created DESC");
 							while($row = $qry->fetch_assoc()):
 								foreach($row as $k=> $v){
@@ -308,8 +344,15 @@
 			});
 		});
 		
+		$('#filter-form').submit(function(e){
+			e.preventDefault();
+			var formData = $(this).serialize();
+			location.href = "./?page=orcr_documents&" + formData;
+		});
+		
 		$('#print_reports').click(function(){
-			var nw = window.open("print_orcr_documents.php","_blank","width=800,height=600")
+			var formData = $('#filter-form').serialize();
+			var nw = window.open("print_orcr_documents.php?" + formData,"_blank","width=1000,height=700");
 		});
 	})
 	

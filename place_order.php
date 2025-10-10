@@ -9,6 +9,35 @@
                     </div>
                     <div class="card-body">
                         <?php 
+                        // Check if order contains motorcycle items and application status
+                        $customer_id = $_settings->userdata('id');
+                        $motorcycle_items = $conn->query("SELECT COUNT(*) as count FROM cart_list c 
+                                                        INNER JOIN product_list p ON c.product_id = p.id 
+                                                        INNER JOIN categories cat ON p.category_id = cat.id 
+                                                        WHERE c.client_id = '{$customer_id}' 
+                                                        AND (cat.category LIKE '%motorcycle%' OR cat.category LIKE '%bike%' OR p.name LIKE '%motorcycle%' OR p.name LIKE '%bike%')");
+                        $has_motorcycles = $motorcycle_items->fetch_assoc()['count'] > 0;
+                        
+                        if($has_motorcycles):
+                            $application_status = $conn->query("SELECT credit_application_completed FROM client_list WHERE id = '{$customer_id}'")->fetch_assoc();
+                            $application_completed = $application_status && $application_status['credit_application_completed'] == 1;
+                        ?>
+                        <div class="alert <?= $application_completed ? 'alert-success' : 'alert-warning' ?> mb-3">
+                            <div class="d-flex align-items-center">
+                                <i class="fa fa-file-alt fa-2x me-3"></i>
+                                <div>
+                                    <h6 class="mb-1">Motorcentral Credit Application</h6>
+                                    <?php if($application_completed): ?>
+                                        <p class="mb-0"><i class="fa fa-check-circle text-success"></i> Application completed - Ready to proceed</p>
+                                    <?php else: ?>
+                                        <p class="mb-0"><i class="fa fa-exclamation-triangle text-warning"></i> Application required before checkout</p>
+                                        <small class="text-muted">You'll be redirected to complete the application form</small>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        <?php 
                         $total = 0;
                         $cart = $conn->query("SELECT c.*,p.name, p.price, p.image_path,b.name as brand, cc.category FROM `cart_list` c inner join product_list p on c.product_id = p.id inner join brand_list b on p.brand_id = b.id inner join categories cc on p.category_id = cc.id where c.client_id = '{$_settings->userdata('id')}' order by p.name asc");
                         while($row = $cart->fetch_assoc()):
@@ -161,11 +190,16 @@
                             }
                         });
                     }else if(resp.status == 'failed' && !!resp.msg){
-                        var el = $('<div>');
-                        el.addClass("alert alert-danger err-msg").text(resp.msg);
-                        _this.prepend(el);
-                        el.show('slow');
-                        $("html, body").animate({ scrollTop: _this.closest('.card').offset().top }, "fast");
+                        if(resp.application_required){
+                            // Show application form modal
+                            showCreditApplicationModal(resp.application_url, resp.msg);
+                        } else {
+                            var el = $('<div>');
+                            el.addClass("alert alert-danger err-msg").text(resp.msg);
+                            _this.prepend(el);
+                            el.show('slow');
+                            $("html, body").animate({ scrollTop: _this.closest('.card').offset().top }, "fast");
+                        }
                     }else{
                         alert_toast("An error occurred while processing your order.", 'error');
                         console.log(resp);
@@ -174,6 +208,95 @@
             });
         });
     });
+
+    // Function to show credit application modal
+    function showCreditApplicationModal(applicationUrl, message) {
+        Swal.fire({
+            title: 'Credit Application Required',
+            html: `
+                <div class="text-center">
+                    <i class="fa fa-file-alt text-warning" style="font-size: 4rem;"></i>
+                    <h4 class="mt-3">Motorcentral Credit Application</h4>
+                    <p class="text-muted">${message}</p>
+                    <div class="alert alert-info">
+                        <strong>Required for Motorcycle Orders:</strong><br>
+                        • 2 Valid IDs with 3 signatures (front & back)<br>
+                        • Proof of billing (Meralco, Water, or Internet bill)<br>
+                        • Proof of income (Payslip, COE, or Bank Statement)<br>
+                        • Sketch of your house location
+                    </div>
+                </div>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Fill Application Form',
+            cancelButtonText: 'Cancel Order',
+            confirmButtonColor: '#007bff',
+            cancelButtonColor: '#dc3545'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Open application form in new tab
+                window.open(applicationUrl, '_blank');
+                
+                // Show completion confirmation dialog
+                Swal.fire({
+                    title: 'Application Form Opened',
+                    html: `
+                        <div class="text-center">
+                            <i class="fa fa-external-link-alt text-info" style="font-size: 3rem;"></i>
+                            <p class="mt-3">Please complete the Motorcentral Credit Application form in the new tab.</p>
+                            <p class="text-muted">After completing the form, return here and click "I've Completed the Application" to proceed with your order.</p>
+                        </div>
+                    `,
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonText: 'I\'ve Completed the Application',
+                    cancelButtonText: 'I\'ll Complete It Later',
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#6c757d'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Mark application as completed and retry order
+                        markApplicationCompleted();
+                    }
+                });
+            } else {
+                // User cancelled, redirect to cart
+                location.replace('./?p=cart');
+            }
+        });
+    }
+
+    // Function to mark application as completed
+    function markApplicationCompleted() {
+        start_loader();
+        $.ajax({
+            url: _base_url_ + 'classes/Master.php?f=mark_credit_application_completed',
+            method: 'POST',
+            data: { customer_id: '<?= $_settings->userdata('id') ?>' },
+            dataType: 'json',
+            success: function(resp) {
+                end_loader();
+                if(resp.status == 'success') {
+                    Swal.fire({
+                        title: 'Application Marked as Completed!',
+                        text: 'You can now proceed with your motorcycle order.',
+                        icon: 'success',
+                        confirmButtonText: 'Place Order Now'
+                    }).then(() => {
+                        // Retry placing the order
+                        $('#place_order').submit();
+                    });
+                } else {
+                    alert_toast('Failed to update application status. Please try again.', 'error');
+                }
+            },
+            error: function() {
+                end_loader();
+                alert_toast('An error occurred. Please try again.', 'error');
+            }
+        });
+    }
 </script>
 <style>
 /* Add-ons Styling */

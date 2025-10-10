@@ -61,6 +61,38 @@
 			<div class="form-group d-flex justify-content-center">
 				<img src="<?php echo validate_image($_settings->info('cover')) ?>" alt="" id="cimg2" class="img-fluid img-thumbnail">
 			</div>
+			
+			<!-- Print Report Logos Section -->
+			<hr>
+			<h5 class="text-primary">Print Report Logos</h5>
+			<p class="text-muted">Upload separate logos for print reports. Main logo appears on the left, secondary logo on the right.</p>
+			
+			<div class="row">
+				<div class="col-md-6">
+					<div class="form-group">
+						<label for="" class="control-label">Main Logo (Left Side)</label>
+						<div class="custom-file">
+							<input type="file" class="custom-file-input" id="mainLogoFile" name="main_logo" onchange="displayMainLogo(this,$(this))">
+							<label class="custom-file-label" for="mainLogoFile">Choose main logo file</label>
+						</div>
+					</div>
+					<div class="form-group d-flex justify-content-center">
+						<img src="<?php echo validate_image($_settings->info('main_logo')) ?: validate_image($_settings->info('logo')) ?>" alt="Main Logo" id="mainLogoImg" class="img-fluid img-thumbnail" style="max-height: 150px; max-width: 200px;">
+					</div>
+				</div>
+				<div class="col-md-6">
+					<div class="form-group">
+						<label for="" class="control-label">Secondary Logo (Right Side)</label>
+						<div class="custom-file">
+							<input type="file" class="custom-file-input" id="secondaryLogoFile" name="secondary_logo" onchange="displaySecondaryLogo(this,$(this))">
+							<label class="custom-file-label" for="secondaryLogoFile">Choose secondary logo file</label>
+						</div>
+					</div>
+					<div class="form-group d-flex justify-content-center">
+						<img src="<?php echo validate_image($_settings->info('secondary_logo')) ?: validate_image($_settings->info('logo')) ?>" alt="Secondary Logo" id="secondaryLogoImg" class="img-fluid img-thumbnail" style="max-height: 150px; max-width: 200px;">
+					</div>
+				</div>
+			</div>
 			</form>
 		</div>
 		<div class="card-footer">
@@ -102,6 +134,28 @@
 	        reader.onload = function (e) {
 	        	_this.siblings('.custom-file-label').html(input.files[0].name)
 	        	$('#cimg3').attr('src', e.target.result);
+	        }
+
+	        reader.readAsDataURL(input.files[0]);
+	    }
+	}
+	function displayMainLogo(input,_this) {
+	    if (input.files && input.files[0]) {
+	        var reader = new FileReader();
+	        reader.onload = function (e) {
+	        	$('#mainLogoImg').attr('src', e.target.result);
+	        	_this.siblings('.custom-file-label').html(input.files[0].name)
+	        }
+
+	        reader.readAsDataURL(input.files[0]);
+	    }
+	}
+	function displaySecondaryLogo(input,_this) {
+	    if (input.files && input.files[0]) {
+	        var reader = new FileReader();
+	        reader.onload = function (e) {
+	        	$('#secondaryLogoImg').attr('src', e.target.result);
+	        	_this.siblings('.custom-file-label').html(input.files[0].name)
 	        }
 
 	        reader.readAsDataURL(input.files[0]);

@@ -42,6 +42,11 @@ $date_end = isset($_GET['date_end']) ? $_GET['date_end'] :  date("Y-m-d") ;
         <hr>
         <div id="printable">
     <div class="report-header" style="display:flex; justify-content: space-between; align-items: center; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:15px;">
+        <!-- Main Logo on the left -->
+        <div style="flex:0 0 auto; margin-right:20px;">
+            <img src="<?php echo validate_image($_settings->info('main_logo')) ?: validate_image($_settings->info('logo')) ?>" alt="Main Logo" style="width:100px; height:100px; object-fit:contain;">
+        </div>
+
         <!-- Centered Organization Name -->
         <div style="flex:1; text-align:center;">
             <h3 style="margin:0; text-transform:uppercase; font-weight:bold;"><?php echo $_settings->info('name') ?></h3>
@@ -49,9 +54,9 @@ $date_end = isset($_GET['date_end']) ? $_GET['date_end'] :  date("Y-m-d") ;
             <p style="margin:0;">Date Between <?php echo $date_start ?> and <?php echo $date_end ?></p>
         </div>
 
-        <!-- Logo on the right -->
+        <!-- Secondary Logo on the right -->
         <div style="flex:0 0 auto; margin-left:20px;">
-            <img src="<?php echo validate_image($_settings->info('logo')) ?>" alt="System Logo" style="width:100px; height:100px; object-fit:contain;">
+            <img src="<?php echo validate_image($_settings->info('secondary_logo')) ?: validate_image($_settings->info('logo')) ?>" alt="Secondary Logo" style="width:100px; height:100px; object-fit:contain;">
         </div>
     </div>
 
@@ -94,7 +99,7 @@ $date_end = isset($_GET['date_end']) ? $_GET['date_end'] :  date("Y-m-d") ;
                     <?php if($row['status'] == 0): ?>
                         <span class="badge badge-secondary px-3 rounded-pill">Pending</span>
                     <?php elseif($row['status'] == 1): ?>
-                        <span class="badge badge-primary px-3 rounded-pill">Packed</span>
+                        <span class="badge badge-primary px-3 rounded-pill">Ready for pickup</span>
                     <?php elseif($row['status'] == 2): ?>
                         <span class="badge badge-success px-3 rounded-pill">For Delivery</span>
                     <?php elseif($row['status'] == 3): ?>

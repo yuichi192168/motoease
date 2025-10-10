@@ -257,24 +257,68 @@
         })
         $('#checkout').click(function(){
             if($('#cart-list .cart-item').length > 0){
-                // Get add-ons data from localStorage
-                var selectedAddons = localStorage.getItem('selected_addons') || '';
-                var selectedAddonDetails = localStorage.getItem('selected_addon_details') || '[]';
-                var addonsTotal = localStorage.getItem('addons_total') || '0';
+                // Check if cart contains motorcycle items
+                var hasMotorcycles = false;
+                $('#cart-list .cart-item').each(function(){
+                    var itemText = $(this).text().toLowerCase();
+                    if(itemText.includes('motorcycle') || itemText.includes('bike') || itemText.includes('honda')){
+                        hasMotorcycles = true;
+                        return false; // break loop
+                    }
+                });
                 
-                // Pass add-ons data to checkout page
-                var url = './?p=place_order';
-                if(selectedAddons) {
-                    url += '&addons=' + encodeURIComponent(selectedAddons);
-                    url += '&addon_details=' + encodeURIComponent(selectedAddonDetails);
-                    url += '&addons_total=' + encodeURIComponent(addonsTotal);
+                if(hasMotorcycles){
+                    // Show credit application reminder
+                    Swal.fire({
+                        title: 'Credit Application Required',
+                        html: `
+                            <div class="text-center">
+                                <i class="fa fa-file-alt text-warning" style="font-size: 3rem;"></i>
+                                <p class="mt-3">Your cart contains motorcycle items.</p>
+                                <p class="text-muted">You'll need to complete the Motorcentral Credit Application form before checkout.</p>
+                                <div class="alert alert-info text-left">
+                                    <strong>Required Documents:</strong><br>
+                                    • 2 Valid IDs with 3 signatures (front & back)<br>
+                                    • Proof of billing (Meralco, Water, or Internet bill)<br>
+                                    • Proof of income (Payslip, COE, or Bank Statement)<br>
+                                    • Sketch of your house location
+                                </div>
+                            </div>
+                        `,
+                        icon: 'info',
+                        showCancelButton: true,
+                        confirmButtonText: 'Continue to Checkout',
+                        cancelButtonText: 'Cancel',
+                        confirmButtonColor: '#007bff'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            proceedToCheckout();
+                        }
+                    });
+                } else {
+                    proceedToCheckout();
                 }
-                
-                location.href = url;
             }else{
                 alert_toast('Shopping cart is empty.','error')
             }
         })
+        
+        function proceedToCheckout(){
+            // Get add-ons data from localStorage
+            var selectedAddons = localStorage.getItem('selected_addons') || '';
+            var selectedAddonDetails = localStorage.getItem('selected_addon_details') || '[]';
+            var addonsTotal = localStorage.getItem('addons_total') || '0';
+            
+            // Pass add-ons data to checkout page
+            var url = './?p=place_order';
+            if(selectedAddons) {
+                url += '&addons=' + encodeURIComponent(selectedAddons);
+                url += '&addon_details=' + encodeURIComponent(selectedAddonDetails);
+                url += '&addons_total=' + encodeURIComponent(addonsTotal);
+            }
+            
+            location.href = url;
+        }
     })
     function remove_from_cart($id){
         start_loader();

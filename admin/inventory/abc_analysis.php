@@ -106,6 +106,34 @@
 	</div>
 </div>
 
+<style>
+/* Make the View Stock Details modal larger and resizable */
+#uni_modal .modal-dialog.large {
+    max-width: 90% !important;
+    width: 90% !important;
+    height: 90vh !important;
+}
+
+#uni_modal .modal-content {
+    height: 100% !important;
+    display: flex;
+    flex-direction: column;
+}
+
+#uni_modal .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    max-height: calc(90vh - 120px);
+}
+
+#uni_modal .modal-dialog.large .modal-content {
+    resize: both;
+    overflow: auto;
+    min-width: 800px;
+    min-height: 600px;
+}
+</style>
+
 <script>
 $(document).ready(function(){
 	// Load ABC analysis data
@@ -293,7 +321,7 @@ $(document).ready(function(){
 	// View stock button
 	$(document).on('click', '.view_stock', function(){
 		var product_id = $(this).data('id');
-		uni_modal("View Stock Details", "inventory/view_stock.php?id=" + product_id);
+		uni_modal("View Stock Details", "inventory/view_stock.php?id=" + product_id, "large");
 	});
 
 	// Initialize DataTable

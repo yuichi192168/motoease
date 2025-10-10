@@ -45,6 +45,7 @@
                         <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
                           <a class="dropdown-item" href="./?p=my_orders">My Orders</a>
                           <a class="dropdown-item" href="./?p=my_services">My Service Requests</a>
+                          <a class="dropdown-item" href="./?p=my_invoices">My Invoices & Receipts</a>
                           <a class="dropdown-item" href="./?p=manage_account">Manage Account</a>
                           <a class="dropdown-item" href="./classes/Login.php?f=logout_client">Logout</a>
                         </div>

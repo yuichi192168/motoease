@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="80" viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+  <!-- Black background -->
+  <rect width="200" height="80" fill="#000000"/>
+  
+  <!-- Honda Wing Design -->
+  <g transform="translate(20, 10)">
+    <!-- Main wing structure -->
+    <path d="M0 25 Q5 20 15 15 Q25 10 35 8 Q45 6 55 8 Q65 10 75 15 Q85 20 90 25 L85 30 Q75 25 65 22 Q55 20 45 22 Q35 25 25 30 Q15 25 5 30 Z" fill="#FF0000"/>
+    
+    <!-- Wing details/feathers -->
+    <path d="M10 20 Q20 15 30 12 Q40 10 50 12 Q60 15 70 20 L65 25 Q55 22 45 20 Q35 22 25 25 Q15 22 5 25 Z" fill="#FF0000"/>
+    <path d="M15 15 Q25 12 35 10 Q45 8 55 10 Q65 12 75 15 L70 20 Q60 17 50 15 Q40 17 30 20 Q20 17 10 20 Z" fill="#FF0000"/>
+    <path d="M20 10 Q30 8 40 6 Q50 5 60 6 Q70 8 80 10 L75 15 Q65 12 55 10 Q45 12 35 15 Q25 12 15 15 Z" fill="#FF0000"/>
+  </g>
+  
+  <!-- HONDA Text -->
+  <text x="100" y="65" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#FF0000">HONDA</text>
+</svg>

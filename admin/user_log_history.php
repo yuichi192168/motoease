@@ -327,7 +327,7 @@ function getServiceStatus(status) {
 function getOrderStatus(status) {
 	switch(parseInt(status)) {
 		case 0: return 'Pending';
-		case 1: return 'Packed';
+		case 1: return 'Ready for pickup';
 		case 2: return 'For Delivery';
 		case 3: return 'On the Way';
 		case 4: return 'Delivered';
@@ -352,7 +352,7 @@ function getServiceStatus($status) {
 function getOrderStatus($status) {
 	switch($status) {
 		case 0: return 'Pending';
-		case 1: return 'Packed';
+		case 1: return 'Ready for pickup';
 		case 2: return 'For Delivery';
 		case 3: return 'On the Way';
 		case 4: return 'Delivered';

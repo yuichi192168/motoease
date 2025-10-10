@@ -277,6 +277,26 @@ Class Master extends DBConnection {
 			return json_encode($resp);
 		}
 		
+		// Check if customer has completed Motorcentral Credit Application for motorcycle orders
+		$motorcycle_cart_items = $this->conn->query("SELECT COUNT(*) as count FROM cart_list c 
+													INNER JOIN product_list p ON c.product_id = p.id 
+													INNER JOIN categories cat ON p.category_id = cat.id 
+													WHERE c.client_id = '{$client_id}' 
+													AND (cat.category LIKE '%motorcycle%' OR cat.category LIKE '%bike%' OR p.name LIKE '%motorcycle%' OR p.name LIKE '%bike%')");
+		
+		if($motorcycle_cart_items->fetch_assoc()['count'] > 0){
+			// Check if customer has completed the credit application
+			$application_status = $this->conn->query("SELECT credit_application_completed FROM client_list WHERE id = '{$client_id}'")->fetch_assoc();
+			
+			if(!$application_status || $application_status['credit_application_completed'] != 1){
+				$resp['status'] = 'failed';
+				$resp['msg'] = "Please complete the Motorcentral Credit Application form before proceeding with motorcycle orders.";
+				$resp['application_required'] = true;
+				$resp['application_url'] = "https://form.jotform.com/242488642552463";
+				return json_encode($resp);
+			}
+		}
+		
 		// Start transaction
 		$this->conn->begin_transaction();
 		
@@ -915,8 +935,24 @@ Class Master extends DBConnection {
 		extract($_POST);
 		$update = $this->conn->query("UPDATE `order_list` set status = '{$status}' where id = '{$id}'");
 		if($update){
-			$resp['status'] = 'success';
-			$resp['msg'] = "Order status successfully updated.";
+			// Auto-generate invoice when order is marked as "Claimed" (status 6)
+			if($status == 6) {
+				require_once 'Invoice.php';
+				$invoice = new Invoice();
+				$invoice_result = $invoice->createInvoiceFromOrder($id, $this->settings->userdata('id'));
+				
+				if($invoice_result['status'] == 'success') {
+					$resp['status'] = 'success';
+					$resp['msg'] = "Order status updated and invoice generated successfully. Invoice: " . $invoice_result['invoice_number'];
+					$resp['invoice_number'] = $invoice_result['invoice_number'];
+				} else {
+					$resp['status'] = 'success';
+					$resp['msg'] = "Order status updated successfully, but invoice generation failed: " . $invoice_result['msg'];
+				}
+			} else {
+				$resp['status'] = 'success';
+				$resp['msg'] = "Order status successfully updated.";
+			}
 		}else{
 			$resp['status'] = 'failed';
 			$resp['msg'] = "Order status update failed.";
@@ -1744,6 +1780,21 @@ Class Master extends DBConnection {
         $resp['avg_rating'] = $stats['avg_rating'] ? round((float)$stats['avg_rating'], 2) : 0;
         return json_encode($resp);
     }
+    
+    // Mark credit application as completed
+    function mark_credit_application_completed(){
+        extract($_POST);
+        $update = $this->conn->query("UPDATE `client_list` SET credit_application_completed = 1 WHERE id = '{$customer_id}'");
+        if($update){
+            $resp['status'] = 'success';
+            $resp['msg'] = "Credit application marked as completed successfully.";
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to update application status.";
+            $resp['error'] = $this->conn->error;
+        }
+        return json_encode($resp);
+    }
 }
 
 $Master = new Master();
@@ -1869,6 +1920,9 @@ $sysset = new SystemSettings();
 	break;
 	case 'get_reviews':
 		echo $Master->get_reviews();
+	break;
+	case 'mark_credit_application_completed':
+		echo $Master->mark_credit_application_completed();
 	break;
 	default:
 		break;

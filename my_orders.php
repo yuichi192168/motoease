@@ -39,7 +39,7 @@
                                         <?php if($row['status'] == 0): ?>
                                             <span class="badge badge-secondary px-3 rounded-pill">Pending</span>
                                         <?php elseif($row['status'] == 1): ?>
-                                            <span class="badge badge-primary px-3 rounded-pill">Packed</span>
+                                            <span class="badge badge-primary px-3 rounded-pill">Ready for pickup</span>
                                         <?php elseif($row['status'] == 2): ?>
                                             <span class="badge badge-success px-3 rounded-pill">For Delivery</span>
                                         <?php elseif($row['status'] == 3): ?>

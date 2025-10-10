@@ -41,15 +41,23 @@ $date_end = isset($_GET['date_end']) ? $_GET['date_end'] :  date("Y-m-d");
         </form>
         <hr>
         <div id="printable">
-            <!-- Legal-document style header with logo -->
-            <div style="display:flex; justify-content: space-between; align-items:center; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:15px;">
+            <!-- Legal-document style header with dual logos -->
+            <div style="display:flex; justify-content: space-between; align-items: center; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:15px;">
+                <!-- Main Logo on the left -->
+                <div style="flex:0 0 auto; margin-right:20px;">
+                    <img src="<?php echo validate_image($_settings->info('main_logo')) ?: validate_image($_settings->info('logo')) ?>" alt="Main Logo" style="width:100px; height:100px; object-fit:contain;">
+                </div>
+
+                <!-- Centered Organization Name -->
                 <div style="flex:1; text-align:center;">
-                    <h2 class="m-0"><?php echo $_settings->info('name') ?></h2>
+                    <h2 class="m-0" style="text-transform:uppercase; font-weight:bold;"><?php echo $_settings->info('name') ?></h2>
                     <h4 class="m-0"><b>Service Requests Report</b></h4>
                     <p class="m-0">Date Between <?php echo $date_start ?> and <?php echo $date_end ?></p>
                 </div>
+
+                <!-- Secondary Logo on the right -->
                 <div style="flex:0 0 auto; margin-left:20px;">
-                    <img src="<?php echo validate_image($_settings->info('logo')) ?>" alt="System Logo" style="width:100px; height:100px; object-fit:contain;">
+                    <img src="<?php echo validate_image($_settings->info('secondary_logo')) ?: validate_image($_settings->info('logo')) ?>" alt="Secondary Logo" style="width:100px; height:100px; object-fit:contain;">
                 </div>
             </div>
 

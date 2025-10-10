@@ -60,10 +60,114 @@
 </script>
 <!-- Footer-->
 <footer class="py-5 bg-dark">
-            <div class="container">
-              <p class="m-0 text-center text-white">Copyright &copy; <?php echo $_settings->info('short_name') ?> 2025</p>
-          </div>
-        </footer>
+    <div class="container">
+        <div class="row">
+            <!-- Company Information -->
+            <div class="col-lg-4 col-md-6 mb-4">
+                <h5 class="text-white mb-3">
+                    <i class="fas fa-motorcycle text-primary"></i> Star Honda Calamba
+                </h5>
+                <p class="text-white-50 mb-3">
+                    Your trusted motorcycle dealer in Calamba City, Laguna. We offer quality Honda motorcycles with flexible payment options.
+                </p>
+                <div class="text-white-50">
+                    <p class="mb-2">
+                        <i class="fas fa-map-marker-alt text-primary"></i> 
+                        National Highway Brgy. Parian, Calamba City, Laguna
+                    </p>
+                    <p class="mb-2">
+                        <i class="fas fa-phone text-primary"></i> 
+                        <a href="tel:09482353207" class="text-white-50">0948-235-3207</a>
+                    </p>
+                    <p class="mb-2">
+                        <i class="fas fa-envelope text-primary"></i> 
+                        <a href="mailto:starhondacalamba55@gmail.com" class="text-white-50">starhondacalamba55@gmail.com</a>
+                    </p>
+                    <p class="mb-2">
+                        <i class="fab fa-facebook text-primary"></i> 
+                        <a href="https://www.facebook.com/starhondacalambabranch" target="_blank" class="text-white-50">@starhondacalambabranch</a>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Motorcycle Purchase Requirements -->
+            <div class="col-lg-4 col-md-6 mb-4">
+                <h5 class="text-white mb-3">
+                    <i class="fas fa-clipboard-list text-primary"></i> Purchase Requirements
+                </h5>
+                
+                <div class="mb-3">
+                    <h6 class="text-white mb-2">
+                        <i class="fas fa-money-bill-wave text-success"></i> For Cash Purchase:
+                    </h6>
+                    <ul class="list-unstyled text-white-50">
+                        <li><i class="fas fa-check text-success"></i> Valid government ID</li>
+                        <li><i class="fas fa-check text-success"></i> Proof of address</li>
+                        <li><i class="fas fa-check text-success"></i> Filled-out buyer's information form</li>
+                    </ul>
+                </div>
+
+                <div class="mb-3">
+                    <h6 class="text-white mb-2">
+                        <i class="fas fa-credit-card text-warning"></i> For Installment:
+                    </h6>
+                    <ul class="list-unstyled text-white-50">
+                        <li><i class="fas fa-check text-success"></i> 2 valid government IDs</li>
+                        <li><i class="fas fa-check text-success"></i> Proof of income (Payslip / COE / Bank Statement)</li>
+                        <li><i class="fas fa-check text-success"></i> Proof of billing</li>
+                        <li><i class="fas fa-check text-success"></i> Application form</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Quick Links & Application -->
+            <div class="col-lg-4 col-md-12 mb-4">
+                <h5 class="text-white mb-3">
+                    <i class="fas fa-link text-primary"></i> Quick Links
+                </h5>
+                
+                <div class="mb-3">
+                    <a href="https://form.jotform.com/242488642552463" target="_blank" class="btn btn-primary btn-block mb-2">
+                        <i class="fas fa-file-alt"></i> Apply for Installment
+                    </a>
+                    <a href="./?p=products" class="btn btn-outline-light btn-block mb-2">
+                        <i class="fas fa-motorcycle"></i> Browse Motorcycles
+                    </a>
+                    <a href="./?p=services" class="btn btn-outline-light btn-block mb-2">
+                        <i class="fas fa-tools"></i> Our Services
+                    </a>
+                    <a href="./?p=appointments" class="btn btn-outline-light btn-block mb-2">
+                        <i class="fas fa-calendar"></i> Book Appointment
+                    </a>
+                </div>
+
+                <div class="text-center">
+                    <h6 class="text-white mb-2">Follow Us</h6>
+                    <a href="https://www.facebook.com/starhondacalambabranch" target="_blank" class="btn btn-outline-primary btn-sm">
+                        <i class="fab fa-facebook-f"></i> Facebook
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-4 bg-light">
+
+        <!-- Copyright & Additional Info -->
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <p class="m-0 text-white-50">
+                    Copyright &copy; <?php echo $_settings->info('short_name') ?> 2025. All rights reserved.
+                </p>
+            </div>
+            <div class="col-md-6 text-md-right">
+                <p class="m-0 text-white-50">
+                    <i class="fas fa-shield-alt text-primary"></i> 
+                    Your information is treated with confidentiality
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
 
    
     <!-- Resolve conflict in jQuery UI tooltip with Bootstrap tooltip -->
