@@ -40,12 +40,12 @@
                     }else{
                         $('#uni_modal .modal-dialog').removeAttr("class").addClass("modal-dialog modal-md modal-dialog-centered")
                     }
-                    $('#uni_modal').modal({
-                      show:true,
-                      backdrop:'static',
-                      keyboard:false,
-                      focus:true
-                    })
+                    var modal = new bootstrap.Modal(document.getElementById('uni_modal'), {
+                      backdrop: 'static',
+                      keyboard: false,
+                      focus: true
+                    });
+                    modal.show();
                     end_loader()
                 }
             }

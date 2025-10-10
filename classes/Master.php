@@ -658,6 +658,12 @@ Class Master extends DBConnection {
 		extract($_POST);
 		$data = "";
 		$_POST['description'] = addslashes(htmlentities($description));
+		
+		// Convert estimated_hours from minutes to hours if provided
+		if(isset($_POST['estimated_hours']) && !empty($_POST['estimated_hours'])){
+			$_POST['estimated_hours'] = $_POST['estimated_hours'] / 60;
+		}
+		
 		foreach($_POST as $k =>$v){
 			if(!in_array($k,array('id'))){
 				if(!empty($data)) $data .=",";
@@ -1913,7 +1919,7 @@ Class Master extends DBConnection {
         $client_id = $this->settings->userdata('id');
         
         // Validate inputs
-        if(empty($client_id) || empty($service_type) || empty($appointment_date) || empty($appointment_time)){
+        if(empty($client_id) || empty($service_id) || empty($appointment_date) || empty($appointment_time)){
             $resp['status'] = 'failed';
             $resp['msg'] = "All required fields must be filled.";
             return json_encode($resp);
@@ -1921,12 +1927,26 @@ Class Master extends DBConnection {
         
         // Sanitize inputs
         $client_id = $this->conn->real_escape_string($client_id);
-        $service_type = $this->conn->real_escape_string($service_type);
+        $service_id = $this->conn->real_escape_string($service_id);
         $appointment_date = $this->conn->real_escape_string($appointment_date);
         $appointment_time = $this->conn->real_escape_string($appointment_time);
         $mechanic_id = isset($mechanic_id) && !empty($mechanic_id) ? $this->conn->real_escape_string($mechanic_id) : 'NULL';
-        $vehicle_info = isset($vehicle_info) ? $this->conn->real_escape_string($vehicle_info) : '';
         $notes = isset($notes) ? $this->conn->real_escape_string($notes) : '';
+        
+        // Create vehicle info string
+        $vehicle_info = '';
+        if(isset($vehicle_type) && !empty($vehicle_type)) {
+            $vehicle_info .= "Type: " . $this->conn->real_escape_string($vehicle_type) . "; ";
+        }
+        if(isset($vehicle_name) && !empty($vehicle_name)) {
+            $vehicle_info .= "Name: " . $this->conn->real_escape_string($vehicle_name) . "; ";
+        }
+        if(isset($vehicle_registration_number) && !empty($vehicle_registration_number)) {
+            $vehicle_info .= "Registration: " . $this->conn->real_escape_string($vehicle_registration_number) . "; ";
+        }
+        if(isset($vehicle_model) && !empty($vehicle_model)) {
+            $vehicle_info .= "Model: " . $this->conn->real_escape_string($vehicle_model);
+        }
         
         // Check if appointment slot is available
         $availability_check = $this->conn->query("SELECT id FROM appointments WHERE appointment_date = '{$appointment_date}' AND appointment_time = '{$appointment_time}' AND status != 'cancelled'");
@@ -1938,7 +1958,7 @@ Class Master extends DBConnection {
         }
         
         // Create appointment
-        $sql = "INSERT INTO appointments (client_id, service_type, mechanic_id, appointment_date, appointment_time, vehicle_info, notes, status, date_created) VALUES ('{$client_id}', '{$service_type}', {$mechanic_id}, '{$appointment_date}', '{$appointment_time}', '{$vehicle_info}', '{$notes}', 'pending', NOW())";
+        $sql = "INSERT INTO appointments (client_id, service_type, mechanic_id, appointment_date, appointment_time, vehicle_info, notes, status, date_created) VALUES ('{$client_id}', '{$service_id}', {$mechanic_id}, '{$appointment_date}', '{$appointment_time}', '{$vehicle_info}', '{$notes}', 'pending', NOW())";
         
         $save = $this->conn->query($sql);
         

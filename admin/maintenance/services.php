@@ -51,7 +51,7 @@
 								</td>
 								<td class="text-center">
 									<?php if(isset($row['estimated_hours']) && $row['estimated_hours'] > 0): ?>
-										<span class="badge badge-info"><?php echo $row['estimated_hours']; ?>h</span>
+										<span class="badge badge-info"><?php echo round($row['estimated_hours'] * 60); ?> min</span>
 									<?php else: ?>
 										<span class="text-muted">Not set</span>
 									<?php endif; ?>

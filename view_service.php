@@ -1,6 +1,14 @@
 <?php 
 require_once('config.php');
+if(!isset($_GET['id']) || empty($_GET['id'])){
+    echo "<div class='alert alert-danger'>Service ID is required.</div>";
+    exit;
+}
 $qry = $conn->query("SELECT * FROM `service_list` where id = '{$_GET['id']}'");
+if($qry->num_rows == 0){
+    echo "<div class='alert alert-danger'>Service not found.</div>";
+    exit;
+}
 foreach($qry->fetch_array() as $k => $v){
     $$k = $v;
 }
@@ -44,7 +52,7 @@ foreach($qry->fetch_array() as $k => $v){
     </div>
     <div class="w-100 d-flex justify-content-end mx-2">
         <div class="col-auto">
-            <button class="btn btn-dark btn-sm rounded-0" type="button" data-dismiss="modal">Close</button>
+            <button class="btn btn-dark btn-sm rounded-0" type="button" data-bs-dismiss="modal">Close</button>
         </div>
     </div>
 </div>

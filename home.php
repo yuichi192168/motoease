@@ -199,7 +199,7 @@ while($customer = $customer_query->fetch_assoc()) {
 <script>
     $(function(){
         $('#search').on('input',function(){
-            var _search = $(this).val().toLowerCase().trim()
+            var _search = $(this).val().toLowerCase().trim();
             $('#service_list .item').each(function(){
                 var _text = $(this).text().toLowerCase().trim()
                     _text = _text.replace(/\s+/g,' ')
