@@ -6,76 +6,50 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
 <div class="content py-5 mt-3">
     <div class="container">
         <div class="row">
-            <div class="col-md-4">
-                <h3 class="text-muted">Filters</h3>
-                <hr>
-                <!-- <div class="card card-outline shadow card-primary rounded-0">
-                    <div class="card-header">
-                        <h3 class="card-title"><b>Brands</b></h3>
-                    </div>
-                    <div class="card-body">
-                        <ul class="list-group">
-                            <li class="list-group-item list-group-item-action">
-                                <div class="custom-control custom-checkbox">
-                                    <input class="custom-control-input" type="checkbox" id="brand_all" value="all" <?= !is_array($brand_filter) && $brand_filter =='all' ? 'checked' : '' ?>>
-                                    <label for="brand_all" class="custom-control-label w-100">All</label>
-                                </div>
-                            </li>
-                            <?php 
-                                $brands = $conn->query("SELECT * FROM `brand_list` where `delete_flag` =0 and `status` = 1 order by `name` asc");
-                                while($row = $brands->fetch_assoc()):
-                            ?>
-                                <li class="list-group-item list-group-item">
+            <div class="col-12">
+                <!-- Categories Filter and Search Bar in Same Row -->
+                <div class="row mb-3">
+                    <!-- Categories Filter -->
+                    <div class="col-lg-8 col-md-12 mb-3 mb-lg-0">
+                        <div class="categories-filter-container">
+                            <h6 class="filter-title mb-2 text-muted">Filter by Category</h6>
+                            <div class="horizontal-categories">
+                                <div class="category-filter-item">
                                     <div class="custom-control custom-checkbox">
-                                        <input class="custom-control-input brand_filter" type="checkbox" id="brand_<?= $row['id'] ?>" value="<?= $row['id'] ?>" <?= ((is_array($brand_filter) && in_array($row['id'],$brand_filter)) || (!is_array($brand_filter) && $brand_filter =='all')) ? 'checked' : '' ?>>
-                                        <label for="brand_<?= $row['id'] ?>" class="custom-control-label w-100"><?= $row['name'] ?></label>
+                                        <input class="custom-control-input" type="checkbox" id="category_all" value="all" <?= !is_array($category_filter) && $category_filter =='all' ? 'checked' : '' ?>>
+                                        <label for="category_all" class="custom-control-label">All</label>
                                     </div>
-                                </li>
-                            <?php endwhile; ?>
-                        </ul>
-                    </div>
-                </div> -->
-                <div class="card card-outline shadow card-primary rounded-0">
-                    <div class="card-header">
-                        <h3 class="card-title"><b>Categories</b></h3>
-                    </div>
-                    <div class="card-body">
-                        <ul class="list-group">
-                            <li class="list-group-item list-group-item-action">
-                                <div class="custom-control custom-checkbox">
-                                    <input class="custom-control-input" type="checkbox" id="category_all" value="all" <?= !is_array($category_filter) && $category_filter =='all' ? 'checked' : '' ?>>
-                                    <label for="category_all" class="custom-control-label w-100">All</label>
                                 </div>
-                            </li>
                             <?php 
                                 $categories = $conn->query("SELECT * FROM `categories` where `delete_flag` =0 and `status` = 1 order by `category` asc");
                                 while($row = $categories->fetch_assoc()):
                             ?>
-                                <li class="list-group-item list-group-item">
+                                    <div class="category-filter-item">
                                     <div class="custom-control custom-checkbox">
                                         <input class="custom-control-input category_filter" type="checkbox" id="category_<?= $row['id'] ?>" value="<?= $row['id'] ?>" <?= ((is_array($category_filter) && in_array($row['id'],$category_filter)) || (!is_array($category_filter) && $category_filter =='all')) ? 'checked' : '' ?>>
-                                        <label for="category_<?= $row['id'] ?>" class="custom-control-label w-100"><?= $row['category'] ?></label>
+                                            <label for="category_<?= $row['id'] ?>" class="custom-control-label"><?= $row['category'] ?></label>
+                                        </div>
                                     </div>
-                                </li>
                             <?php endwhile; ?>
-                        </ul>
                     </div>
                 </div>
             </div>
-            <div class="col-md-8 mt-3">
-                <div class="row">
-                    <div class="col-md-12">
-                        <form action="" id="search_prod">
-                            <div class="input-group">
-                                <input type="search" name="search" value="<?= $search ?>" class="form-control" placeholder="Search Product...">
-                                <div class="input-group-append">
-                                    <button class="btn btn-outline-secondary"><i class="fa fa-search"></i></button>
+                    
+                    <!-- Search Bar -->
+                    <div class="col-lg-4 col-md-12">
+                        <div class="search-container">
+                            <form action="" id="search_prod">
+                                <div class="input-group input-group-sm">
+                                    <input type="search" name="search" value="<?= $search ?>" class="form-control" placeholder="Search Product...">
+                                    <div class="input-group-append">
+                                        <button class="btn btn-outline-secondary" type="submit"><i class="fa fa-search"></i></button>
+                                    </div>
                                 </div>
-                            </div>
-                        </form>
+                            </form>
+                        </div>
                     </div>
                 </div>
-                <div class="row row-cols-sm-1 row-cols-md-2 row-cols-xl-3">
+                <div class="row row-cols-sm-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4">
                     <?php 
                     $where="";
                     if(is_array($brand_filter)){
@@ -413,6 +387,183 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
     .color-option {
         width: 25px;
         height: 25px;
+    }
+}
+
+/* Horizontal Categories Styles */
+.horizontal-categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-start;
+    margin: 0;
+    padding: 0;
+    min-height: 32px;
+}
+
+.category-filter-item {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    margin: 0;
+    padding: 4px 8px;
+    display: inline-block;
+    position: relative;
+}
+
+.category-filter-item .custom-control {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 0;
+    padding: 0;
+    white-space: nowrap;
+    position: relative;
+}
+
+.category-filter-item .custom-control-label {
+    margin-left: 8px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #495057;
+    cursor: pointer;
+    transition: color 0.3s ease;
+    line-height: 1.2;
+    white-space: nowrap;
+    display: inline-block;
+    padding-right: 4px;
+}
+
+.category-filter-item .custom-control-label:hover {
+    color: #dc3545;
+}
+
+.category-filter-item .custom-control-input:checked + .custom-control-label {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.category-filter-item .custom-control-input:focus + .custom-control-label::before {
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+.category-filter-item .custom-control-input:checked + .custom-control-label::before {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+/* Categories Filter Container (No Card) */
+.categories-filter-container {
+    padding: 0.5rem 0;
+    background: transparent;
+    border: none;
+}
+
+.filter-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    color: #6c757d;
+}
+
+/* Search Container (No Card) */
+.search-container {
+    padding: 0.5rem 0;
+    background: transparent;
+    border: none;
+    display: flex;
+    align-items: center;
+    min-height: 32px;
+}
+
+.search-container form {
+    width: 100%;
+    margin: 0;
+}
+
+.search-container .input-group {
+    margin: 0;
+}
+
+/* Responsive horizontal categories */
+@media (max-width: 992px) {
+    .horizontal-categories {
+        gap: 16px;
+    }
+    
+    .category-filter-item {
+        padding: 3px 6px;
+    }
+    
+    .category-filter-item .custom-control-label {
+        font-size: 0.75rem;
+        padding-right: 3px;
+    }
+    
+    .categories-filter-container {
+        padding: 0.4rem 0;
+    }
+    
+    .search-container {
+        padding: 0.4rem 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .horizontal-categories {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        min-height: auto;
+    }
+    
+    .category-filter-item {
+        width: 100%;
+        padding: 2px 4px;
+    }
+    
+    .category-filter-item .custom-control {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .categories-filter-container {
+        padding: 0.3rem 0;
+    }
+    
+    .filter-title {
+        font-size: 0.75rem;
+        margin-bottom: 0.3rem;
+    }
+    
+    .search-container {
+        padding: 0.3rem 0;
+    }
+}
+
+@media (max-width: 576px) {
+    .horizontal-categories {
+        gap: 6px;
+    }
+    
+    .category-filter-item {
+        padding: 1px 3px;
+    }
+    
+    .category-filter-item .custom-control-label {
+        font-size: 0.7rem;
+        padding-right: 2px;
+    }
+    
+    .categories-filter-container {
+        padding: 0.2rem 0;
+    }
+    
+    .filter-title {
+        font-size: 0.7rem;
+        margin-bottom: 0.2rem;
+    }
+    
+    .search-container {
+        padding: 0.2rem 0;
     }
 }
 

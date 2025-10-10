@@ -28,7 +28,9 @@
                 <div class="row gx-4 gx-lg-5 row-cols-1 row-cols-sm-1 row-cols-md-2 row-cols-xl-2" id="service_list">
                     <?php 
                     $services = $conn->query("SELECT * FROM `service_list` where status = 1 and delete_flag = 0 order by `service`");
+                    $service_count = 0;
                     while($row= $services->fetch_assoc()):
+                        $service_count++;
                         $row['description'] = strip_tags(html_entity_decode(stripslashes($row['description'])));
                     ?>
                     <a class="col item text-decoration-none text-dark view_service" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>">
@@ -49,12 +51,22 @@
                     <?php endwhile; ?>
                 </div>
                 <div id="noResult" style="display:none" class="text-center"><b>No Result</b></div>
+                <?php if($service_count == 0): ?>
+                <div class="alert alert-warning text-center">
+                    <h5>No Services Available</h5>
+                    <p>There are currently no services available. Please check back later.</p>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
 </section>
 <script>
     $(function(){
+        console.log('Services page loaded');
+        console.log('Send request button exists:', $('#send_request').length > 0);
+        console.log('Service items count:', $('.view_service').length);
+        
         $('#search').on('input',function(){
             var _search = $(this).val().toLowerCase().trim()
             $('#service_list .item').each(function(){
@@ -77,13 +89,18 @@
             $(this).find('.callout').addClass('shadow')
         })
         $('#service_list .view_service').click(function(){
+            console.log('Service clicked, ID:', $(this).attr('data-id'));
             uni_modal("Service Details","view_service.php?id="+$(this).attr('data-id'),'mid-large')
         })
         $('#send_request').click(function(){
-            if("<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>" == 1)
-            uni_modal("Fill the Service Request Form","send_request.php",'mid-large');
-            else
-            alert_toast(" Please Login First.","warning");
+            console.log('Send request button clicked');
+            if("<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>" == 1) {
+                console.log('User is logged in, opening modal');
+                uni_modal("Fill the Service Request Form","send_request.php",'mid-large');
+            } else {
+                console.log('User not logged in, showing warning');
+                alert_toast(" Please Login First.","warning");
+            }
         })
 
     })

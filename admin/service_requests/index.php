@@ -36,8 +36,19 @@
 						$i = 1;
 						$qry = $conn->query("SELECT s.*,concat(c.lastname,', ', c.firstname,' ',c.middlename) as fullname from service_requests s inner join client_list c on s.client_id = c.id order by unix_timestamp(s.date_created) desc");
 						while($row = $qry->fetch_assoc()):
-							$sids = $conn->query("SELECT meta_value FROM request_meta where request_id = '{$row['id']}' and meta_field = 'service_id'")->fetch_assoc()['meta_value'];
-							$services  = $conn->query("SELECT * FROM service_list where id in ({$sids}) ");
+							// Get service IDs safely
+							$sids_result = $conn->query("SELECT meta_value FROM request_meta where request_id = '{$row['id']}' and meta_field = 'service_id'");
+							$sids = '';
+							if($sids_result && $sids_result->num_rows > 0) {
+								$sids_row = $sids_result->fetch_assoc();
+								$sids = $sids_row['meta_value'] ?? '';
+							}
+							
+							// Only query services if we have valid service IDs
+							$services = null;
+							if(!empty($sids) && $sids !== '') {
+								$services = $conn->query("SELECT * FROM service_list where id in ({$sids}) ");
+							}
 					?>
 						<tr>
 							<td class="text-center"><?php echo $i++; ?></td>
@@ -46,11 +57,15 @@
 							<td>
 								<p class="m-0 truncate-3">
 								<?php 
-									$s = 0;
-									while($srow = $services->fetch_assoc()){
-										$s++;
-										if($s != 1) echo ", ";
-										echo $srow['service'];
+									if($services && $services->num_rows > 0) {
+										$s = 0;
+										while($srow = $services->fetch_assoc()){
+											$s++;
+											if($s != 1) echo ", ";
+											echo $srow['service'];
+										}
+									} else {
+										echo "No services found";
 									}
 								?>	
 								</p>
