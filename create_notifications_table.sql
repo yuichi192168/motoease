@@ -21,3 +21,5 @@ INSERT INTO `notifications` (`user_id`, `type`, `title`, `message`, `reference_i
 (2, 'payment_upcoming', 'Payment Due Soon', 'Payment reminder: Your order 202504-00001 (₱12,500.00) is due in 2 day(s).', 9, 0, NOW()),
 (6, 'payment_missed', 'Payment Overdue', 'Overdue payment: Your order 202508-00001 (₱150,000.00) is 5 day(s) overdue.', 12, 0, NOW());
 
+
+

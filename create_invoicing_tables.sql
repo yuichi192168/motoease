@@ -104,3 +104,5 @@ CREATE INDEX idx_invoice_items_invoice ON invoice_items(invoice_id);
 -- ALTER TABLE receipts ADD CONSTRAINT fk_receipts_invoice FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE;
 -- ALTER TABLE receipts ADD CONSTRAINT fk_receipts_customer FOREIGN KEY (customer_id) REFERENCES client_list(id) ON DELETE CASCADE;
 
+
+

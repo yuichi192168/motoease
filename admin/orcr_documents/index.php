@@ -52,9 +52,6 @@
 												<button type="submit" class="btn btn-primary btn-sm">
 													<i class="fa fa-filter"></i> Filter
 												</button>
-												<button type="button" class="btn btn-success btn-sm" id="print_reports">
-													<i class="fa fa-print"></i> Print Report
-												</button>
 											</div>
 										</div>
 									</div>
@@ -122,6 +119,150 @@
 				</div>
 			</div>
 			
+			<div id="printable">
+				<!-- Header with dual logos -->
+				<div class="report-header" style="display:flex; justify-content: space-between; align-items: center; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:15px;">
+					<!-- Main Logo on the left -->
+					<div style="flex:0 0 auto; margin-right:20px;">
+						<img src="<?php echo validate_image($_settings->info('main_logo')) ?: validate_image($_settings->info('logo')) ?>" alt="Main Logo" style="width:100px; height:100px; object-fit:contain;">
+					</div>
+
+					<!-- Centered Organization Name -->
+					<div style="flex:1; text-align:center;">
+						<h2 style="margin:0; text-transform:uppercase; font-weight:bold;"><?php echo $_settings->info('name') ?></h2>
+						<h4 style="margin:0;"><b>OR/CR Documents Management Report</b></h4>
+						<p style="margin:0;">Generated on: <?php echo date('F d, Y \a\t H:i A') ?></p>
+					</div>
+
+					<!-- Secondary Logo on the right -->
+					<div style="flex:0 0 auto; margin-left:20px;">
+						<img src="<?php echo validate_image($_settings->info('secondary_logo')) ?: validate_image($_settings->info('logo')) ?>" alt="Secondary Logo" style="width:100px; height:100px; object-fit:contain;">
+					</div>
+				</div>
+
+				<!-- Statistics Section -->
+				<div class="stats-section" style="display:flex; justify-content:space-around; margin:20px 0; padding:15px; background-color:#f8f9fa; border:1px solid #dee2e6;">
+					<div class="stat-item" style="text-align:center;">
+						<div class="stat-number" style="font-size:24px; font-weight:bold; color:#007bff;">
+							<?php 
+								try {
+									$total_docs = $conn->query("SELECT COUNT(*) as total FROM or_cr_documents WHERE status != 'expired'")->fetch_assoc()['total'];
+									echo number_format($total_docs);
+								} catch (Exception $e) {
+									echo "0";
+								}
+							?>
+						</div>
+						<div class="stat-label" style="font-size:11px; color:#666; margin-top:5px;">Total Documents</div>
+					</div>
+					<div class="stat-item" style="text-align:center;">
+						<div class="stat-number" style="font-size:24px; font-weight:bold; color:#007bff;">
+							<?php 
+								try {
+									$released_docs = $conn->query("SELECT COUNT(*) as total FROM or_cr_documents WHERE status = 'released' AND status != 'expired'")->fetch_assoc()['total'];
+									echo number_format($released_docs);
+								} catch (Exception $e) {
+									echo "0";
+								}
+							?>
+						</div>
+						<div class="stat-label" style="font-size:11px; color:#666; margin-top:5px;">Released</div>
+					</div>
+					<div class="stat-item" style="text-align:center;">
+						<div class="stat-number" style="font-size:24px; font-weight:bold; color:#007bff;">
+							<?php 
+								try {
+									$pending_docs = $conn->query("SELECT COUNT(*) as total FROM or_cr_documents WHERE status = 'pending' AND status != 'expired'")->fetch_assoc()['total'];
+									echo number_format($pending_docs);
+								} catch (Exception $e) {
+									echo "0";
+								}
+							?>
+						</div>
+						<div class="stat-label" style="font-size:11px; color:#666; margin-top:5px;">Pending</div>
+					</div>
+				</div>
+
+				<!-- Documents Table -->
+				<table class="documents-table" style="width:100%; border-collapse:collapse; margin:20px 0;">
+					<thead>
+						<tr>
+							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">#</th>
+							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Customer</th>
+							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Document Type</th>
+							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Document Number</th>
+							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Plate Number</th>
+							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Release Date</th>
+							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Status</th>
+							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Date Uploaded</th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php 
+						try {
+							$i = 1;
+							$qry = $conn->query("SELECT d.*, 
+												CONCAT(c.lastname, ', ', c.firstname, ' ', c.middlename) as customer_name
+												FROM `or_cr_documents` d 
+												INNER JOIN client_list c ON d.client_id = c.id 
+												WHERE d.status != 'expired' 
+												ORDER BY d.date_created DESC");
+							while($row = $qry->fetch_assoc()):
+								foreach($row as $k=> $v){
+									$row[$k] = trim(stripslashes($v));
+								}
+						?>
+							<tr>
+								<td style="border:1px solid #ddd; padding:8px; text-align:center;"><?php echo $i++; ?></td>
+								<td style="border:1px solid #ddd; padding:8px;"><?php echo ucwords($row['customer_name']) ?></td>
+								<td style="border:1px solid #ddd; padding:8px; text-align:center;">
+									<span style="padding:2px 6px; border-radius:3px; font-size:10px; font-weight:bold; background-color:<?= $row['document_type'] == 'or' ? '#cce5ff' : '#d1ecf1' ?>; color:<?= $row['document_type'] == 'or' ? '#004085' : '#0c5460' ?>;">
+										<?= strtoupper($row['document_type']) ?>
+									</span>
+								</td>
+								<td style="border:1px solid #ddd; padding:8px;"><?php echo $row['document_number'] ?></td>
+								<td style="border:1px solid #ddd; padding:8px;"><?php echo $row['plate_number'] ?: 'N/A' ?></td>
+								<td style="border:1px solid #ddd; padding:8px; text-align:center;">
+									<?php 
+									if($row['release_date']){
+										echo date("M d, Y", strtotime($row['release_date']));
+									} else {
+										echo '<span style="color: #999;">Not set</span>';
+									}
+									?>
+								</td>
+								<td style="border:1px solid #ddd; padding:8px; text-align:center;">
+									<span style="padding:2px 8px; border-radius:3px; font-size:10px; font-weight:bold; background-color:<?= $row['status'] == 'released' ? '#d4edda' : ($row['status'] == 'expired' ? '#f8d7da' : '#fff3cd') ?>; color:<?= $row['status'] == 'released' ? '#155724' : ($row['status'] == 'expired' ? '#721c24' : '#856404') ?>;">
+										<?= ucfirst($row['status']) ?>
+									</span>
+								</td>
+								<td style="border:1px solid #ddd; padding:8px; text-align:center;"><?php echo date("M d, Y", strtotime($row['date_created'])) ?></td>
+							</tr>
+						<?php endwhile; ?>
+						<?php if($qry->num_rows <= 0): ?>
+						<tr>
+							<td colspan="8" style="border:1px solid #ddd; padding:8px; text-align:center;">No documents found.</td>
+						</tr>
+						<?php endif; ?>
+						<?php } catch (Exception $e) { ?>
+						<tr>
+							<td colspan="8" style="border:1px solid #ddd; padding:8px; text-align:center; color:red;">Error loading documents: <?php echo $e->getMessage(); ?></td>
+						</tr>
+						<?php } ?>
+					</tbody>
+				</table>
+
+				<!-- Footer Information -->
+				<div class="footer-info" style="margin-top:30px; padding:15px; border-top:1px solid #ddd; text-align:center; font-size:10px; color:#666;">
+					<p><strong>Company Information:</strong></p>
+					<p>📍 National Highway Brgy. Parian, Calamba City, Laguna</p>
+					<p>📞 0948-235-3207 | ✉️ starhondacalamba55@gmail.com</p>
+					<p>📘 Facebook: @starhondacalambabranch</p>
+					<hr style="margin: 10px 0;">
+					<p>This report was generated on <?= date('F d, Y \a\t H:i A') ?> by <?= ucwords($_settings->userdata('firstname') . ' ' . $_settings->userdata('lastname')) ?></p>
+				</div>
+			</div>
+
 			<div class="table-responsive">
 				<table class="table table-bordered table-stripped">
 					<colgroup>
@@ -351,8 +492,49 @@
 		});
 		
 		$('#print_reports').click(function(){
-			var formData = $('#filter-form').serialize();
-			var nw = window.open("print_orcr_documents.php?" + formData,"_blank","width=1000,height=700");
+			// Clone printable content
+			var rep = $('#printable').clone();
+			var ns = '<style>' +
+						'body{margin:40px;font-size:14px;min-height:100vh;position:relative;}' +
+						'table{border-collapse:collapse;width:100%;}' +
+						'table th, table td{border:1px solid #000;padding:5px;}' +
+						'.text-center{text-align:center;}' +
+						'.text-right{text-align:right;}' +
+						'.report-header{display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:15px;}' +
+						'.report-header h2{text-transform:uppercase;font-weight:bold;margin:0;}' +
+						'.report-header h4{text-transform:uppercase;font-weight:bold;margin:0;}' +
+						'.report-header p{margin:0;}' +
+						'.stats-section{display:flex; justify-content:space-around; margin:20px 0; padding:15px; background-color:#f8f9fa; border:1px solid #dee2e6;}' +
+						'.stat-item{text-align:center;}' +
+						'.stat-number{font-size:24px; font-weight:bold; color:#007bff;}' +
+						'.stat-label{font-size:11px; color:#666; margin-top:5px;}' +
+						'.report-info{margin:15px 0; padding:10px; background-color:#e9ecef; border-left:4px solid #007bff;}' +
+						'.documents-table{width:100%; border-collapse:collapse; margin:20px 0;}' +
+						'.documents-table th, .documents-table td{border:1px solid #ddd; padding:8px; text-align:left; font-size:11px;}' +
+						'.documents-table th{background-color:#f8f9fa; font-weight:bold; text-align:center;}' +
+						'.status-badge{padding:2px 8px; border-radius:3px; font-size:10px; font-weight:bold;}' +
+						'.status-released{background-color:#d4edda; color:#155724;}' +
+						'.status-pending{background-color:#fff3cd; color:#856404;}' +
+						'.status-expired{background-color:#f8d7da; color:#721c24;}' +
+						'.doc-type-badge{padding:2px 6px; border-radius:3px; font-size:10px; font-weight:bold;}' +
+						'.doc-type-or{background-color:#cce5ff; color:#004085;}' +
+						'.doc-type-cr{background-color:#d1ecf1; color:#0c5460;}' +
+						'.footer-info{position:fixed;bottom:0;left:0;right:0;margin-top:30px;padding:15px;border-top:1px solid #ddd;text-align:center;font-size:10px;color:#666;background-color:white;}' +
+						'@media print { #filter-form, #print_reports { display:none !important; } .footer-info{position:fixed;bottom:0;left:0;right:0;margin:0;padding:15px;border-top:1px solid #ddd;text-align:center;font-size:10px;color:#666;background-color:white;page-break-inside:avoid;}' +
+					'</style>';
+			rep.prepend(ns);
+
+			// Open new window
+			var nw = window.open('', '_blank');
+			nw.document.write('<html><head><title>OR/CR Documents Report</title></head><body>' + rep.html() + '</body></html>');
+			nw.document.close();
+
+			// Wait until content is fully loaded before printing
+			nw.onload = function(){
+				nw.focus();
+				nw.print();
+				setTimeout(function(){ nw.close(); }, 500);
+			};
 		});
 	})
 	

@@ -103,6 +103,78 @@
 				</div>
 			</div>
 
+			<!-- Printable Content -->
+			<div id="printable">
+				<!-- Header with dual logos -->
+				<div class="report-header" style="display:flex; justify-content: space-between; align-items: center; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:15px;">
+					<!-- Main Logo on the left -->
+					<div style="flex:0 0 auto; margin-right:20px;">
+						<img src="<?php echo validate_image($_settings->info('main_logo')) ?: validate_image($_settings->info('logo')) ?>" alt="Main Logo" style="width:100px; height:100px; object-fit:contain;">
+					</div>
+
+					<!-- Centered Organization Name -->
+					<div style="flex:1; text-align:center;">
+						<h2 style="margin:0; text-transform:uppercase; font-weight:bold;"><?php echo $_settings->info('name') ?></h2>
+						<h4 style="margin:0;"><b>Invoice Management Report</b></h4>
+						<p style="margin:0;">Generated on: <?php echo date('F d, Y \a\t H:i A') ?></p>
+					</div>
+
+					<!-- Secondary Logo on the right -->
+					<div style="flex:0 0 auto; margin-left:20px;">
+						<img src="<?php echo validate_image($_settings->info('secondary_logo')) ?: validate_image($_settings->info('logo')) ?>" alt="Secondary Logo" style="width:100px; height:100px; object-fit:contain;">
+					</div>
+				</div>
+
+				<!-- Statistics Section -->
+				<div class="stats-section" style="display:flex; justify-content:space-around; margin:20px 0; padding:15px; background-color:#f8f9fa; border:1px solid #dee2e6;">
+					<div class="stat-item" style="text-align:center;">
+						<div class="stat-number" style="font-size:24px; font-weight:bold; color:#007bff;" id="print_total_invoices">0</div>
+						<div class="stat-label" style="font-size:11px; color:#666; margin-top:5px;">Total Invoices</div>
+					</div>
+					<div class="stat-item" style="text-align:center;">
+						<div class="stat-number" style="font-size:24px; font-weight:bold; color:#007bff;" id="print_paid_invoices">0</div>
+						<div class="stat-label" style="font-size:11px; color:#666; margin-top:5px;">Paid Invoices</div>
+					</div>
+					<div class="stat-item" style="text-align:center;">
+						<div class="stat-number" style="font-size:24px; font-weight:bold; color:#007bff;" id="print_unpaid_invoices">0</div>
+						<div class="stat-label" style="font-size:11px; color:#666; margin-top:5px;">Unpaid Invoices</div>
+					</div>
+					<div class="stat-item" style="text-align:center;">
+						<div class="stat-number" style="font-size:24px; font-weight:bold; color:#007bff;" id="print_total_amount">₱0.00</div>
+						<div class="stat-label" style="font-size:11px; color:#666; margin-top:5px;">Total Amount</div>
+					</div>
+				</div>
+
+				<!-- Invoices Table -->
+				<table class="invoices-table" style="width:100%; border-collapse:collapse; margin:20px 0;">
+					<thead>
+						<tr>
+							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">#</th>
+							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Invoice No.</th>
+							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Customer</th>
+							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Transaction Type</th>
+							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Total Amount</th>
+							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Payment Status</th>
+							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Generated Date</th>
+							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Receipt</th>
+						</tr>
+					</thead>
+					<tbody id="print_invoices_table">
+						<!-- Data will be populated by JavaScript -->
+					</tbody>
+				</table>
+
+				<!-- Footer Information -->
+				<div class="footer-info" style="margin-top:30px; padding:15px; border-top:1px solid #ddd; text-align:center; font-size:10px; color:#666;">
+					<p><strong>Company Information:</strong></p>
+					<p>📍 National Highway Brgy. Parian, Calamba City, Laguna</p>
+					<p>📞 0948-235-3207 | ✉️ starhondacalamba55@gmail.com</p>
+					<p>📘 Facebook: @starhondacalambabranch</p>
+					<hr style="margin: 10px 0;">
+					<p>This report was generated on <?= date('F d, Y \a\t H:i A') ?> by <?= ucwords($_settings->userdata('firstname') . ' ' . $_settings->userdata('lastname')) ?></p>
+				</div>
+			</div>
+
 			<!-- Invoices Table -->
 			<div class="table-responsive">
 				<table class="table table-bordered table-stripped" id="invoices_table">
@@ -240,6 +312,45 @@ $(document).ready(function(){
 		window.open('admin/invoices/print_invoice.php?id=' + invoice_id, '_blank');
 	});
 
+	// Print reports
+	$('#print_reports').click(function(){
+		// Clone printable content
+		var rep = $('#printable').clone();
+		var ns = '<style>' +
+					'body{margin:40px;font-size:14px;min-height:100vh;position:relative;}' +
+					'table{border-collapse:collapse;width:100%;}' +
+					'table th, table td{border:1px solid #000;padding:5px;}' +
+					'.text-center{text-align:center;}' +
+					'.text-right{text-align:right;}' +
+					'.report-header{display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:15px;}' +
+					'.report-header h2{text-transform:uppercase;font-weight:bold;margin:0;}' +
+					'.report-header h4{text-transform:uppercase;font-weight:bold;margin:0;}' +
+					'.report-header p{margin:0;}' +
+					'.stats-section{display:flex; justify-content:space-around; margin:20px 0; padding:15px; background-color:#f8f9fa; border:1px solid #dee2e6;}' +
+					'.stat-item{text-align:center;}' +
+					'.stat-number{font-size:24px; font-weight:bold; color:#007bff;}' +
+					'.stat-label{font-size:11px; color:#666; margin-top:5px;}' +
+					'.invoices-table{width:100%; border-collapse:collapse; margin:20px 0;}' +
+					'.invoices-table th, .invoices-table td{border:1px solid #ddd; padding:8px; text-align:left; font-size:11px;}' +
+					'.invoices-table th{background-color:#f8f9fa; font-weight:bold; text-align:center;}' +
+					'.footer-info{position:fixed;bottom:0;left:0;right:0;margin-top:30px;padding:15px;border-top:1px solid #ddd;text-align:center;font-size:10px;color:#666;background-color:white;}' +
+					'@media print { #filter-form, #print_reports { display:none !important; } .footer-info{position:fixed;bottom:0;left:0;right:0;margin:0;padding:15px;border-top:1px solid #ddd;text-align:center;font-size:10px;color:#666;background-color:white;page-break-inside:avoid;}' +
+				'</style>';
+		rep.prepend(ns);
+
+		// Open new window
+		var nw = window.open('', '_blank');
+		nw.document.write('<html><head><title>Invoice Management Report</title></head><body>' + rep.html() + '</body></html>');
+		nw.document.close();
+
+		// Wait until content is fully loaded before printing
+		nw.onload = function(){
+			nw.focus();
+			nw.print();
+			setTimeout(function(){ nw.close(); }, 500);
+		};
+	});
+
 	function loadInvoices(){
 		var filters = {
 			date_start: $('#date_start').val(),
@@ -255,6 +366,7 @@ $(document).ready(function(){
 			success: function(resp){
 				if(resp.status == 'success'){
 					var html = '';
+					var printHtml = '';
 					$.each(resp.data, function(index, invoice){
 						var status_class = '';
 						var status_text = '';
@@ -273,6 +385,7 @@ $(document).ready(function(){
 								break;
 						}
 
+						// Regular table HTML
 						html += '<tr>';
 						html += '<td>' + (index + 1) + '</td>';
 						html += '<td><strong>' + invoice.invoice_number + '</strong></td>';
@@ -289,8 +402,21 @@ $(document).ready(function(){
 						}
 						html += '</td>';
 						html += '</tr>';
+
+						// Print table HTML
+						printHtml += '<tr>';
+						printHtml += '<td style="border:1px solid #ddd; padding:8px; text-align:center;">' + (index + 1) + '</td>';
+						printHtml += '<td style="border:1px solid #ddd; padding:8px;"><strong>' + invoice.invoice_number + '</strong></td>';
+						printHtml += '<td style="border:1px solid #ddd; padding:8px;">' + invoice.firstname + ' ' + invoice.lastname + '<br><small>' + invoice.email + '</small></td>';
+						printHtml += '<td style="border:1px solid #ddd; padding:8px;">' + invoice.transaction_type.replace('_', ' ').toUpperCase() + '</td>';
+						printHtml += '<td style="border:1px solid #ddd; padding:8px; text-align:right;">₱' + parseFloat(invoice.total_amount).toLocaleString() + '</td>';
+						printHtml += '<td style="border:1px solid #ddd; padding:8px; text-align:center;">' + status_text + '</td>';
+						printHtml += '<td style="border:1px solid #ddd; padding:8px; text-align:center;">' + new Date(invoice.generated_at).toLocaleDateString() + '</td>';
+						printHtml += '<td style="border:1px solid #ddd; padding:8px; text-align:center;">' + (invoice.receipt_number ? invoice.receipt_number : '-') + '</td>';
+						printHtml += '</tr>';
 					});
 					$('#invoices_table tbody').html(html);
+					$('#print_invoices_table').html(printHtml);
 				}
 			}
 		});
@@ -309,10 +435,17 @@ $(document).ready(function(){
 			dataType: 'json',
 			success: function(resp){
 				if(resp.status == 'success'){
+					// Update regular stats
 					$('#total_invoices').text(resp.data.total_invoices || 0);
 					$('#paid_invoices').text(resp.data.paid_invoices || 0);
 					$('#unpaid_invoices').text(resp.data.unpaid_invoices || 0);
 					$('#total_amount').text('₱' + parseFloat(resp.data.total_amount || 0).toLocaleString());
+					
+					// Update print stats
+					$('#print_total_invoices').text(resp.data.total_invoices || 0);
+					$('#print_paid_invoices').text(resp.data.paid_invoices || 0);
+					$('#print_unpaid_invoices').text(resp.data.unpaid_invoices || 0);
+					$('#print_total_amount').text('₱' + parseFloat(resp.data.total_amount || 0).toLocaleString());
 				}
 			}
 		});

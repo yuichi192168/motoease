@@ -10,3 +10,5 @@ CREATE INDEX idx_credit_application ON client_list(credit_application_completed)
 -- Update existing customers to have default value
 UPDATE `client_list` SET `credit_application_completed` = 0 WHERE `credit_application_completed` IS NULL;
 
+
+

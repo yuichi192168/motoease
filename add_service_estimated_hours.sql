@@ -12,3 +12,5 @@ UPDATE `service_list` SET `estimated_hours` = 2.0 WHERE `service` LIKE '%Chain%'
 UPDATE `service_list` SET `estimated_hours` = 1.0 WHERE `service` LIKE '%Battery%';
 UPDATE `service_list` SET `estimated_hours` = 0.5 WHERE `service` LIKE '%Spark Plug%';
 
+
+
