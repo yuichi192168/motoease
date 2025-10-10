@@ -839,12 +839,17 @@ Class Master extends DBConnection {
 		$_POST['client_id'] = $this->settings->userdata('id');
 		extract($_POST);
 		$data = "";
+		
+		// Handle service_id array - convert to comma-separated string for service_type
+		if(isset($_POST['service_id']) && is_array($_POST['service_id'])){
+			$_POST['service_type'] = implode(',', $_POST['service_id']);
+		}
+		
 		foreach($_POST as $k=> $v){
-			if(in_array($k,array('client_id','mechanic_id','status'))){
+			if(in_array($k,array('client_id','mechanic_id','status','service_type'))){
 				if(!empty($data)){ $data .= ", "; }
-
+				$v = $this->conn->real_escape_string($v);
 				$data .= " `{$k}` = '{$v}'";
-
 			}
 		}
 		if(empty($id)){
@@ -855,36 +860,41 @@ Class Master extends DBConnection {
 		$save = $this->conn->query($sql);
 		if($save){
 			$rid = empty($id) ? $this->conn->insert_id : $id ;
-			$data = "";
+			$meta_data = array();
 			foreach($_POST as $k=> $v){
-				if(!in_array($k,array('id','client_id','mechanic_id','status'))){
-					if(!empty($data)){ $data .= ", "; }
+				if(!in_array($k,array('id','client_id','mechanic_id','status','service_type','service_id'))){
 					if(is_array($_POST[$k]))
-					$v = implode(",",$_POST[$k]);
+						$v = implode(",",$_POST[$k]);
 					$v = $this->conn->real_escape_string($v);
-					$data .= "('{$rid}','{$k}','{$v}')";
+					$k = $this->conn->real_escape_string($k);
+					$meta_data[] = "('{$rid}','{$k}','{$v}')";
 				}
 			}
-			$sql = "INSERT INTO `request_meta` (`request_id`,`meta_field`,`meta_value`) VALUES {$data} ";
-			$this->conn->query("DELETE FROM `request_meta` where `request_id` = '{$rid}' ");
-			$save = $this->conn->query($sql);
-			if($save){
-				$resp['status'] = 'success';
-				$resp['id'] = $rid;
-				if(empty($id))
-				$resp['msg'] = " Service Request has been submitted successfully.";
-				else
-				$resp['msg'] = " Service Request details has been updated successfully.";
-			}else{
-				$resp['status'] = 'failed';
-				$resp['error'] = $this->conn->error;
-				$resp['sql'] = $sql;
-				if(empty($id))
-				$resp['msg'] = " Service Request has failed to submit.";
-				else
-				$resp['msg'] = " Service Request details has failed to update.";
-				$this->conn->query("DELETE FROM `service_requests` where id = '{$rid}'");
+			
+			// Only insert meta data if there are fields to insert
+			if(!empty($meta_data)){
+				$sql = "INSERT INTO `request_meta` (`request_id`,`meta_field`,`meta_value`) VALUES " . implode(",", $meta_data);
+				$this->conn->query("DELETE FROM `request_meta` where `request_id` = '{$rid}' ");
+				$save = $this->conn->query($sql);
+				if(!$save){
+					$resp['status'] = 'failed';
+					$resp['error'] = $this->conn->error;
+					$resp['sql'] = $sql;
+					if(empty($id))
+					$resp['msg'] = " Service Request has failed to submit.";
+					else
+					$resp['msg'] = " Service Request details has failed to update.";
+					$this->conn->query("DELETE FROM `service_requests` where id = '{$rid}'");
+					return json_encode($resp);
+				}
 			}
+			
+			$resp['status'] = 'success';
+			$resp['id'] = $rid;
+			if(empty($id))
+			$resp['msg'] = " Service Request has been submitted successfully.";
+			else
+			$resp['msg'] = " Service Request details has been updated successfully.";
 
 		}else{
 			$resp['status'] = 'failed';
@@ -1896,6 +1906,386 @@ Class Master extends DBConnection {
         }
         return json_encode($resp);
     }
+
+    // Appointment functions
+    function book_appointment(){
+        extract($_POST);
+        $client_id = $this->settings->userdata('id');
+        
+        // Validate inputs
+        if(empty($client_id) || empty($service_type) || empty($appointment_date) || empty($appointment_time)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "All required fields must be filled.";
+            return json_encode($resp);
+        }
+        
+        // Sanitize inputs
+        $client_id = $this->conn->real_escape_string($client_id);
+        $service_type = $this->conn->real_escape_string($service_type);
+        $appointment_date = $this->conn->real_escape_string($appointment_date);
+        $appointment_time = $this->conn->real_escape_string($appointment_time);
+        $mechanic_id = isset($mechanic_id) && !empty($mechanic_id) ? $this->conn->real_escape_string($mechanic_id) : 'NULL';
+        $vehicle_info = isset($vehicle_info) ? $this->conn->real_escape_string($vehicle_info) : '';
+        $notes = isset($notes) ? $this->conn->real_escape_string($notes) : '';
+        
+        // Check if appointment slot is available
+        $availability_check = $this->conn->query("SELECT id FROM appointments WHERE appointment_date = '{$appointment_date}' AND appointment_time = '{$appointment_time}' AND status != 'cancelled'");
+        
+        if($availability_check->num_rows > 0){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "This time slot is already booked. Please choose another time.";
+            return json_encode($resp);
+        }
+        
+        // Create appointment
+        $sql = "INSERT INTO appointments (client_id, service_type, mechanic_id, appointment_date, appointment_time, vehicle_info, notes, status, date_created) VALUES ('{$client_id}', '{$service_type}', {$mechanic_id}, '{$appointment_date}', '{$appointment_time}', '{$vehicle_info}', '{$notes}', 'pending', NOW())";
+        
+        $save = $this->conn->query($sql);
+        
+        if($save){
+            $resp['status'] = 'success';
+            $resp['msg'] = "Appointment booked successfully! We will contact you to confirm.";
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to book appointment. Please try again.";
+            $resp['error'] = $this->conn->error;
+        }
+        
+        return json_encode($resp);
+    }
+    
+    function check_appointment_availability(){
+        extract($_POST);
+        
+        // Validate inputs
+        if(empty($appointment_date) || empty($appointment_time)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Date and time are required.";
+            return json_encode($resp);
+        }
+        
+        // Sanitize inputs
+        $appointment_date = $this->conn->real_escape_string($appointment_date);
+        $appointment_time = $this->conn->real_escape_string($appointment_time);
+        
+        // Check availability
+        $check = $this->conn->query("SELECT id FROM appointments WHERE appointment_date = '{$appointment_date}' AND appointment_time = '{$appointment_time}' AND status != 'cancelled'");
+        
+        $resp['status'] = 'success';
+        $resp['available'] = $check->num_rows == 0;
+        
+        return json_encode($resp);
+    }
+
+    // Product recommendation functions
+    function get_product_recommendations(){
+        extract($_POST);
+        
+        // Validate inputs
+        if(empty($product_id)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Product ID is required.";
+            return json_encode($resp);
+        }
+        
+        // Sanitize inputs
+        $product_id = $this->conn->real_escape_string($product_id);
+        
+        // Get recommendations
+        $recommendations_query = $this->conn->query("
+            SELECT pr.*, p.name, p.price, p.image_path, p.abc_category,
+                   COALESCE(s.total_stock, 0) as current_stock,
+                   COALESCE(o.total_ordered, 0) as total_ordered,
+                   (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) as available_stock
+            FROM product_recommendations pr
+            JOIN product_list p ON pr.recommended_product_id = p.id
+            LEFT JOIN (
+                SELECT product_id, SUM(quantity) as total_stock 
+                FROM stock_list 
+                WHERE type = 1 
+                GROUP BY product_id
+            ) s ON p.id = s.product_id
+            LEFT JOIN (
+                SELECT oi.product_id, SUM(oi.quantity) as total_ordered
+                FROM order_items oi
+                JOIN order_list ol ON oi.order_id = ol.id
+                WHERE ol.status != 5
+                GROUP BY oi.product_id
+            ) o ON p.id = o.product_id
+            WHERE pr.product_id = '{$product_id}' 
+            AND p.delete_flag = 0 
+            AND p.status = 1
+            AND pr.is_active = 1
+            ORDER BY pr.priority ASC, pr.recommendation_type ASC
+        ");
+        
+        $recommendations = [];
+        while($row = $recommendations_query->fetch_assoc()){
+            $recommendations[] = $row;
+        }
+        
+        $resp['status'] = 'success';
+        $resp['recommendations'] = $recommendations;
+        
+        return json_encode($resp);
+    }
+    
+    function request_product_notification(){
+        extract($_POST);
+        $client_id = $this->settings->userdata('id');
+        
+        // Validate inputs
+        if(empty($client_id) || empty($product_id)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "User must be logged in and product ID is required.";
+            return json_encode($resp);
+        }
+        
+        // Sanitize inputs
+        $client_id = $this->conn->real_escape_string($client_id);
+        $product_id = $this->conn->real_escape_string($product_id);
+        
+        // Check if product exists
+        $product_check = $this->conn->query("SELECT id, name FROM product_list WHERE id = '{$product_id}' AND delete_flag = 0");
+        if($product_check->num_rows == 0){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Product not found.";
+            return json_encode($resp);
+        }
+        
+        $product = $product_check->fetch_assoc();
+        
+        // Check if notification already exists
+        $existing = $this->conn->query("SELECT id FROM product_availability_notifications WHERE client_id = '{$client_id}' AND product_id = '{$product_id}'");
+        
+        if($existing->num_rows > 0){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "You are already subscribed to notifications for this product.";
+            return json_encode($resp);
+        }
+        
+        // Add notification request
+        $insert = $this->conn->query("INSERT INTO product_availability_notifications (client_id, product_id) VALUES ('{$client_id}', '{$product_id}')");
+        
+        if($insert){
+            $resp['status'] = 'success';
+            $resp['msg'] = "You will be notified when '{$product['name']}' becomes available.";
+        } else {
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to subscribe to notifications.";
+            $resp['error'] = $this->conn->error;
+        }
+        
+        return json_encode($resp);
+    }
+    
+    function cancel_product_notification(){
+        extract($_POST);
+        $client_id = $this->settings->userdata('id');
+        
+        // Validate inputs
+        if(empty($client_id) || empty($product_id)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "User must be logged in and product ID is required.";
+            return json_encode($resp);
+        }
+        
+        // Sanitize inputs
+        $client_id = $this->conn->real_escape_string($client_id);
+        $product_id = $this->conn->real_escape_string($product_id);
+        
+        // Remove notification request
+        $delete = $this->conn->query("DELETE FROM product_availability_notifications WHERE client_id = '{$client_id}' AND product_id = '{$product_id}'");
+        
+        if($delete){
+            $resp['status'] = 'success';
+            $resp['msg'] = "Notification subscription cancelled.";
+        } else {
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to cancel notification subscription.";
+            $resp['error'] = $this->conn->error;
+        }
+        
+        return json_encode($resp);
+    }
+    
+    function check_and_send_availability_notifications(){
+        // This function should be called when stock is updated
+        // Get all products that just became available
+        $available_products = $this->conn->query("
+            SELECT DISTINCT p.id, p.name
+            FROM product_list p
+            LEFT JOIN (
+                SELECT product_id, SUM(quantity) as total_stock 
+                FROM stock_list 
+                WHERE type = 1 
+                GROUP BY product_id
+            ) s ON p.id = s.product_id
+            LEFT JOIN (
+                SELECT oi.product_id, SUM(oi.quantity) as total_ordered
+                FROM order_items oi
+                JOIN order_list ol ON oi.order_id = ol.id
+                WHERE ol.status != 5
+                GROUP BY oi.product_id
+            ) o ON p.id = o.product_id
+            WHERE p.delete_flag = 0 
+            AND p.status = 1
+            AND (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) > 0
+        ");
+        
+        while($product = $available_products->fetch_assoc()){
+            $this->send_availability_notifications($product['id']);
+        }
+        
+        return true;
+    }
+    
+    function send_availability_notifications($product_id){
+        // Get all users who requested notifications for this product
+        $notifications = $this->conn->query("
+            SELECT pan.*, c.email, c.firstname, c.lastname, p.name as product_name
+            FROM product_availability_notifications pan
+            JOIN client_list c ON pan.client_id = c.id
+            JOIN product_list p ON pan.product_id = p.id
+            WHERE pan.product_id = '{$product_id}' 
+            AND pan.is_notified = 0
+            AND c.status = 1
+        ");
+        
+        while($notification = $notifications->fetch_assoc()){
+            // Create notification
+            $this->conn->query("INSERT INTO notifications (user_id, type, title, message, data, date_created) VALUES (
+                '{$notification['client_id']}', 
+                'product_availability', 
+                'Product Available', 
+                'The product \"{$notification['product_name']}\" is now back in stock!', 
+                '{\"product_id\":\"{$product_id}\"}', 
+                NOW()
+            )");
+            
+            // Mark as notified
+            $this->conn->query("UPDATE product_availability_notifications SET is_notified = 1, date_notified = NOW() WHERE id = '{$notification['id']}'");
+        }
+        
+        return true;
+    }
+
+    // Admin functions for product recommendations
+    function save_product_recommendation(){
+        extract($_POST);
+        
+        // Validate inputs
+        if(empty($product_id) || empty($recommended_product_id) || empty($recommendation_type)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "All fields are required.";
+            return json_encode($resp);
+        }
+        
+        // Sanitize inputs
+        $product_id = $this->conn->real_escape_string($product_id);
+        $recommended_product_id = $this->conn->real_escape_string($recommended_product_id);
+        $recommendation_type = $this->conn->real_escape_string($recommendation_type);
+        $priority = isset($priority) ? (int)$priority : 1;
+        
+        // Check if recommendation already exists
+        $check = $this->conn->query("SELECT id FROM product_recommendations WHERE product_id = '{$product_id}' AND recommended_product_id = '{$recommended_product_id}'");
+        
+        if($check->num_rows > 0 && empty($id)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "This recommendation already exists.";
+            return json_encode($resp);
+        }
+        
+        if(empty($id)){
+            // Insert new recommendation
+            $sql = "INSERT INTO product_recommendations (product_id, recommended_product_id, recommendation_type, priority) VALUES ('{$product_id}', '{$recommended_product_id}', '{$recommendation_type}', '{$priority}')";
+        } else {
+            // Update existing recommendation
+            $id = $this->conn->real_escape_string($id);
+            $sql = "UPDATE product_recommendations SET product_id = '{$product_id}', recommended_product_id = '{$recommended_product_id}', recommendation_type = '{$recommendation_type}', priority = '{$priority}' WHERE id = '{$id}'";
+        }
+        
+        $save = $this->conn->query($sql);
+        
+        if($save){
+            $resp['status'] = 'success';
+            $resp['msg'] = empty($id) ? "Recommendation added successfully." : "Recommendation updated successfully.";
+        } else {
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to save recommendation.";
+            $resp['error'] = $this->conn->error;
+        }
+        
+        return json_encode($resp);
+    }
+    
+    function get_all_recommendations(){
+        $recommendations_query = $this->conn->query("
+            SELECT pr.*, p1.name as product_name, p2.name as recommended_product_name
+            FROM product_recommendations pr
+            JOIN product_list p1 ON pr.product_id = p1.id
+            JOIN product_list p2 ON pr.recommended_product_id = p2.id
+            WHERE pr.is_active = 1
+            ORDER BY pr.product_id, pr.priority
+        ");
+        
+        $recommendations = [];
+        while($row = $recommendations_query->fetch_assoc()){
+            $recommendations[] = $row;
+        }
+        
+        $resp['status'] = 'success';
+        $resp['recommendations'] = $recommendations;
+        
+        return json_encode($resp);
+    }
+    
+    function get_recommendation(){
+        extract($_POST);
+        
+        if(empty($id)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Recommendation ID is required.";
+            return json_encode($resp);
+        }
+        
+        $id = $this->conn->real_escape_string($id);
+        $recommendation = $this->conn->query("SELECT * FROM product_recommendations WHERE id = '{$id}'")->fetch_assoc();
+        
+        if($recommendation){
+            $resp['status'] = 'success';
+            $resp['recommendation'] = $recommendation;
+        } else {
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Recommendation not found.";
+        }
+        
+        return json_encode($resp);
+    }
+    
+    function delete_product_recommendation(){
+        extract($_POST);
+        
+        if(empty($id)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Recommendation ID is required.";
+            return json_encode($resp);
+        }
+        
+        $id = $this->conn->real_escape_string($id);
+        $delete = $this->conn->query("DELETE FROM product_recommendations WHERE id = '{$id}'");
+        
+        if($delete){
+            $resp['status'] = 'success';
+            $resp['msg'] = "Recommendation deleted successfully.";
+        } else {
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to delete recommendation.";
+            $resp['error'] = $this->conn->error;
+        }
+        
+        return json_encode($resp);
+    }
 }
 
 $Master = new Master();
@@ -2042,6 +2432,36 @@ $sysset = new SystemSettings();
 	break;
 	case 'update_customer':
 		echo $Master->update_customer();
+	break;
+	case 'book_appointment':
+		echo $Master->book_appointment();
+	break;
+	case 'check_appointment_availability':
+		echo $Master->check_appointment_availability();
+	break;
+	case 'get_product_recommendations':
+		echo $Master->get_product_recommendations();
+	break;
+	case 'request_product_notification':
+		echo $Master->request_product_notification();
+	break;
+	case 'cancel_product_notification':
+		echo $Master->cancel_product_notification();
+	break;
+	case 'check_and_send_availability_notifications':
+		echo $Master->check_and_send_availability_notifications();
+	break;
+	case 'save_product_recommendation':
+		echo $Master->save_product_recommendation();
+	break;
+	case 'get_all_recommendations':
+		echo $Master->get_all_recommendations();
+	break;
+	case 'get_recommendation':
+		echo $Master->get_recommendation();
+	break;
+	case 'delete_product_recommendation':
+		echo $Master->delete_product_recommendation();
 	break;
 	default:
 		break;

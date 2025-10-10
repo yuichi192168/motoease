@@ -80,9 +80,14 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                             <i class="fa fa-cart-plus"></i> Add to Cart
                         </button>
                     <?php else: ?>
-                        <button class="btn btn-default border btn-sm btn-flat" disabled>
-                            <i class="fa fa-times"></i> Out of Stock
-                        </button>
+                        <div class="btn-group">
+                            <button class="btn btn-warning border btn-sm btn-flat" onclick="requestNotification(<?= $id ?>, '<?= htmlspecialchars($name) ?>')">
+                                <i class="fa fa-bell"></i> Notify When Available
+                            </button>
+                            <button class="btn btn-info border btn-sm btn-flat" onclick="showRecommendations(<?= $id ?>)">
+                                <i class="fa fa-lightbulb"></i> See Alternatives
+                            </button>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -758,5 +763,168 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 }
             });
         }
+    }
+
+    // Product notification function
+    function requestNotification(productId, productName) {
+        // Check if user is logged in
+        var isLoggedIn = <?= ($_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2) ? 'true' : 'false' ?>;
+        
+        if (!isLoggedIn) {
+            Swal.fire({
+                title: 'Login Required',
+                text: 'Please login to request notifications.',
+                icon: 'warning',
+                confirmButtonText: 'Login Now',
+                showCancelButton: true,
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    location.href = './login.php';
+                }
+            });
+            return;
+        }
+        
+        $.ajax({
+            url: _base_url_ + 'classes/Master.php?f=request_product_notification',
+            method: 'POST',
+            data: {
+                product_id: productId
+            },
+            dataType: 'json',
+            beforeSend: function() {
+                start_loader();
+            },
+            success: function(resp) {
+                if (resp.status === 'success') {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: resp.msg,
+                        icon: 'success',
+                        confirmButtonText: 'OK'
+                    });
+                    // Change button to show it's subscribed
+                    $('button[onclick="requestNotification(' + productId + ', \'' + productName + '\')"]')
+                        .removeClass('btn-warning')
+                        .addClass('btn-success')
+                        .html('<i class="fa fa-check"></i> Notification Set')
+                        .prop('onclick', null);
+                } else {
+                    Swal.fire({
+                        title: 'Error',
+                        text: resp.msg,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            },
+            error: function() {
+                Swal.fire({
+                    title: 'Error',
+                    text: 'An error occurred while setting up notification.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            },
+            complete: function() {
+                end_loader();
+            }
+        });
+    }
+
+    // Product recommendations function
+    function showRecommendations(productId) {
+        $.ajax({
+            url: _base_url_ + 'classes/Master.php?f=get_product_recommendations',
+            method: 'POST',
+            data: {
+                product_id: productId
+            },
+            dataType: 'json',
+            beforeSend: function() {
+                start_loader();
+            },
+            success: function(resp) {
+                if (resp.status === 'success' && resp.recommendations.length > 0) {
+                    displayRecommendationsModal(resp.recommendations);
+                } else {
+                    Swal.fire({
+                        title: 'No Alternatives',
+                        text: 'No alternative products found at the moment.',
+                        icon: 'info',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            },
+            error: function() {
+                Swal.fire({
+                    title: 'Error',
+                    text: 'An error occurred while loading recommendations.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            },
+            complete: function() {
+                end_loader();
+            }
+        });
+    }
+
+    function displayRecommendationsModal(recommendations) {
+        var modalContent = '<div class="container-fluid">';
+        modalContent += '<h5 class="mb-3">Alternative Products</h5>';
+        modalContent += '<div class="row">';
+        
+        recommendations.forEach(function(rec) {
+            var stockStatus = rec.available_stock > 10 ? 'In Stock' : 
+                             rec.available_stock > 0 ? 'Low Stock' : 'Out of Stock';
+            var stockClass = rec.available_stock > 10 ? 'success' : 
+                            rec.available_stock > 0 ? 'warning' : 'danger';
+            
+            modalContent += '<div class="col-md-6 mb-3">';
+            modalContent += '<div class="card h-100">';
+            modalContent += '<div class="row no-gutters">';
+            modalContent += '<div class="col-4">';
+            modalContent += '<img src="' + _base_url_ + rec.image_path + '" class="card-img h-100" style="object-fit: cover;" alt="' + rec.name + '">';
+            modalContent += '</div>';
+            modalContent += '<div class="col-8">';
+            modalContent += '<div class="card-body p-2">';
+            modalContent += '<h6 class="card-title mb-1">' + rec.name + '</h6>';
+            modalContent += '<p class="card-text mb-1"><small class="text-muted">₱' + parseFloat(rec.price).toLocaleString() + '</small></p>';
+            modalContent += '<span class="badge badge-' + stockClass + ' mb-2">' + stockStatus + '</span>';
+            modalContent += '<div class="d-flex gap-1">';
+            modalContent += '<a href="' + _base_url_ + '?p=products/view_product&id=' + rec.recommended_product_id + '" class="btn btn-sm btn-outline-primary">View</a>';
+            if (rec.available_stock > 0) {
+                modalContent += '<button class="btn btn-sm btn-primary" onclick="addToCartFromModal(' + rec.recommended_product_id + ')">Add to Cart</button>';
+            }
+            modalContent += '</div>';
+            modalContent += '</div>';
+            modalContent += '</div>';
+            modalContent += '</div>';
+            modalContent += '</div>';
+        });
+        
+        modalContent += '</div>';
+        modalContent += '</div>';
+        
+        // Show modal
+        $('#uni_modal .modal-title').html('Alternative Products');
+        $('#uni_modal .modal-body').html(modalContent);
+        $('#uni_modal .modal-dialog').removeAttr("class").addClass("modal-dialog modal-lg modal-dialog-centered");
+        $('#uni_modal').modal({
+            show: true,
+            backdrop: 'static',
+            keyboard: false,
+            focus: true
+        });
+    }
+
+    function addToCartFromModal(productId) {
+        // Close the modal first
+        $('#uni_modal').modal('hide');
+        
+        // Navigate to the product page to add to cart
+        location.href = _base_url_ + '?p=products/view_product&id=' + productId;
     }
 </script>

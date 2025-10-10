@@ -80,10 +80,12 @@
             uni_modal("Service Details","view_service.php?id="+$(this).attr('data-id'),'mid-large')
         })
         $('#send_request').click(function(){
-            if("<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>" == 1)
-            uni_modal("Fill the Service Request Form","send_request.php",'mid-large');
-            else
-            alert_toast(" Please Login First.","warning");
+            var isLoggedIn = <?= ($_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2) ? 'true' : 'false' ?>;
+            if(isLoggedIn){
+                uni_modal("Fill the Service Request Form","send_request.php",'mid-large');
+            } else {
+                alert_toast(" Please Login First.","warning");
+            }
         })
 
     })
