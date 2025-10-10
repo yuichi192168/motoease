@@ -166,14 +166,26 @@ $(document).ready(function() {
             processData: false,
             method: 'POST',
             type: 'POST',
+            timeout: 30000, // 30 second timeout
             success: function(resp) {
                 if (resp == 1) {
-                    // alert_toast("Data successfully saved",'success')
-                    location.reload()
+                    alert_toast("Data successfully saved",'success')
+                    setTimeout(function() {
+                        location.reload()
+                    }, 1000)
                 } else {
-                    $('#msg').html('<div class="alert alert-danger err_msg">An Error occured</div>')
-                    end_load()
+                    $('#msg').html('<div class="alert alert-danger err_msg">An Error occurred while saving data</div>')
+                    end_loader()
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error)
+                if (status === 'timeout') {
+                    $('#msg').html('<div class="alert alert-danger err_msg">Request timed out. Please try again.</div>')
+                } else {
+                    $('#msg').html('<div class="alert alert-danger err_msg">An error occurred: ' + error + '</div>')
+                }
+                end_loader()
             }
         })
     })

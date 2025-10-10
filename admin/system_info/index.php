@@ -107,6 +107,13 @@
 				</div>
 			</div>
 			
+			<div class="form-group">
+				<label class="control-label">Promo Image Details</label>
+				<div id="promo-details-container">
+					<!-- Dynamic form fields will be added here -->
+				</div>
+			</div>
+			
 			<div id="promo-preview" class="row"></div>
 			
 			<!-- Customer Purchase Images Section -->
@@ -119,6 +126,13 @@
 				<div class="custom-file">
 					<input type="file" class="custom-file-input" id="customerImages" name="customer_images[]" multiple accept="image/*">
 					<label class="custom-file-label" for="customerImages">Choose customer images</label>
+				</div>
+			</div>
+			
+			<div class="form-group">
+				<label class="control-label">Customer Image Details</label>
+				<div id="customer-details-container">
+					<!-- Dynamic form fields will be added here -->
 				</div>
 			</div>
 			

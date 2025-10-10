@@ -59,10 +59,17 @@
 									</td>
 									<td><?php echo date('M d, Y', strtotime($row['date_created'])) ?></td>
 									<td>
-										<button class="btn btn-sm btn-primary" onclick="togglePromoStatus(<?php echo $row['id'] ?>, <?php echo $row['is_active'] ?>)">
-											<?php echo $row['is_active'] ? 'Deactivate' : 'Activate' ?>
-										</button>
-										<button class="btn btn-sm btn-danger" onclick="deletePromo(<?php echo $row['id'] ?>)">Delete</button>
+										<div class="btn-group" role="group">
+											<button class="btn btn-sm btn-info" onclick="editPromo(<?php echo $row['id'] ?>, '<?php echo htmlspecialchars($row['title'], ENT_QUOTES) ?>', '<?php echo htmlspecialchars($row['description'], ENT_QUOTES) ?>')" title="Edit">
+												<i class="fa fa-edit"></i>
+											</button>
+											<button class="btn btn-sm btn-<?php echo $row['is_active'] ? 'warning' : 'success' ?>" onclick="togglePromoStatus(<?php echo $row['id'] ?>, <?php echo $row['is_active'] ?>)" title="<?php echo $row['is_active'] ? 'Deactivate' : 'Activate' ?>">
+												<i class="fa fa-<?php echo $row['is_active'] ? 'eye-slash' : 'eye' ?>"></i>
+											</button>
+											<button class="btn btn-sm btn-danger" onclick="deletePromo(<?php echo $row['id'] ?>)" title="Delete">
+												<i class="fa fa-trash"></i>
+											</button>
+										</div>
 									</td>
 								</tr>
 								<?php endwhile; ?>
@@ -108,10 +115,17 @@
 									</td>
 									<td><?php echo date('M d, Y', strtotime($row['date_created'])) ?></td>
 									<td>
-										<button class="btn btn-sm btn-primary" onclick="toggleCustomerStatus(<?php echo $row['id'] ?>, <?php echo $row['is_active'] ?>)">
-											<?php echo $row['is_active'] ? 'Deactivate' : 'Activate' ?>
-										</button>
-										<button class="btn btn-sm btn-danger" onclick="deleteCustomer(<?php echo $row['id'] ?>)">Delete</button>
+										<div class="btn-group" role="group">
+											<button class="btn btn-sm btn-info" onclick="editCustomer(<?php echo $row['id'] ?>, '<?php echo htmlspecialchars($row['customer_name'], ENT_QUOTES) ?>', '<?php echo htmlspecialchars($row['motorcycle_model'], ENT_QUOTES) ?>', '<?php echo $row['purchase_date'] ?>', '<?php echo htmlspecialchars($row['testimonial'], ENT_QUOTES) ?>')" title="Edit">
+												<i class="fa fa-edit"></i>
+											</button>
+											<button class="btn btn-sm btn-<?php echo $row['is_active'] ? 'warning' : 'success' ?>" onclick="toggleCustomerStatus(<?php echo $row['id'] ?>, <?php echo $row['is_active'] ?>)" title="<?php echo $row['is_active'] ? 'Deactivate' : 'Activate' ?>">
+												<i class="fa fa-<?php echo $row['is_active'] ? 'eye-slash' : 'eye' ?>"></i>
+											</button>
+											<button class="btn btn-sm btn-danger" onclick="deleteCustomer(<?php echo $row['id'] ?>)" title="Delete">
+												<i class="fa fa-trash"></i>
+											</button>
+										</div>
 									</td>
 								</tr>
 								<?php endwhile; ?>
@@ -119,6 +133,76 @@
 						</table>
 					</div>
 				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Edit Promo Modal -->
+<div class="modal fade" id="editPromoModal" tabindex="-1" role="dialog" aria-labelledby="editPromoModalLabel" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="editPromoModalLabel">Edit Promo Image</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<form id="editPromoForm">
+					<input type="hidden" id="edit_promo_id" name="id">
+					<div class="form-group">
+						<label for="edit_promo_title">Title</label>
+						<input type="text" class="form-control" id="edit_promo_title" name="title" required>
+					</div>
+					<div class="form-group">
+						<label for="edit_promo_description">Description</label>
+						<textarea class="form-control" id="edit_promo_description" name="description" rows="3"></textarea>
+					</div>
+				</form>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-primary" onclick="updatePromo()">Update Promo</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Edit Customer Modal -->
+<div class="modal fade" id="editCustomerModal" tabindex="-1" role="dialog" aria-labelledby="editCustomerModalLabel" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="editCustomerModalLabel">Edit Customer Image</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<form id="editCustomerForm">
+					<input type="hidden" id="edit_customer_id" name="id">
+					<div class="form-group">
+						<label for="edit_customer_name">Customer Name</label>
+						<input type="text" class="form-control" id="edit_customer_name" name="customer_name" required>
+					</div>
+					<div class="form-group">
+						<label for="edit_motorcycle_model">Motorcycle Model</label>
+						<input type="text" class="form-control" id="edit_motorcycle_model" name="motorcycle_model" required>
+					</div>
+					<div class="form-group">
+						<label for="edit_purchase_date">Purchase Date</label>
+						<input type="date" class="form-control" id="edit_purchase_date" name="purchase_date">
+					</div>
+					<div class="form-group">
+						<label for="edit_testimonial">Testimonial</label>
+						<textarea class="form-control" id="edit_testimonial" name="testimonial" rows="3"></textarea>
+					</div>
+				</form>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-primary" onclick="updateCustomer()">Update Customer</button>
 			</div>
 		</div>
 	</div>
@@ -218,6 +302,70 @@ function delete_customer(id) {
 		},
 		success: function(resp) {
 			if(typeof resp == 'object' && resp.status == 'success') {
+				location.reload();
+			} else {
+				alert_toast("An error occurred", 'error');
+				end_loader();
+			}
+		}
+	});
+}
+
+function editPromo(id, title, description) {
+	$('#edit_promo_id').val(id);
+	$('#edit_promo_title').val(title);
+	$('#edit_promo_description').val(description);
+	$('#editPromoModal').modal('show');
+}
+
+function updatePromo() {
+	start_loader();
+	$.ajax({
+		url: _base_url_ + 'classes/Master.php?f=update_promo',
+		method: 'POST',
+		data: $('#editPromoForm').serialize(),
+		dataType: 'json',
+		error: err => {
+			console.log(err);
+			alert_toast("An error occurred", 'error');
+			end_loader();
+		},
+		success: function(resp) {
+			if(typeof resp == 'object' && resp.status == 'success') {
+				$('#editPromoModal').modal('hide');
+				location.reload();
+			} else {
+				alert_toast("An error occurred", 'error');
+				end_loader();
+			}
+		}
+	});
+}
+
+function editCustomer(id, customer_name, motorcycle_model, purchase_date, testimonial) {
+	$('#edit_customer_id').val(id);
+	$('#edit_customer_name').val(customer_name);
+	$('#edit_motorcycle_model').val(motorcycle_model);
+	$('#edit_purchase_date').val(purchase_date);
+	$('#edit_testimonial').val(testimonial);
+	$('#editCustomerModal').modal('show');
+}
+
+function updateCustomer() {
+	start_loader();
+	$.ajax({
+		url: _base_url_ + 'classes/Master.php?f=update_customer',
+		method: 'POST',
+		data: $('#editCustomerForm').serialize(),
+		dataType: 'json',
+		error: err => {
+			console.log(err);
+			alert_toast("An error occurred", 'error');
+			end_loader();
+		},
+		success: function(resp) {
+			if(typeof resp == 'object' && resp.status == 'success') {
+				$('#editCustomerModal').modal('hide');
 				location.reload();
 			} else {
 				alert_toast("An error occurred", 'error');

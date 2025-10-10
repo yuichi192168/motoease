@@ -1862,6 +1862,40 @@ Class Master extends DBConnection {
         }
         return json_encode($resp);
     }
+
+    function update_promo(){
+        extract($_POST);
+        $title = $this->conn->real_escape_string($title);
+        $description = $this->conn->real_escape_string($description);
+        $update = $this->conn->query("UPDATE `promo_images` SET title = '{$title}', description = '{$description}' WHERE id = '{$id}'");
+        if($update){
+            $resp['status'] = 'success';
+            $resp['msg'] = "Promo image updated successfully.";
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to update promo image.";
+            $resp['error'] = $this->conn->error;
+        }
+        return json_encode($resp);
+    }
+
+    function update_customer(){
+        extract($_POST);
+        $customer_name = $this->conn->real_escape_string($customer_name);
+        $motorcycle_model = $this->conn->real_escape_string($motorcycle_model);
+        $testimonial = $this->conn->real_escape_string($testimonial);
+        $purchase_date = !empty($purchase_date) ? $purchase_date : null;
+        $update = $this->conn->query("UPDATE `customer_purchase_images` SET customer_name = '{$customer_name}', motorcycle_model = '{$motorcycle_model}', testimonial = '{$testimonial}', purchase_date = " . ($purchase_date ? "'{$purchase_date}'" : "NULL") . " WHERE id = '{$id}'");
+        if($update){
+            $resp['status'] = 'success';
+            $resp['msg'] = "Customer image updated successfully.";
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to update customer image.";
+            $resp['error'] = $this->conn->error;
+        }
+        return json_encode($resp);
+    }
 }
 
 $Master = new Master();
@@ -2002,6 +2036,12 @@ $sysset = new SystemSettings();
 	break;
 	case 'delete_customer':
 		echo $Master->delete_customer();
+	break;
+	case 'update_promo':
+		echo $Master->update_promo();
+	break;
+	case 'update_customer':
+		echo $Master->update_customer();
 	break;
 	default:
 		break;
