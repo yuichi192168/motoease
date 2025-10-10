@@ -12,3 +12,4 @@ UPDATE `client_list` SET `credit_application_completed` = 0 WHERE `credit_applic
 
 
 
+

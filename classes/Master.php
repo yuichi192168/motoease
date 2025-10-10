@@ -1795,6 +1795,73 @@ Class Master extends DBConnection {
         }
         return json_encode($resp);
     }
+
+    // Promo and Customer Image Management Functions
+    function toggle_promo_status(){
+        extract($_POST);
+        $update = $this->conn->query("UPDATE `promo_images` SET is_active = '{$status}' WHERE id = '{$id}'");
+        if($update){
+            $resp['status'] = 'success';
+            $resp['msg'] = "Promo status updated successfully.";
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to update promo status.";
+            $resp['error'] = $this->conn->error;
+        }
+        return json_encode($resp);
+    }
+
+    function delete_promo(){
+        extract($_POST);
+        $qry = $this->conn->query("SELECT image_path FROM `promo_images` WHERE id = '{$id}'");
+        if($qry->num_rows > 0){
+            $row = $qry->fetch_assoc();
+            if(is_file('../'.$row['image_path'])) unlink('../'.$row['image_path']);
+        }
+        $delete = $this->conn->query("DELETE FROM `promo_images` WHERE id = '{$id}'");
+        if($delete){
+            $resp['status'] = 'success';
+            $resp['msg'] = "Promo image deleted successfully.";
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to delete promo image.";
+            $resp['error'] = $this->conn->error;
+        }
+        return json_encode($resp);
+    }
+
+    function toggle_customer_status(){
+        extract($_POST);
+        $update = $this->conn->query("UPDATE `customer_purchase_images` SET is_active = '{$status}' WHERE id = '{$id}'");
+        if($update){
+            $resp['status'] = 'success';
+            $resp['msg'] = "Customer image status updated successfully.";
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to update customer image status.";
+            $resp['error'] = $this->conn->error;
+        }
+        return json_encode($resp);
+    }
+
+    function delete_customer(){
+        extract($_POST);
+        $qry = $this->conn->query("SELECT image_path FROM `customer_purchase_images` WHERE id = '{$id}'");
+        if($qry->num_rows > 0){
+            $row = $qry->fetch_assoc();
+            if(is_file('../'.$row['image_path'])) unlink('../'.$row['image_path']);
+        }
+        $delete = $this->conn->query("DELETE FROM `customer_purchase_images` WHERE id = '{$id}'");
+        if($delete){
+            $resp['status'] = 'success';
+            $resp['msg'] = "Customer image deleted successfully.";
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to delete customer image.";
+            $resp['error'] = $this->conn->error;
+        }
+        return json_encode($resp);
+    }
 }
 
 $Master = new Master();
@@ -1923,6 +1990,18 @@ $sysset = new SystemSettings();
 	break;
 	case 'mark_credit_application_completed':
 		echo $Master->mark_credit_application_completed();
+	break;
+	case 'toggle_promo_status':
+		echo $Master->toggle_promo_status();
+	break;
+	case 'delete_promo':
+		echo $Master->delete_promo();
+	break;
+	case 'toggle_customer_status':
+		echo $Master->toggle_customer_status();
+	break;
+	case 'delete_customer':
+		echo $Master->delete_customer();
 	break;
 	default:
 		break;

@@ -218,6 +218,12 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                         <p>System Settings</p>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="./?page=promo_management" class="nav-link <?php echo $page == 'promo_management' ? 'active' : '' ?>">
+                        <i class="nav-icon fas fa-images"></i>
+                        <p>Promo & Customer Images</p>
+                    </a>
+                </li>
                 <?php endif; ?>
                 
                 <!-- Branch Management (Admin Only) -->

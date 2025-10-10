@@ -9,6 +9,38 @@
         </div>
     </div>
 </header>
+
+<!-- Promo Images Section -->
+<?php 
+$promo_query = $conn->query("SELECT * FROM promo_images WHERE is_active = 1 ORDER BY display_order ASC, date_created DESC LIMIT 5");
+if($promo_query->num_rows > 0):
+?>
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="display-5 fw-bold text-primary"><?php echo $_settings->info('promo_section_title') ?: 'Special Promotions' ?></h2>
+            <p class="lead text-muted">Check out our latest offers and promotions</p>
+        </div>
+        <div class="row">
+            <?php while($promo = $promo_query->fetch_assoc()): ?>
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-img-top overflow-hidden" style="height: 250px;">
+                        <img src="<?php echo validate_image($promo['image_path']) ?>" class="img-fluid w-100 h-100" style="object-fit: cover;" alt="<?php echo htmlspecialchars($promo['title']) ?>">
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title text-primary"><?php echo htmlspecialchars($promo['title']) ?></h5>
+                        <?php if(!empty($promo['description'])): ?>
+                        <p class="card-text text-muted"><?php echo htmlspecialchars($promo['description']) ?></p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endwhile; ?>
+        </div>
+    </div>
+</section>
+<?php endif; ?>
 <!-- Section-->
 <section class="py-5">
     <div class="container px-4 px-lg-5 mt-5">
@@ -37,6 +69,43 @@
         </div>
     </div>
 </section>
+
+<!-- Customer Purchase Images Section -->
+<?php 
+$customer_query = $conn->query("SELECT * FROM customer_purchase_images WHERE is_active = 1 ORDER BY display_order ASC, date_created DESC LIMIT 8");
+if($customer_query->num_rows > 0):
+?>
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="display-5 fw-bold text-primary"><?php echo $_settings->info('customer_section_title') ?: 'Happy Customers' ?></h2>
+            <p class="lead text-muted">See what our satisfied customers have to say</p>
+        </div>
+        <div class="row">
+            <?php while($customer = $customer_query->fetch_assoc()): ?>
+            <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-img-top overflow-hidden" style="height: 200px;">
+                        <img src="<?php echo validate_image($customer['image_path']) ?>" class="img-fluid w-100 h-100" style="object-fit: cover;" alt="<?php echo htmlspecialchars($customer['customer_name']) ?>">
+                    </div>
+                    <div class="card-body text-center">
+                        <h6 class="card-title text-primary mb-1"><?php echo htmlspecialchars($customer['customer_name']) ?></h6>
+                        <small class="text-muted d-block mb-2"><?php echo htmlspecialchars($customer['motorcycle_model']) ?></small>
+                        <?php if(!empty($customer['testimonial'])): ?>
+                        <p class="card-text small text-muted">"<?php echo htmlspecialchars(substr($customer['testimonial'], 0, 100)) ?><?php echo strlen($customer['testimonial']) > 100 ? '...' : '' ?>"</p>
+                        <?php endif; ?>
+                        <?php if(!empty($customer['purchase_date'])): ?>
+                        <small class="text-muted"><?php echo date('M Y', strtotime($customer['purchase_date'])) ?></small>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endwhile; ?>
+        </div>
+    </div>
+</section>
+<?php endif; ?>
+
 <script>
     $(function(){
         $('#search').on('input',function(){

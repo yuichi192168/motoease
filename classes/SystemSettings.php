@@ -86,6 +86,42 @@ class SystemSettings extends DBConnection{
 			}
 		}
 		
+		// Handle promo image uploads
+		if(isset($_FILES['promo_images']) && !empty($_FILES['promo_images']['name'][0])){
+			foreach($_FILES['promo_images']['name'] as $key => $filename){
+				if($_FILES['promo_images']['tmp_name'][$key] != ''){
+					$fname = 'uploads/promos/'.strtotime(date('y-m-d H:i')).'_'.$filename;
+					$upload_dir = '../uploads/promos/';
+					if(!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+					$move = move_uploaded_file($_FILES['promo_images']['tmp_name'][$key], '../'.$fname);
+					if($move){
+						$title = isset($_POST['promo_titles'][$key]) ? $_POST['promo_titles'][$key] : 'Promo Image';
+						$description = isset($_POST['promo_descriptions'][$key]) ? $_POST['promo_descriptions'][$key] : '';
+						$qry = $this->conn->query("INSERT into promo_images set title = '{$title}', description = '{$description}', image_path = '{$fname}' ");
+					}
+				}
+			}
+		}
+		
+		// Handle customer purchase image uploads
+		if(isset($_FILES['customer_images']) && !empty($_FILES['customer_images']['name'][0])){
+			foreach($_FILES['customer_images']['name'] as $key => $filename){
+				if($_FILES['customer_images']['tmp_name'][$key] != ''){
+					$fname = 'uploads/customers/'.strtotime(date('y-m-d H:i')).'_'.$filename;
+					$upload_dir = '../uploads/customers/';
+					if(!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+					$move = move_uploaded_file($_FILES['customer_images']['tmp_name'][$key], '../'.$fname);
+					if($move){
+						$customer_name = isset($_POST['customer_names'][$key]) ? $_POST['customer_names'][$key] : 'Customer';
+						$motorcycle_model = isset($_POST['motorcycle_models'][$key]) ? $_POST['motorcycle_models'][$key] : 'Motorcycle';
+						$testimonial = isset($_POST['customer_testimonials'][$key]) ? $_POST['customer_testimonials'][$key] : '';
+						$purchase_date = isset($_POST['purchase_dates'][$key]) ? $_POST['purchase_dates'][$key] : date('Y-m-d');
+						$qry = $this->conn->query("INSERT into customer_purchase_images set customer_name = '{$customer_name}', motorcycle_model = '{$motorcycle_model}', testimonial = '{$testimonial}', purchase_date = '{$purchase_date}', image_path = '{$fname}' ");
+					}
+				}
+			}
+		}
+		
 		$update = $this->update_system_info();
 		$flash = $this->set_flashdata('success','System Info Successfully Updated.');
 		if($update && $flash){
