@@ -8,6 +8,9 @@ if(!isset($_GET['id']) || empty($_GET['id'])){
 
 $invoice_id = $_GET['id'];
 
+// Debug: Log the invoice ID
+error_log("Print Invoice - Invoice ID: " . $invoice_id);
+
 // Get invoice details
 $invoice = $conn->query("SELECT i.*, c.firstname, c.lastname, c.middlename, c.email, c.contact,
                                 u.firstname as staff_firstname, u.lastname as staff_lastname
@@ -17,9 +20,13 @@ $invoice = $conn->query("SELECT i.*, c.firstname, c.lastname, c.middlename, c.em
                         WHERE i.id = '{$invoice_id}'")->fetch_assoc();
 
 if(!$invoice){
-    echo "<script>alert('Invoice not found'); window.close();</script>";
+    error_log("Print Invoice - Invoice not found for ID: " . $invoice_id);
+    echo "<script>alert('Invoice not found. Please check the invoice ID and try again.'); window.close();</script>";
     exit;
 }
+
+// Debug: Log successful invoice retrieval
+error_log("Print Invoice - Invoice found: " . $invoice['invoice_number']);
 
 // Get invoice items
 $items = $conn->query("SELECT * FROM invoice_items WHERE invoice_id = '{$invoice_id}'");

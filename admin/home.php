@@ -158,24 +158,24 @@
       <div class="card-body">
         <div class="row">
           <div class="col-md-4 col-sm-6 mb-3">
-            <a href="?page=maintenance/services" class="btn btn-success btn-block btn-lg">
-              <i class="fas fa-plus"></i><br>
-              <strong>Add New Service</strong><br>
-              <small>Create a new service</small>
-            </a>
-          </div>
-          <div class="col-md-4 col-sm-6 mb-3">
             <a href="?page=products/manage_product" class="btn btn-primary btn-block btn-lg">
-              <i class="fas fa-box"></i><br>
+              <i class="fas fa-plus"></i><br>
               <strong>Add Product</strong><br>
               <small>Add new motorcycle part</small>
             </a>
           </div>
           <div class="col-md-4 col-sm-6 mb-3">
             <a href="?page=orders" class="btn btn-info btn-block btn-lg">
-              <i class="fas fa-th-list"></i><br>
+              <i class="fas fa-shopping-cart"></i><br>
               <strong>Manage Orders</strong><br>
-              <small>Add or edit categories</small>
+              <small>View and manage orders</small>
+            </a>
+          </div>
+          <div class="col-md-4 col-sm-6 mb-3">
+            <a href="?page=service_requests" class="btn btn-success btn-block btn-lg">
+              <i class="fas fa-tools"></i><br>
+              <strong>Manage Service Request</strong><br>
+              <small>Handle service requests</small>
             </a>
           </div>
         </div>

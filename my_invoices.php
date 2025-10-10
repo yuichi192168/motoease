@@ -121,13 +121,17 @@ $customer_id = $_settings->userdata('id');
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="download_invoice">Download PDF</button>
+                <button type="button" class="btn btn-primary" id="download_invoice">Print Invoice</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+// Logo URLs for printing
+var mainLogoUrl = '<?php echo validate_image($_settings->info('main_logo')) ?: validate_image($_settings->info('logo')) ?>';
+var secondaryLogoUrl = '<?php echo validate_image($_settings->info('secondary_logo')) ?: validate_image($_settings->info('logo')) ?>';
+
 $(document).ready(function(){
     // Load initial data
     loadInvoices();
@@ -139,10 +143,45 @@ $(document).ready(function(){
         viewInvoice(invoice_id);
     });
 
-    // Download invoice
+    // Print invoice
     $('#download_invoice').click(function(){
+        var $btn = $(this);
+        var originalText = $btn.text();
+        
+        // Show loading state
+        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Loading...');
+        
         var invoice_id = $('#viewInvoiceModal').data('invoice-id');
-        window.open('admin/invoices/print_invoice.php?id=' + invoice_id, '_blank');
+        console.log('Invoice ID:', invoice_id); // Debug log
+        
+        if(invoice_id && invoice_id !== 'undefined'){
+            // Get invoice details for printing
+            $.ajax({
+                url: _base_url_ + 'classes/Invoice.php?action=get_invoice&invoice_id=' + invoice_id,
+                method: 'GET',
+                dataType: 'json',
+                success: function(resp){
+                    if(resp.status == 'success'){
+                        var invoice = resp.data;
+                        printInvoice(invoice);
+                    } else {
+                        alert('Error loading invoice details for printing. Please try again.');
+                    }
+                    // Reset button state
+                    $btn.prop('disabled', false).text(originalText);
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX error loading invoice:', error);
+                    alert('Error loading invoice details for printing. Please try again.');
+                    // Reset button state
+                    $btn.prop('disabled', false).text(originalText);
+                }
+            });
+        } else {
+            alert('Error: Invoice ID not found. Please try viewing the invoice again.');
+            // Reset button state
+            $btn.prop('disabled', false).text(originalText);
+        }
     });
 
     function loadInvoices(){
@@ -210,6 +249,7 @@ $(document).ready(function(){
     }
 
     function viewInvoice(invoice_id){
+        console.log('Loading invoice:', invoice_id); // Debug log
         $.ajax({
             url: _base_url_ + 'classes/Invoice.php?action=get_invoice&invoice_id=' + invoice_id,
             method: 'GET',
@@ -220,10 +260,171 @@ $(document).ready(function(){
                     var html = generateInvoiceHTML(invoice);
                     $('#invoice_details').html(html);
                     $('#viewInvoiceModal').data('invoice-id', invoice_id);
+                    console.log('Invoice ID stored in modal:', $('#viewInvoiceModal').data('invoice-id')); // Debug log
                     $('#viewInvoiceModal').modal('show');
+                } else {
+                    console.error('Failed to load invoice:', resp);
+                    alert('Error loading invoice details. Please try again.');
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX error loading invoice:', error);
+                alert('Error loading invoice details. Please try again.');
             }
         });
+    }
+
+    function printInvoice(invoice){
+        // Create print content
+        var printContent = generatePrintInvoiceHTML(invoice);
+        
+        // Create print styles
+        var printStyles = '<style>' +
+            'body{margin:20px;font-family:Arial,sans-serif;font-size:12px;line-height:1.4;}' +
+            'table{border-collapse:collapse;width:100%;margin:10px 0;}' +
+            'table th, table td{border:1px solid #000;padding:8px;text-align:left;}' +
+            'table th{background-color:#f8f9fa;font-weight:bold;text-align:center;}' +
+            '.text-center{text-align:center;}' +
+            '.text-right{text-align:right;}' +
+            '.invoice-header{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:15px;margin-bottom:20px;}' +
+            '.company-info{text-align:center;flex:1;margin:0 20px;}' +
+            '.company-info h2{text-transform:uppercase;font-weight:bold;margin:0;color:#333;}' +
+            '.company-info p{margin:5px 0;color:#666;}' +
+            '.invoice-details{display:flex;justify-content:space-between;margin-bottom:20px;}' +
+            '.customer-info, .invoice-info{flex:1;}' +
+            '.customer-info h4, .invoice-info h4{margin:0 0 10px 0;color:#333;border-bottom:1px solid #ddd;padding-bottom:5px;}' +
+            '.totals{display:flex;justify-content:flex-end;margin:20px 0;}' +
+            '.totals-table{width:300px;}' +
+            '.totals-table td{padding:5px 10px;border-bottom:1px solid #eee;}' +
+            '.totals-table .total-row{font-weight:bold;border-top:2px solid #000;border-bottom:2px solid #000;}' +
+            '.payment-status{padding:10px;text-align:center;font-weight:bold;margin:20px 0;}' +
+            '.payment-status.paid{background-color:#d4edda;color:#155724;border:1px solid #c3e6cb;}' +
+            '.payment-status.unpaid{background-color:#fff3cd;color:#856404;border:1px solid #ffeaa7;}' +
+            '.footer-info{padding:20px;border-top:1px solid #ddd;margin-top:30px;}' +
+            '.footer-info h5{margin:0 0 10px 0;color:#333;}' +
+            '.footer-info p{margin:5px 0;color:#666;font-size:11px;}' +
+            '@media print{body{margin:0;}}' +
+        '</style>';
+        
+        // Open new window for printing
+        var printWindow = window.open('', '_blank');
+        printWindow.document.write('<html><head><title>Invoice ' + invoice.invoice_number + '</title>' + printStyles + '</head><body>' + printContent + '</body></html>');
+        printWindow.document.close();
+        
+        // Wait until content is fully loaded before printing
+        printWindow.onload = function(){
+            printWindow.focus();
+            printWindow.print();
+            setTimeout(function(){ printWindow.close(); }, 500);
+        };
+    }
+
+    function generatePrintInvoiceHTML(invoice){
+        var html = '<div class="invoice-container">';
+        
+        // Header with dual logos
+        html += '<div class="invoice-header">';
+        html += '<!-- Main Logo on the left -->';
+        html += '<div style="flex:0 0 auto; margin-right:20px;">';
+        html += '<img src="' + mainLogoUrl + '" alt="Main Logo" style="width:100px; height:100px; object-fit:contain;">';
+        html += '</div>';
+        
+        html += '<!-- Centered Company Info -->';
+        html += '<div class="company-info">';
+        html += '<h2>Star Honda Calamba</h2>';
+        html += '<p>National Highway Brgy. Parian, Calamba City, Laguna</p>';
+        html += '<p>Phone: 0948-235-3207 | Email: starhondacalamba55@gmail.com</p>';
+        html += '<h3>INVOICE</h3>';
+        html += '</div>';
+        
+        html += '<!-- Secondary Logo on the right -->';
+        html += '<div style="flex:0 0 auto; margin-left:20px;">';
+        html += '<img src="' + secondaryLogoUrl + '" alt="Secondary Logo" style="width:100px; height:100px; object-fit:contain;">';
+        html += '</div>';
+        html += '</div>';
+        
+        // Invoice and Customer Details
+        html += '<div class="invoice-details">';
+        html += '<div class="customer-info">';
+        html += '<h4>Bill To:</h4>';
+        html += '<p><strong>' + invoice.firstname + ' ' + invoice.lastname + '</strong></p>';
+        html += '<p>' + invoice.email + '</p>';
+        html += '<p>' + invoice.contact + '</p>';
+        html += '</div>';
+        html += '<div class="invoice-info">';
+        html += '<h4>Invoice Details:</h4>';
+        html += '<p><strong>Invoice No:</strong> ' + invoice.invoice_number + '</p>';
+        html += '<p><strong>Date:</strong> ' + new Date(invoice.generated_at).toLocaleDateString() + '</p>';
+        html += '<p><strong>Due Date:</strong> ' + new Date(invoice.due_date).toLocaleDateString() + '</p>';
+        html += '<p><strong>Transaction Type:</strong> ' + invoice.transaction_type.replace('_', ' ').toUpperCase() + '</p>';
+        html += '<p><strong>Payment Type:</strong> ' + invoice.payment_type.toUpperCase() + '</p>';
+        html += '</div>';
+        html += '</div>';
+        
+        // Items Table
+        html += '<table class="items-table">';
+        html += '<thead>';
+        html += '<tr><th>Item</th><th>Description</th><th class="text-center">Qty</th><th class="text-right">Unit Price</th><th class="text-right">Total</th></tr>';
+        html += '</thead>';
+        html += '<tbody>';
+        
+        if(invoice.items && invoice.items.length > 0){
+            $.each(invoice.items, function(index, item){
+                html += '<tr>';
+                html += '<td>' + item.item_name + '</td>';
+                html += '<td>' + (item.item_description || '-') + '</td>';
+                html += '<td class="text-center">' + item.quantity + '</td>';
+                html += '<td class="text-right">₱' + parseFloat(item.unit_price).toLocaleString() + '</td>';
+                html += '<td class="text-right">₱' + parseFloat(item.total_price).toLocaleString() + '</td>';
+                html += '</tr>';
+            });
+        }
+        
+        html += '</tbody>';
+        html += '</table>';
+        
+        // Totals
+        html += '<div class="totals">';
+        html += '<table class="totals-table">';
+        html += '<tr><td>Subtotal:</td><td class="text-right">₱' + parseFloat(invoice.subtotal).toLocaleString() + '</td></tr>';
+        html += '<tr><td>VAT (12%):</td><td class="text-right">₱' + parseFloat(invoice.vat_amount).toLocaleString() + '</td></tr>';
+        html += '<tr class="total-row"><td><strong>Total Amount:</strong></td><td class="text-right"><strong>₱' + parseFloat(invoice.total_amount).toLocaleString() + '</strong></td></tr>';
+        html += '</table>';
+        html += '</div>';
+        
+        // Payment Status
+        html += '<div class="payment-status ' + invoice.payment_status + '">';
+        if(invoice.payment_status == 'paid'){
+            html += '✅ PAID - Thank you for your payment!';
+        } else {
+            html += '⏳ PENDING PAYMENT - Payment must be completed in-store';
+        }
+        html += '</div>';
+        
+        // Footer Information
+        html += '<div class="footer-info">';
+        html += '<h5>Important Information:</h5>';
+        html += '<p><strong>Pickup Location:</strong> ' + (invoice.pickup_location || 'Store Location') + '</p>';
+        html += '<p><strong>Payment Instructions:</strong> ' + (invoice.payment_instructions || 'Payment must be completed in-store') + '</p>';
+        if(invoice.pickup_instructions){
+            html += '<p><strong>Pickup Instructions:</strong> ' + invoice.pickup_instructions + '</p>';
+        }
+        html += '<hr style="margin:20px 0;">';
+        html += '<h5>Contact Information:</h5>';
+        html += '<p>📍 National Highway Brgy. Parian, Calamba City, Laguna</p>';
+        html += '<p>📞 0948-235-3207</p>';
+        html += '<p>✉️ starhondacalamba55@gmail.com</p>';
+        html += '<p>📘 Facebook: @starhondacalambabranch</p>';
+        html += '<p style="text-align:center;margin-top:20px;font-size:10px;color:#999;">';
+        html += 'This invoice was generated on ' + new Date(invoice.generated_at).toLocaleString();
+        if(invoice.staff_firstname){
+            html += ' by ' + invoice.staff_firstname + ' ' + invoice.staff_lastname;
+        }
+        html += '</p>';
+        html += '</div>';
+        
+        html += '</div>';
+        return html;
     }
 
     function generateInvoiceHTML(invoice){
