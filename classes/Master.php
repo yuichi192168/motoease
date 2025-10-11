@@ -840,11 +840,10 @@ Class Master extends DBConnection {
 		extract($_POST);
 		$data = "";
 		foreach($_POST as $k=> $v){
-			if(in_array($k,array('client_id','mechanic_id','status'))){
+			if(in_array($k,array('client_id','mechanic_id','status','vehicle_type','vehicle_name','vehicle_registration_number','vehicle_model'))){
 				if(!empty($data)){ $data .= ", "; }
-
+				$v = $this->conn->real_escape_string($v);
 				$data .= " `{$k}` = '{$v}'";
-
 			}
 		}
 		if(empty($id)){
@@ -857,7 +856,7 @@ Class Master extends DBConnection {
 			$rid = empty($id) ? $this->conn->insert_id : $id ;
 			$data = "";
 			foreach($_POST as $k=> $v){
-				if(!in_array($k,array('id','client_id','mechanic_id','status'))){
+				if(!in_array($k,array('id','client_id','mechanic_id','status','vehicle_type','vehicle_name','vehicle_registration_number','vehicle_model'))){
 					if(!empty($data)){ $data .= ", "; }
 					if(is_array($_POST[$k]))
 					$v = implode(",",$_POST[$k]);
@@ -1896,6 +1895,94 @@ Class Master extends DBConnection {
         }
         return json_encode($resp);
     }
+
+    // Appointment functions
+    function book_appointment(){
+        extract($_POST);
+        
+        // Validate required fields
+        if(empty($client_id) || empty($service_type) || empty($appointment_date) || empty($appointment_time)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Please fill in all required fields.";
+            return json_encode($resp);
+        }
+        
+        // Sanitize inputs
+        $client_id = $this->conn->real_escape_string($client_id);
+        $service_type = $this->conn->real_escape_string($service_type);
+        $mechanic_id = isset($mechanic_id) && !empty($mechanic_id) ? $this->conn->real_escape_string($mechanic_id) : 'NULL';
+        $appointment_date = $this->conn->real_escape_string($appointment_date);
+        $appointment_time = $this->conn->real_escape_string($appointment_time);
+        $vehicle_info = isset($vehicle_info) ? $this->conn->real_escape_string($vehicle_info) : '';
+        $notes = isset($notes) ? $this->conn->real_escape_string($notes) : '';
+        
+        // Check if appointment slot is available
+        $availability_check = $this->conn->query("SELECT COUNT(*) as count FROM appointments WHERE appointment_date = '{$appointment_date}' AND appointment_time = '{$appointment_time}' AND status != 'cancelled'");
+        if($availability_check->fetch_assoc()['count'] > 0){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "This time slot is already booked. Please choose another time.";
+            return json_encode($resp);
+        }
+        
+        // Check if service exists
+        $service_check = $this->conn->query("SELECT id FROM service_list WHERE id = '{$service_type}' AND status = 1 AND delete_flag = 0");
+        if($service_check->num_rows == 0){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Selected service is not available.";
+            return json_encode($resp);
+        }
+        
+        // Check if mechanic exists (if specified)
+        if($mechanic_id != 'NULL'){
+            $mechanic_check = $this->conn->query("SELECT id FROM mechanics_list WHERE id = '{$mechanic_id}' AND status = 1");
+            if($mechanic_check->num_rows == 0){
+                $resp['status'] = 'failed';
+                $resp['msg'] = "Selected mechanic is not available.";
+                return json_encode($resp);
+            }
+        }
+        
+        // Insert appointment
+        $sql = "INSERT INTO appointments (client_id, service_type, mechanic_id, appointment_date, appointment_time, vehicle_info, notes, status) VALUES ('{$client_id}', '{$service_type}', {$mechanic_id}, '{$appointment_date}', '{$appointment_time}', '{$vehicle_info}', '{$notes}', 'pending')";
+        
+        $save = $this->conn->query($sql);
+        if($save){
+            $resp['status'] = 'success';
+            $resp['msg'] = "Appointment booked successfully!";
+            $resp['appointment_id'] = $this->conn->insert_id;
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to book appointment.";
+            $resp['error'] = $this->conn->error;
+        }
+        
+        return json_encode($resp);
+    }
+    
+    function check_appointment_availability(){
+        extract($_POST);
+        
+        // Validate inputs
+        if(empty($appointment_date) || empty($appointment_time)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Date and time are required.";
+            return json_encode($resp);
+        }
+        
+        // Sanitize inputs
+        $appointment_date = $this->conn->real_escape_string($appointment_date);
+        $appointment_time = $this->conn->real_escape_string($appointment_time);
+        
+        // Check availability
+        $check = $this->conn->query("SELECT COUNT(*) as count FROM appointments WHERE appointment_date = '{$appointment_date}' AND appointment_time = '{$appointment_time}' AND status != 'cancelled'");
+        $count = $check->fetch_assoc()['count'];
+        
+        $resp['status'] = 'success';
+        $resp['available'] = $count == 0;
+        $resp['msg'] = $count == 0 ? "Time slot is available" : "Time slot is not available";
+        
+        return json_encode($resp);
+    }
 }
 
 $Master = new Master();
@@ -2042,6 +2129,12 @@ $sysset = new SystemSettings();
 	break;
 	case 'update_customer':
 		echo $Master->update_customer();
+	break;
+	case 'book_appointment':
+		echo $Master->book_appointment();
+	break;
+	case 'check_appointment_availability':
+		echo $Master->check_appointment_availability();
 	break;
 	default:
 		break;

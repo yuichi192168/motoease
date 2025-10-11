@@ -46,8 +46,13 @@
 							
 							// Only query services if we have valid service IDs
 							$services = null;
-							if(!empty($sids) && $sids !== '') {
-								$services = $conn->query("SELECT * FROM service_list where id in ({$sids}) ");
+							if(!empty($sids) && $sids !== '' && $sids !== '0') {
+								// Validate and sanitize service IDs
+								$service_ids = array_filter(array_map('intval', explode(',', $sids)));
+								if(!empty($service_ids)) {
+									$service_ids_str = implode(',', $service_ids);
+									$services = $conn->query("SELECT * FROM service_list where id in ({$service_ids_str}) ");
+								}
 							}
 					?>
 						<tr>

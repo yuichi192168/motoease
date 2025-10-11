@@ -1,7 +1,7 @@
 <?php 
 require_once('./../../config.php');
 if(isset($_GET['id'])){
-$qry = $conn->query("SELECT s.*,cc.category,concat(c.lastname,', ', c.firstname,' ',c.middlename) as fullname,c.email,c.contact, c.address FROM `service_requests` s inner join `categories` cc inner join client_list c on s.client_id = c.id where s.id = '{$_GET['id']}' ");
+$qry = $conn->query("SELECT s.*,concat(c.lastname,', ', c.firstname,' ',c.middlename) as fullname,c.email,c.contact, c.address FROM `service_requests` s inner join client_list c on s.client_id = c.id where s.id = '{$_GET['id']}' ");
 foreach($qry->fetch_array() as $k => $v){
     $$k = $v;
 }

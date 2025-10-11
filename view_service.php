@@ -14,6 +14,56 @@ foreach($qry->fetch_array() as $k => $v){
     <dl>
         <dt><?php echo $service ?></dt>
         <dd><?php echo html_entity_decode(stripslashes($description)) ?></dd>
+        <?php 
+        // Format estimated time display
+        $estimated_time = '';
+        if(isset($estimated_hours) && $estimated_hours > 0) {
+            $hours = floor($estimated_hours);
+            $minutes = ($estimated_hours - $hours) * 60;
+            
+            if($hours > 0 && $minutes > 0) {
+                $estimated_time = $hours . 'h ' . round($minutes) . 'm';
+            } elseif($hours > 0) {
+                $estimated_time = $hours . 'h';
+            } else {
+                $estimated_time = round($minutes) . 'm';
+            }
+        } elseif(isset($min_minutes) && isset($max_minutes) && $min_minutes > 0) {
+            // Use min/max minutes if available
+            $min_hours = floor($min_minutes / 60);
+            $min_mins = $min_minutes % 60;
+            $max_hours = floor($max_minutes / 60);
+            $max_mins = $max_minutes % 60;
+            
+            $min_time = '';
+            $max_time = '';
+            
+            if($min_hours > 0 && $min_mins > 0) {
+                $min_time = $min_hours . 'h ' . $min_mins . 'm';
+            } elseif($min_hours > 0) {
+                $min_time = $min_hours . 'h';
+            } else {
+                $min_time = $min_mins . 'm';
+            }
+            
+            if($max_hours > 0 && $max_mins > 0) {
+                $max_time = $max_hours . 'h ' . $max_mins . 'm';
+            } elseif($max_hours > 0) {
+                $max_time = $max_hours . 'h';
+            } else {
+                $max_time = $max_mins . 'm';
+            }
+            
+            $estimated_time = $min_time . ' - ' . $max_time;
+        }
+        
+        if(!empty($estimated_time)): ?>
+        <dd class="mt-2">
+            <span class="badge badge-info">
+                <i class="fa fa-clock-o"></i> Estimated Time: <?php echo $estimated_time ?>
+            </span>
+        </dd>
+        <?php endif; ?>
     </dl>
     <hr>
     <div class="card card-outline rounded-0 card-secondary">

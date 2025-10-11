@@ -31,6 +31,25 @@ window.update_cart_count = function($count = 0) {
     }
 }
 
+window.uni_modal = function($title = '', $url = '', $size = '', $params = {}) {
+    $('#uni_modal .modal-title').html($title)
+    $('#uni_modal .modal-body').html('<div class="d-flex justify-content-center"><div class="spinner-border" role="status"><span class="sr-only">Loading...</span></div></div>')
+    if($size != ''){
+        $('#uni_modal .modal-dialog').addClass($size)
+    }else{
+        $('#uni_modal .modal-dialog').removeClass('modal-sm modal-md modal-lg modal-xl')
+    }
+    $('#uni_modal').modal('show')
+    $.get($url, $params, function(resp){
+        $('#uni_modal .modal-body').html(resp)
+        if($('#uni_modal .modal-body script').length > 0){
+            $('#uni_modal .modal-body script').each(function(){
+                eval($(this).html())
+            })
+        }
+    })
+}
+
 $(document).ready(function() {
     function startLockCountdown($form, $alertEl, lockedUntilTs) {
         try {
