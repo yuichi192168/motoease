@@ -417,8 +417,23 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         });
         
         $('#add_to_cart').click(function(){
-            if("<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>" == 1){
-                if('<?= $available > 0 ?>' == 1){
+            if("<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>" != 1){
+                Swal.fire({
+                    title: 'Login Required',
+                    text: 'Please login first to add items to cart.',
+                    icon: 'warning',
+                    confirmButtonText: 'Login Now',
+                    showCancelButton: true,
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        location.href = './login.php';
+                    }
+                });
+                return false;
+            }
+            
+            if('<?= $available > 0 ?>' == 1){
                     // Show quantity selector
                     Swal.fire({
                         title: 'Add to Cart',
@@ -520,20 +535,6 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 } else {
                     alert_toast('Product is out of stock.','warning');
                 }
-            }else{
-                Swal.fire({
-                    title: 'Login Required',
-                    text: 'Please login to add items to your cart.',
-                    icon: 'warning',
-                    confirmButtonText: 'Login Now',
-                    showCancelButton: true,
-                    cancelButtonText: 'Cancel'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        location.href = './login.php';
-                    }
-                });
-            }
         });
     });
     // Swap main image when selecting a color with a swatch

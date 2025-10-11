@@ -27,172 +27,325 @@ if ($is_standalone) {
     <section class="py-5">
         <div class="container px-4 px-lg-5 mt-5">
             <div class="row justify-content-center">
-                <div class="col-md-8">
-                    <div class="card">
+                <div class="col-md-10">
+                    <div class="card card-outline card-primary shadow rounded-0">
                         <div class="card-header">
-                            <h3 class="card-title">Service Request Form</h3>
+                            <h4 class="card-title"><b>Service Request Form</b></h4>
                         </div>
                         <div class="card-body">
     <?php
 }
+
+// Get available services
+$services = $conn->query("SELECT * FROM service_list WHERE status = 1 ORDER BY service ASC");
+
+// Get user's existing service requests
+$user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = '{$_settings->userdata('id')}' ORDER BY date_created DESC");
 ?>
+
 <style>
     #uni_modal .modal-footer{
         display:none
     }
     span.select2-selection.select2-selection--single,span.select2-selection.select2-selection--multiple {
-    padding: 0.25rem 0.5rem;
-    min-height: calc(1.5em + 0.5rem + 2px);
-    height:auto !important;
-    max-height:calc(3.5em + 0.5rem + 2px);
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-    border-radius: 0;
-}
-.error-msg {
-    color: #dc3545;
-    font-size: 0.8rem;
-    margin-top: 0.25rem;
-}
+        padding: 0.25rem 0.5rem;
+        min-height: calc(1.5em + 0.5rem + 2px);
+        height:auto !important;
+        max-height:calc(3.5em + 0.5rem + 2px);
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        border-radius: 0;
+    }
+    .error-msg {
+        color: #dc3545;
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+    }
+    .form-control.is-invalid {
+        border-color: #dc3545;
+    }
+    .form-control.is-valid {
+        border-color: #28a745;
+    }
 </style>
+
 <?php if (!$is_standalone): ?>
 <div class="container-fluid">
 <?php endif; ?>
     <form action="" id="request_form">
         <input type="hidden" name="id">
-    <?php if (!$is_standalone): ?>
-    <div class="col-12">
+        <input type="hidden" name="client_id" value="<?= $_settings->userdata('id') ?>">
+        
         <div class="row">
-            <div class="col-md-12">
-    <?php else: ?>
-    <div class="row">
-        <div class="col-md-6">
-    <?php endif; ?>
-                <div class="form-group mb-3">
-                    <label for="vehicle_type" class="control-label">Vehicle Type</label>
-                    <input type="text" name="vehicle_type" id="vehicle_type" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" required>
-                </div>
-                <div class="form-group mb-3">
-                    <label for="vehicle_name" class="control-label">Vehicle Name</label>
-                    <input type="text" name="vehicle_name" id="vehicle_name" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" required>
-                </div>
-                <div class="form-group mb-3">
-                    <label for="vehicle_registration_number" class="control-label">Vehicle Registration Number *</label>
-                    <input type="text" name="vehicle_registration_number" id="vehicle_registration_number" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" required 
-                           pattern="[A-Z]{3}[0-9]{3}|[A-Z]{2}[0-9]{3}[A-Z]{2}|[A-Z]{1}[0-9]{3}[A-Z]{3}" 
-                           placeholder="e.g., ABC123, AB123CD, A123BCD" maxlength="7">
-                    <div class="error-msg" id="vehicle_registration_number_error"></div>
-                    <small class="form-text text-muted">Format: ABC123, AB123CD, or A123BCD</small>
-                </div>
-                <div class="form-group mb-3">
-                    <label for="vehicle_model" class="control-label">Vehicle Model *</label>
-                    <input type="text" name="vehicle_model" id="vehicle_model" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" required 
-                           pattern="[A-Za-z0-9\s\-\.]+" minlength="2" maxlength="50">
-                    <div class="error-msg" id="vehicle_model_error"></div>
-                    <small class="form-text text-muted">Enter the exact model name (e.g., Honda Click 160, Yamaha NMAX 155)</small>
-                </div>
-                <div class="form-group mb-3">
-                    <label for="service_id" class="control-label">Services</label>
-                    <select name="service_id[]" id="service_id" class="form-select <?php echo $is_standalone ? '' : 'form-select-sm rounded-0'; ?> select2" multiple required>
-                        <option disabled></option>
-                        <?php 
-                        $service = $conn->query("SELECT * FROM `service_list` where status = 1 and delete_flag = 0 order by `service` asc");
-                        while($row = $service->fetch_assoc()):
-                        ?>
-                        <option value="<?php echo $row['id'] ?>"><?php echo  $row['service'] ?></option>
-                        <?php endwhile; ?>
-                    </select>
-                </div>
-                <div class="form-group mb-3" style="display:none">
-                    <label for="pickup_address" class="control-label">Pick up Address</label>
-                    <textarea rows="3" name="pickup_address" id="pickup_address" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" style="resize:none"></textarea>
-                </div>
-    <?php if (!$is_standalone): ?>
+            <div class="form-group col-md-6">
+                <label for="vehicle_type" class="control-label">Vehicle Type *</label>
+                <select name="vehicle_type" id="vehicle_type" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" required>
+                    <option value="">Select Vehicle Type</option>
+                    <option value="Motorcycle">Motorcycle</option>
+                    <option value="Scooter">Scooter</option>
+                    <option value="ATV">ATV</option>
+                    <option value="Other">Other</option>
+                </select>
+                <div class="error-msg" id="vehicle_type_error"></div>
+            </div>
+            <div class="form-group col-md-6">
+                <label for="vehicle_name" class="control-label">Vehicle Name *</label>
+                <input type="text" name="vehicle_name" id="vehicle_name" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" required 
+                       placeholder="e.g., Honda Click, Yamaha NMAX" maxlength="50">
+                <div class="error-msg" id="vehicle_name_error"></div>
+            </div>
+            <div class="form-group col-md-6">
+                <label for="vehicle_registration_number" class="control-label">Vehicle Registration Number *</label>
+                <input type="text" name="vehicle_registration_number" id="vehicle_registration_number" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" required 
+                       pattern="[A-Z]{3}[0-9]{3}|[A-Z]{2}[0-9]{3}[A-Z]{2}|[A-Z]{1}[0-9]{3}[A-Z]{3}" 
+                       placeholder="e.g., ABC123, AB123CD, A123BCD" maxlength="7">
+                <div class="error-msg" id="vehicle_registration_number_error"></div>
+                <small class="form-text text-muted">Format: ABC123, AB123CD, or A123BCD</small>
+            </div>
+            <div class="form-group col-md-6">
+                <label for="vehicle_model" class="control-label">Vehicle Model *</label>
+                <input type="text" name="vehicle_model" id="vehicle_model" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" required 
+                       pattern="[A-Za-z0-9\s\-\.]+" minlength="2" maxlength="50"
+                       placeholder="e.g., Honda Click 160, Yamaha NMAX 155">
+                <div class="error-msg" id="vehicle_model_error"></div>
+            </div>
+            <div class="form-group col-md-12">
+                <label for="service_id" class="control-label">Services Required *</label>
+                <select name="service_id[]" id="service_id" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?> select2" multiple required>
+                    <option value="">Select Services</option>
+                    <?php 
+                    while($service = $services->fetch_assoc()):
+                    ?>
+                    <option value="<?php echo $service['id'] ?>"><?php echo $service['service'] ?></option>
+                    <?php endwhile; ?>
+                </select>
+                <div class="error-msg" id="service_id_error"></div>
+                <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple services</small>
+            </div>
+            <div class="form-group col-md-12">
+                <label for="vehicle_info" class="control-label">Vehicle Information</label>
+                <textarea name="vehicle_info" id="vehicle_info" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" rows="3" 
+                          placeholder="Please provide details about your vehicle (year, mileage, previous issues, etc.)"></textarea>
+            </div>
+            <div class="form-group col-md-12">
+                <label for="service_description" class="control-label">Service Description *</label>
+                <textarea name="service_description" id="service_description" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" rows="3" required
+                          placeholder="Please describe the service you need or the problem you're experiencing"></textarea>
+                <div class="error-msg" id="service_description_error"></div>
+            </div>
+            <div class="form-group col-md-12">
+                <label for="pickup_address" class="control-label">Pickup Address</label>
+                <textarea name="pickup_address" id="pickup_address" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" rows="2" 
+                          placeholder="Enter your address if you need pickup service (optional)"></textarea>
             </div>
         </div>
-    </div>
+        
+        <?php if (!$is_standalone): ?>
         <div class="w-100 d-flex justify-content-end mx-2">
             <div class="col-auto">
                 <button class="btn btn-primary btn-sm rounded-0">Submit Request</button>
                 <button class="btn btn-dark btn-sm rounded-0" type="button" data-dismiss="modal">Close</button>
             </div>
         </div>
-    <?php else: ?>
+        <?php else: ?>
+        <div class="text-right">
+            <button type="submit" class="btn btn-primary">Submit Request</button>
+            <a href="./" class="btn btn-secondary">Cancel</a>
+        </div>
+        <?php endif; ?>
+    </form>
+    
+    <?php if ($is_standalone): ?>
+    <!-- My Service Requests -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card card-outline card-info shadow rounded-0">
+                <div class="card-header">
+                    <h4 class="card-title"><b>My Service Requests</b></h4>
+                </div>
+                <div class="card-body">
+                    <?php if($user_requests->num_rows > 0): ?>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Vehicle</th>
+                                    <th>Services</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php while($request = $user_requests->fetch_assoc()): ?>
+                                <tr>
+                                    <td><?= isset($request['date_created']) ? date('M d, Y', strtotime($request['date_created'])) : 'N/A' ?></td>
+                                    <td><?= isset($request['vehicle_name']) ? htmlspecialchars($request['vehicle_name']) : 'N/A' ?></td>
+                                    <td>
+                                        <?php 
+                                        if (!empty($request['service_id'])) {
+                                            $service_ids = explode(',', $request['service_id']);
+                                            $service_names = [];
+                                            foreach($service_ids as $service_id) {
+                                                if (!empty($service_id)) {
+                                                    $service = $conn->query("SELECT service FROM service_list WHERE id = '$service_id'")->fetch_assoc();
+                                                    if($service) $service_names[] = $service['service'];
+                                                }
+                                            }
+                                            echo implode(', ', $service_names);
+                                        } else {
+                                            echo 'N/A';
+                                        }
+                                        ?>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-<?= isset($request['status']) && $request['status'] == 'completed' ? 'success' : (isset($request['status']) && $request['status'] == 'in_progress' ? 'warning' : 'secondary') ?>">
+                                            <?= isset($request['status']) ? ucfirst($request['status']) : 'Unknown' ?>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <?php endwhile; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php else: ?>
+                    <p class="text-muted text-center">No service requests found.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
     </div>
-        <div class="form-group text-center">
-            <button class="btn btn-primary btn-lg">Submit Request</button>
-            <a href="./" class="btn btn-secondary btn-lg">Cancel</a>
-        </div>
     <?php endif; ?>
-    </form>
+
 <?php if (!$is_standalone): ?>
 </div>
 <?php endif; ?>
 <script>
     $(function(){
         $('.select2').select2({
-            placeholder:"Please Select Here",
+            placeholder:"Please Select Services",
             <?php if (!$is_standalone): ?>
             dropdownParent: $('#uni_modal')
             <?php else: ?>
             width: '100%'
             <?php endif; ?>
-        })
-        // request type removed
+        });
 
-        // Vehicle registration number validation
-        $('#vehicle_registration_number').on('input', function() {
-            var value = $(this).val();
+        // Form validation functions
+        function validateVehicleType() {
+            var vehicleType = $('#vehicle_type').val();
+            if (!vehicleType) {
+                $('#vehicle_type').addClass('is-invalid');
+                $('#vehicle_type_error').text('Please select a vehicle type');
+                return false;
+            } else {
+                $('#vehicle_type').removeClass('is-invalid').addClass('is-valid');
+                $('#vehicle_type_error').text('');
+                return true;
+            }
+        }
+
+        function validateVehicleName() {
+            var vehicleName = $('#vehicle_name').val().trim();
+            if (vehicleName.length < 2) {
+                $('#vehicle_name').addClass('is-invalid');
+                $('#vehicle_name_error').text('Vehicle name must be at least 2 characters long');
+                return false;
+            } else if (vehicleName.length > 50) {
+                $('#vehicle_name').addClass('is-invalid');
+                $('#vehicle_name_error').text('Vehicle name must not exceed 50 characters');
+                return false;
+            } else {
+                $('#vehicle_name').removeClass('is-invalid').addClass('is-valid');
+                $('#vehicle_name_error').text('');
+                return true;
+            }
+        }
+
+        function validateRegistrationNumber() {
+            var regNumber = $('#vehicle_registration_number').val().trim().toUpperCase();
             var pattern = /^[A-Z]{3}[0-9]{3}$|^[A-Z]{2}[0-9]{3}[A-Z]{2}$|^[A-Z]{1}[0-9]{3}[A-Z]{3}$/;
             
-            if (value && !pattern.test(value)) {
-                $(this).addClass('is-invalid');
-                $('#vehicle_registration_number_error').text('Please enter a valid registration number format');
-            } else {
-                $(this).removeClass('is-invalid').addClass('is-valid');
-                $('#vehicle_registration_number_error').text('');
-            }
-        });
-
-        // Vehicle model validation
-        $('#vehicle_model').on('input', function() {
-            var value = $(this).val();
-            
-            if (value.length < 2) {
-                $(this).addClass('is-invalid');
-                $('#vehicle_model_error').text('Vehicle model must be at least 2 characters long');
-            } else if (value.length > 50) {
-                $(this).addClass('is-invalid');
-                $('#vehicle_model_error').text('Vehicle model must not exceed 50 characters');
-            } else {
-                $(this).removeClass('is-invalid').addClass('is-valid');
-                $('#vehicle_model_error').text('');
-            }
-        });
-
-        $('#request_form').submit(function(e){
-            e.preventDefault()
-            
-            // Validate before submission
-            var isValid = true;
-            
-            // Check vehicle registration number
-            var regNumber = $('#vehicle_registration_number').val();
-            var regPattern = /^[A-Z]{3}[0-9]{3}$|^[A-Z]{2}[0-9]{3}[A-Z]{2}$|^[A-Z]{1}[0-9]{3}[A-Z]{3}$/;
-            if (!regPattern.test(regNumber)) {
+            if (!regNumber) {
+                $('#vehicle_registration_number').addClass('is-invalid');
+                $('#vehicle_registration_number_error').text('Registration number is required');
+                return false;
+            } else if (!pattern.test(regNumber)) {
                 $('#vehicle_registration_number').addClass('is-invalid');
                 $('#vehicle_registration_number_error').text('Please enter a valid registration number format');
-                isValid = false;
+                return false;
+            } else {
+                $('#vehicle_registration_number').removeClass('is-invalid').addClass('is-valid');
+                $('#vehicle_registration_number_error').text('');
+                return true;
             }
-            
-            // Check vehicle model
-            var model = $('#vehicle_model').val();
-            if (model.length < 2 || model.length > 50) {
+        }
+
+        function validateVehicleModel() {
+            var model = $('#vehicle_model').val().trim();
+            if (model.length < 2) {
                 $('#vehicle_model').addClass('is-invalid');
-                $('#vehicle_model_error').text('Vehicle model must be between 2 and 50 characters');
-                isValid = false;
+                $('#vehicle_model_error').text('Vehicle model must be at least 2 characters long');
+                return false;
+            } else if (model.length > 50) {
+                $('#vehicle_model').addClass('is-invalid');
+                $('#vehicle_model_error').text('Vehicle model must not exceed 50 characters');
+                return false;
+            } else {
+                $('#vehicle_model').removeClass('is-invalid').addClass('is-valid');
+                $('#vehicle_model_error').text('');
+                return true;
             }
+        }
+
+        function validateServices() {
+            var services = $('#service_id').val();
+            if (!services || services.length === 0) {
+                $('#service_id').addClass('is-invalid');
+                $('#service_id_error').text('Please select at least one service');
+                return false;
+            } else {
+                $('#service_id').removeClass('is-invalid').addClass('is-valid');
+                $('#service_id_error').text('');
+                return true;
+            }
+        }
+
+        function validateServiceDescription() {
+            var description = $('#service_description').val().trim();
+            if (description.length < 10) {
+                $('#service_description').addClass('is-invalid');
+                $('#service_description_error').text('Service description must be at least 10 characters long');
+                return false;
+            } else {
+                $('#service_description').removeClass('is-invalid').addClass('is-valid');
+                $('#service_description_error').text('');
+                return true;
+            }
+        }
+
+        // Real-time validation
+        $('#vehicle_type').change(validateVehicleType);
+        $('#vehicle_name').on('input', validateVehicleName);
+        $('#vehicle_registration_number').on('input', function() {
+            $(this).val($(this).val().toUpperCase());
+            validateRegistrationNumber();
+        });
+        $('#vehicle_model').on('input', validateVehicleModel);
+        $('#service_id').change(validateServices);
+        $('#service_description').on('input', validateServiceDescription);
+
+        // Form submission
+        $('#request_form').submit(function(e){
+            e.preventDefault();
+            
+            // Validate all fields
+            var isValid = true;
+            isValid &= validateVehicleType();
+            isValid &= validateVehicleName();
+            isValid &= validateRegistrationNumber();
+            isValid &= validateVehicleModel();
+            isValid &= validateServices();
+            isValid &= validateServiceDescription();
             
             if (!isValid) {
                 alert_toast('Please correct the validation errors before submitting.', 'error');
@@ -200,36 +353,42 @@ if ($is_standalone) {
             }
             
             start_loader();
+            
+            var formData = new FormData($(this)[0]);
+            
             $.ajax({
-                url:'classes/Master.php?f=save_request',
-                method:'POST',
-                data:$(this).serialize(),
-                dataType:'json',
-                error:err=>{
-                    console.log(err)
-                    alert_toast("An error occured",'error');
-                    end_loader()
+                url: _base_url_ + 'classes/Master.php?f=save_request',
+                method: 'POST',
+                data: formData,
+                cache: false,
+                contentType: false,
+                processData: false,
+                dataType: 'json',
+                error: err => {
+                    console.log(err);
+                    alert_toast("An error occurred", 'error');
+                    end_loader();
                 },
-                success:function(resp){
-                    end_loader()
+                success: function(resp){
+                    end_loader();
                     if(resp.status == 'success'){
+                        alert_toast(resp.msg || 'Service request submitted successfully!', 'success');
                         <?php if ($is_standalone): ?>
-                        alert_toast('Service request submitted successfully!', 'success');
+                        setTimeout(function(){
+                            location.reload();
+                        }, 2000);
+                        <?php else: ?>
                         setTimeout(function(){
                             location.href = "./?p=my_services";
                         }, 2000);
-                        <?php else: ?>
-                        location.href= "./?p=my_services"
                         <?php endif; ?>
-                    }else if(!!resp.msg){
-                        alert_toast(resp.msg,'error')
-                    }else{
-                        alert_toast("An error occured",'error');
+                    } else {
+                        alert_toast(resp.msg || 'An error occurred', 'error');
                     }
                 }
-            })
-        })
-    })
+            });
+        });
+    });
 </script>
 
 <?php if ($is_standalone): ?>

@@ -222,9 +222,6 @@ while($customer = $customer_query->fetch_assoc()) {
         $('#service_list .view_service').click(function(){
             uni_modal("Service Details","view_service.php?id="+$(this).attr('data-id'),'mid-large')
         })
-        $('#send_request').click(function(){
-            uni_modal("Fill the Service Request Form","send_request.php",'large')
-        })
 
     })
     $(document).scroll(function() { 

@@ -127,18 +127,18 @@
                 </h5>
                 
                 <div class="mb-3">
-                    <a href="https://form.jotform.com/242488642552463" target="_blank" class="btn btn-primary btn-block mb-2">
+                    <button onclick="if('<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>' != 1){ Swal.fire({ title: 'Login Required', text: 'Please login first to apply for installment.', icon: 'warning', confirmButtonText: 'Login Now', showCancelButton: true, cancelButtonText: 'Cancel' }).then((result) => { if (result.isConfirmed) { location.href = './login.php'; } }); return false; } window.open('https://form.jotform.com/242488642552463', '_blank');" class="btn btn-primary btn-block mb-2">
                         <i class="fas fa-file-alt"></i> Apply for Installment
-                    </a>
+                    </button>
                     <a href="./?p=products" class="btn btn-outline-light btn-block mb-2">
                         <i class="fas fa-motorcycle"></i> Browse Motorcycles
                     </a>
                     <a href="./?p=services" class="btn btn-outline-light btn-block mb-2">
                         <i class="fas fa-tools"></i> Our Services
                     </a>
-                    <a href="./?p=appointments" class="btn btn-outline-light btn-block mb-2">
+                    <button onclick="if('<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>' != 1){ Swal.fire({ title: 'Login Required', text: 'Please login first to book an appointment.', icon: 'warning', confirmButtonText: 'Login Now', showCancelButton: true, cancelButtonText: 'Cancel' }).then((result) => { if (result.isConfirmed) { location.href = './login.php'; } }); return false; } window.location.href='./?p=appointments';" class="btn btn-outline-light btn-block mb-2">
                         <i class="fas fa-calendar"></i> Book Appointment
-                    </a>
+                    </button>
                 </div>
 
                 <div class="text-center">

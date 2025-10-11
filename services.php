@@ -14,7 +14,7 @@
                 <?php if($_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2): ?>
                     <a href="./?p=send_request" class="btn btn-primary btn-lg rounded-0" id="send_request">Send Service Request</a>
                 <?php else: ?>
-                    <button class="btn btn-primary btn-lg rounded-0" id="send_request" type="button">Send Service Request</button>
+                    <button class="btn btn-primary btn-lg rounded-0" id="send_request" type="button" onclick="if('<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>' != 1){ Swal.fire({ title: 'Login Required', text: 'Please login first to send service request.', icon: 'warning', confirmButtonText: 'Login Now', showCancelButton: true, cancelButtonText: 'Cancel' }).then((result) => { if (result.isConfirmed) { location.href = './login.php'; } }); return false; } uni_modal('Fill the Service Request Form','send_request.php','large');">Send Service Request</button>
                 <?php endif; ?>
             </div>
         </div>
@@ -155,21 +155,6 @@
         $('#service_list .view_service').click(function(){
             console.log('Service clicked, ID:', $(this).attr('data-id'));
             uni_modal("Service Details","view_service.php?id="+$(this).attr('data-id'),'mid-large')
-        })
-        $('#send_request').click(function(e){
-            console.log('Send request button clicked');
-            <?php if($_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2): ?>
-                console.log('User is logged in, redirecting to send request page');
-                // If it's a link, let it navigate naturally, otherwise redirect
-                if ($(this).is('button')) {
-                    e.preventDefault();
-                    window.location.href = "./?p=send_request";
-                }
-            <?php else: ?>
-                console.log('User not logged in, showing warning');
-                e.preventDefault();
-                alert_toast("Please Login First.","warning");
-            <?php endif; ?>
         })
 
     })

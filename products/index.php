@@ -49,7 +49,40 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                         </div>
                     </div>
                 </div>
-                <div class="row row-cols-sm-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4">
+                <!-- Loading Skeleton -->
+                <div id="products-skeleton" class="row row-cols-sm-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4">
+                    <?php for($i = 0; $i < 8; $i++): ?>
+                    <div class="col px-1 py-2">
+                        <div class="card rounded-0 shadow h-100">
+                            <div class="product-img-holder overflow-hidden position-relative">
+                                <div class="skeleton-img"></div>
+                                <div class="position-absolute" style="top:6px; left:6px;">
+                                    <div class="skeleton-badge"></div>
+                                </div>
+                                <div class="position-absolute" style="top:6px; right:6px;">
+                                    <div class="skeleton-badge"></div>
+                                </div>
+                                <div class="position-absolute price-tag rounded-pill" style="bottom:6px; right:6px;">
+                                    <div class="skeleton-price"></div>
+                                </div>
+                            </div>
+                            <div class="card-body border-top d-flex flex-column">
+                                <div class="skeleton-title"></div>
+                                <div class="skeleton-text-small"></div>
+                                <div class="skeleton-text-small"></div>
+                                <div class="skeleton-text"></div>
+                                <div class="skeleton-text"></div>
+                                <div class="mt-3">
+                                    <div class="skeleton-button"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endfor; ?>
+                </div>
+
+                <!-- Products Container -->
+                <div id="products-container" class="row row-cols-sm-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4" style="display: none;">
                     <?php 
                     $where="";
                     if(is_array($brand_filter)){
@@ -138,7 +171,7 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                                     <!-- Add to Cart Button -->
                                     <div class="mt-3">
                                         <?php if($available > 0): ?>
-                                            <button class="btn btn-primary btn-sm w-100" onclick="addToCart(<?= $row['id'] ?>)">
+                                            <button class="btn btn-primary btn-sm w-100" onclick="if('<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>' != 1){ Swal.fire({ title: 'Login Required', text: 'Please login first to add items to cart.', icon: 'warning', confirmButtonText: 'Login Now', showCancelButton: true, cancelButtonText: 'Cancel' }).then((result) => { if (result.isConfirmed) { location.href = './login.php'; } }); return false; } addToCart(<?= $row['id'] ?>);">
                                                 <i class="fa fa-cart-plus"></i> Add to Cart
                                             </button>
                                         <?php else: ?>
@@ -165,8 +198,143 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
         </div>
     </div>
 </div>
+
+<style>
+/* Skeleton Loading Animation */
+@keyframes skeleton-loading {
+    0% {
+        background-position: -200px 0;
+    }
+    100% {
+        background-position: calc(200px + 100%) 0;
+    }
+}
+
+.skeleton-img {
+    width: 100%;
+    height: 200px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200px 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 0.25rem;
+}
+
+.skeleton-badge {
+    width: 60px;
+    height: 20px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200px 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 10px;
+}
+
+.skeleton-price {
+    width: 80px;
+    height: 25px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200px 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 12px;
+}
+
+.skeleton-title {
+    width: 80%;
+    height: 24px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200px 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.skeleton-text-small {
+    width: 60%;
+    height: 14px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200px 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 4px;
+    margin-bottom: 6px;
+}
+
+.skeleton-text {
+    width: 100%;
+    height: 14px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200px 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 4px;
+    margin-bottom: 6px;
+}
+
+.skeleton-text:last-child {
+    width: 70%;
+}
+
+.skeleton-button {
+    width: 100%;
+    height: 32px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200px 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 4px;
+}
+
+/* Loading state for filters */
+.loading-filters {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Smooth transitions */
+#products-skeleton, #products-container {
+    transition: opacity 0.3s ease-in-out;
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+
 <script>
+    // Loading skeleton functions
+    function showSkeleton() {
+        $('#products-skeleton').show();
+        $('#products-container').hide();
+        $('.categories-filter-container').addClass('loading-filters');
+    }
+    
+    function hideSkeleton() {
+        $('#products-skeleton').hide();
+        $('#products-container').show().addClass('fade-in');
+        $('.categories-filter-container').removeClass('loading-filters');
+    }
+    
+    // Simulate loading delay for better UX
+    function simulateLoading() {
+        showSkeleton();
+        setTimeout(function() {
+            hideSkeleton();
+        }, 800); // 800ms delay to show skeleton
+    }
+
     $(function(){
+        // Show skeleton on page load
+        $(document).ready(function() {
+            simulateLoading();
+        });
+        
         if($('.brand_filter').length == $('.brand_filter:checked').length){
             $('#brand_all').prop("checked",true)
         }else{
@@ -189,11 +357,14 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
         })
         $('#search_prod').submit(function(e){
             e.preventDefault()
+            showSkeleton();
             var search = $(this).serialize()
-            location.href="./?p=products"+(search != '' ? "&"+search : "")+"<?= isset($_GET['brand_filter']) ? "&brand_filter=".$_GET['brand_filter'] : "" ?><?= isset($_GET['category_filter']) ? "&category_filter=".$_GET['category_filter'] : "" ?>";
-
+            setTimeout(function() {
+                location.href="./?p=products"+(search != '' ? "&"+search : "")+"<?= isset($_GET['brand_filter']) ? "&brand_filter=".$_GET['brand_filter'] : "" ?><?= isset($_GET['category_filter']) ? "&category_filter=".$_GET['category_filter'] : "" ?>";
+            }, 300);
         })
         $('.brand_filter').change(function(){
+            showSkeleton();
             var brand_ids = [];
             if($('.brand_filter').length == $('.brand_filter:checked').length){
                 $('#brand_all').prop("checked",true)
@@ -205,9 +376,12 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                 brand_ids = brand_ids.join(",")
             }
             
-            location.href="./?p=products"+(brand_ids.length > 0 ? "&brand_filter="+brand_ids : "")+"<?= isset($_GET['category_filter']) ? "&category_filter=".$_GET['category_filter'] : "" ?><?= isset($_GET['search']) ? "&search=".$_GET['search'] : "" ?>";
+            setTimeout(function() {
+                location.href="./?p=products"+(brand_ids.length > 0 ? "&brand_filter="+brand_ids : "")+"<?= isset($_GET['category_filter']) ? "&category_filter=".$_GET['category_filter'] : "" ?><?= isset($_GET['search']) ? "&search=".$_GET['search'] : "" ?>";
+            }, 300);
         })
         $('.category_filter').change(function(){
+            showSkeleton();
             var category_ids = [];
             if($('.category_filter').length == $('.category_filter:checked').length){
                 $('#category_all').prop("checked",true)
@@ -215,11 +389,13 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                 $('#category_all').prop("checked",false)
                 $('.category_filter:checked').each(function(){
                     category_ids.push($(this).val())
-                }) 
+                })  
                 category_ids = category_ids.join(",")
             }
-             
-            location.href="./?p=products"+(category_ids.length > 0 ? "&category_filter="+category_ids : "")+"<?= isset($_GET['brand_filter']) ? "&brand_filter=".$_GET['brand_filter'] : "" ?><?= isset($_GET['search']) ? "&search=".$_GET['search'] : "" ?>";
+            
+            setTimeout(function() {
+                location.href="./?p=products"+(category_ids.length > 0 ? "&category_filter="+category_ids : "")+"<?= isset($_GET['brand_filter']) ? "&brand_filter=".$_GET['brand_filter'] : "" ?><?= isset($_GET['search']) ? "&search=".$_GET['search'] : "" ?>";
+            }, 300);
         })
     })
 </script>
