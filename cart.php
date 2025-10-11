@@ -58,13 +58,19 @@
                     
                     $total += ($row['quantity'] * $row['price']);
                 ?>
-                <div class="d-flex align-items-center w-100 border cart-item" data-id="<?= $row['id'] ?>">
-                    <div class="col-auto flex-grow-1 flex-shrink-1 px-1 py-1">
-                        <div class="d-flex align-items-center w-100 ">
+                <div class="card mb-3 cart-item" data-id="<?= $row['id'] ?>">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <div class="form-check">
+                                    <input class="form-check-input item-checkbox" type="checkbox" value="<?= $row['id'] ?>" id="item_<?= $row['id'] ?>">
+                                    <label class="form-check-label" for="item_<?= $row['id'] ?>"></label>
+                                </div>
+                            </div>
                             <div class="col-auto">
                                 <img src="<?= validate_image($row['image_path']) ?>" alt="Product Image" class="img-thumbnail prod-cart-img">
                             </div>
-                            <div class="col-auto flex-grow-1 flex-shrink-1">
+                            <div class="col flex-grow-1">
                                 <a href="./?p=products/view_product&id=<?= $row['product_id'] ?>" class="h4 text-muted">
                                     <p class="text-truncate-1 m-0"><?= $row['name'] ?></p>
                                 </a>
@@ -81,58 +87,94 @@
                                 <?php endif; ?>
                                 
                                 <!-- Color Selection -->
-                                <?php if(!empty($row['color'])): ?>
-                                    <br><small class="text-muted">Color: <strong><?= htmlspecialchars($row['color']) ?></strong></small>
-                                <?php endif; ?>
+                                <div class="mt-2">
+                                    <small class="text-muted">Color: </small>
+                                    <?php 
+                                    // Get available colors for this product
+                                    $product_colors = $conn->query("SELECT available_colors FROM product_list WHERE id = '{$row['product_id']}'")->fetch_assoc();
+                                    if($product_colors && !empty($product_colors['available_colors'])):
+                                        $available_colors = explode(',', $product_colors['available_colors']);
+                                        $available_colors = array_map('trim', $available_colors);
+                                        $available_colors = array_filter($available_colors);
+                                        
+                                        if(!empty($available_colors)):
+                                    ?>
+                                        <select class="form-control form-control-sm d-inline-block color-selector" style="width: auto;" data-cart-id="<?= $row['id'] ?>">
+                                            <?php foreach($available_colors as $color): ?>
+                                                <option value="<?= htmlspecialchars($color) ?>" <?= $color == $row['color'] ? 'selected' : '' ?>><?= htmlspecialchars($color) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    <?php else: ?>
+                                        <span class="badge badge-secondary">No color options</span>
+                                    <?php endif; ?>
+                                    <?php else: ?>
+                                        <span class="badge badge-secondary">No color options</span>
+                                    <?php endif; ?>
+                                    
+                                    <?php if(!empty($row['color'])): ?>
+                                        <small class="text-success ml-2">
+                                            <i class="fa fa-check-circle"></i> Selected: <strong><?= htmlspecialchars($row['color']) ?></strong>
+                                        </small>
+                                    <?php endif; ?>
+                                </div>
                                 
                                 <!-- Add-ons Section -->
-                                <div class="add-ons-section mt-2">
-                                    <small class="text-muted">Recommended Motorcycle Parts:</small>
-                                    <div class="add-ons-options">
-                                        <?php 
-                                        // Get suggested motorcycle parts based on product category
-                                        $suggested_parts = $conn->query("SELECT p.*, b.name as brand, c.category FROM product_list p 
-                                                                        INNER JOIN brand_list b ON p.brand_id = b.id 
-                                                                        INNER JOIN categories c ON p.category_id = c.id 
-                                                                        WHERE p.delete_flag = 0 AND p.status = 1 
-                                                                        AND c.category IN ('Motorcycle Parts', 'Oils', 'Accessories') 
-                                                                        AND p.id != '{$row['product_id']}'
-                                                                        ORDER BY RAND() LIMIT 6");
-                                        
-                                        if($suggested_parts && $suggested_parts->num_rows > 0):
-                                            $part_count = 0;
-                                            while($part = $suggested_parts->fetch_assoc()):
-                                                $part_count++;
-                                                if($part_count % 3 == 1): ?>
-                                                    <div class="row">
-                                                <?php endif; ?>
-                                                <div class="col-md-4 mb-1">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input addon-checkbox" type="checkbox" 
-                                                               value="<?= $part['id'] ?>" 
-                                                               data-product="<?= $row['product_id'] ?>" 
-                                                               id="part_<?= $part['id'] ?>_<?= $row['id'] ?>" 
-                                                               data-price="<?= $part['price'] ?>"
-                                                               data-part-name="<?= htmlspecialchars($part['name']) ?>">
-                                                        <label class="form-check-label" for="part_<?= $part['id'] ?>_<?= $row['id'] ?>">
-                                                            <small><strong><?= htmlspecialchars($part['name']) ?></strong></small><br>
-                                                            <small class="text-muted"><?= $part['brand'] ?> - <?= $part['category'] ?></small><br>
-                                                            <small class="text-success">(+₱<?= number_format($part['price'], 2) ?>)</small>
-                                                        </label>
+                                <div class="add-ons-section mt-3">
+                                    <div class="card border-info">
+                                        <div class="card-header py-2 bg-info text-white">
+                                            <h6 class="mb-0"><i class="fa fa-wrench"></i> Recommended Motorcycle Parts</h6>
+                                        </div>
+                                        <div class="card-body p-2">
+                                            <?php 
+                                            // Get suggested motorcycle parts based on product category
+                                            $suggested_parts = $conn->query("SELECT p.*, b.name as brand, c.category FROM product_list p 
+                                                                            INNER JOIN brand_list b ON p.brand_id = b.id 
+                                                                            INNER JOIN categories c ON p.category_id = c.id 
+                                                                            WHERE p.delete_flag = 0 AND p.status = 1 
+                                                                            AND c.category IN ('Motorcycle Parts', 'Oils', 'Accessories') 
+                                                                            AND p.id != '{$row['product_id']}'
+                                                                            ORDER BY RAND() LIMIT 6");
+                                            
+                                            if($suggested_parts && $suggested_parts->num_rows > 0):
+                                                $part_count = 0;
+                                                while($part = $suggested_parts->fetch_assoc()):
+                                                    $part_count++;
+                                                    if($part_count % 2 == 1): ?>
+                                                        <div class="row">
+                                                    <?php endif; ?>
+                                                    <div class="col-6 mb-2">
+                                                        <div class="form-check border rounded p-2" style="background-color: #f8f9fa;">
+                                                            <input class="form-check-input addon-checkbox" type="checkbox" 
+                                                                   value="<?= $part['id'] ?>" 
+                                                                   data-product="<?= $row['product_id'] ?>" 
+                                                                   id="part_<?= $part['id'] ?>_<?= $row['id'] ?>" 
+                                                                   data-price="<?= $part['price'] ?>"
+                                                                   data-part-name="<?= htmlspecialchars($part['name']) ?>">
+                                                            <label class="form-check-label" for="part_<?= $part['id'] ?>_<?= $row['id'] ?>" style="cursor: pointer;">
+                                                                <div class="d-flex align-items-center">
+                                                                    <div class="flex-grow-1">
+                                                                        <small><strong><?= htmlspecialchars($part['name']) ?></strong></small><br>
+                                                                        <small class="text-muted"><?= $part['brand'] ?> - <?= $part['category'] ?></small><br>
+                                                                        <small class="text-success font-weight-bold">(+₱<?= number_format($part['price'], 2) ?>)</small>
+                                                                    </div>
+                                                                </div>
+                                                            </label>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <?php if($part_count % 3 == 0): ?>
+                                                    <?php if($part_count % 2 == 0): ?>
+                                                        </div>
+                                                    <?php endif;
+                                                endwhile;
+                                                if($part_count % 2 != 0): ?>
                                                     </div>
                                                 <?php endif;
-                                            endwhile;
-                                            if($part_count % 3 != 0): ?>
+                                            else: ?>
+                                                <div class="text-center text-muted py-2">
+                                                    <i class="fa fa-info-circle"></i>
+                                                    <small>No additional parts available at the moment.</small>
                                                 </div>
-                                            <?php endif;
-                                        else: ?>
-                                            <div class="text-muted">
-                                                <small>No additional parts available at the moment.</small>
-                                            </div>
-                                        <?php endif; ?>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
                                 </div>
                                 <?php if($available < $row['quantity']): ?>
@@ -152,24 +194,28 @@
                                     </div>
                                 <?php endif; ?>
                                 
-                                <div class="d-flex align-items-center w-100 mb-1">
-                                    <div class="input-group " style="width:8em">
-                                        <div class="input-group-prepend">
-                                            <button class="btn btn-sm btn-outline-secondary btn-minus" data-id='<?= $row['id'] ?>' <?= $available < 1 ? 'disabled' : '' ?>><i class="fa fa-minus"></i></button>
+                                <div class="d-flex align-items-center justify-content-between mt-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="input-group" style="width:8em">
+                                            <div class="input-group-prepend">
+                                                <button class="btn btn-sm btn-outline-secondary btn-minus" data-id='<?= $row['id'] ?>' <?= $available < 1 ? 'disabled' : '' ?>><i class="fa fa-minus"></i></button>
+                                            </div>
+                                            <input type="text" value="<?= $row['quantity'] ?>" readonly class="form-control form-control-sm text-center">
+                                            <div class="input-group-append">
+                                                <button class="btn btn-sm btn-outline-secondary btn-plus" data-id='<?= $row['id'] ?>' <?= $available <= $row['quantity'] ? 'disabled' : '' ?>><i class="fa fa-plus"></i></button>
+                                            </div>
                                         </div>
-                                        <input type="text" value="<?= $row['quantity'] ?>" readonly class="form-control form-control-sm text-center">
-                                        <div class="input-group-append">
-                                            <button class="btn btn-sm btn-outline-secondary btn-plus" data-id='<?= $row['id'] ?>' <?= $available <= $row['quantity'] ? 'disabled' : '' ?>><i class="fa fa-plus"></i></button>
-                                        </div>
+                                        <span class="ml-2">X ₱<?= number_format($row['price'],2) ?></span>
                                     </div>
-                                    <span class="ml-2">X <?= number_format($row['price'],2) ?></span>
+                                    <div class="d-flex align-items-center">
+                                        <h5 class="mb-0 text-primary"><b>₱<?= number_format($row['quantity'] * $row['price'],2) ?></b></h5>
+                                        <button class="btn btn-sm btn-outline-danger btn-remove ml-2" data-id="<?= $row['id'] ?>">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                    </div>
                                 </div>
-                                <button class="btn btn-sm btn-flat btn-outline-danger btn-remove" data-id="<?= $row['id'] ?>"><i class="fa fa-times"></i> Remove</button>
                             </div>
-                         </div>
-                    </div>
-                    <div class="col-auto text-right">
-                        <h3><b><?= number_format($row['quantity'] * $row['price'],2) ?></b></h3>
+                        </div>
                     </div>
                 </div>
                 <?php endwhile; ?>
@@ -206,9 +252,28 @@
                 </div>
             </div>
         </div>
-        <div class="clear-fix my-2"></div>
-        <div class="text-right">
-            <button class="btn btn-flat btn-sm btn-dark" type="button" id="checkout">Checkout</button>
+        <div class="clear-fix my-3"></div>
+        
+        <!-- Bulk Actions -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="selectAll">
+                        <i class="fa fa-check-square"></i> Select All
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="selectNone">
+                        <i class="fa fa-square"></i> Select None
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" id="removeSelected">
+                        <i class="fa fa-trash"></i> Remove Selected
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6 text-right">
+                <button class="btn btn-primary btn-lg" type="button" id="checkout">
+                    <i class="fa fa-shopping-cart"></i> Proceed to Checkout
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -384,4 +449,83 @@
     
     // Initialize addons total
     updateAddonsTotal();
+    
+    // Color selector change functionality
+    $('.color-selector').change(function() {
+        const cartId = $(this).data('cart-id');
+        const newColor = $(this).val();
+        
+        start_loader();
+        $.ajax({
+            url: _base_url_ + "classes/Master.php?f=update_cart_color",
+            method: "POST",
+            data: {
+                cart_id: cartId,
+                color: newColor
+            },
+            dataType: "json",
+            error: err => {
+                console.error(err);
+                alert_toast("An error occurred while updating color", "error");
+                end_loader();
+            },
+            success: function(resp) {
+                if (resp.status == 'success') {
+                    alert_toast(resp.msg, 'success');
+                } else {
+                    alert_toast(resp.msg || 'An error occurred', 'error');
+                }
+                end_loader();
+            }
+        });
+    });
+    
+    // Bulk selection functionality
+    $('#selectAll').click(function() {
+        $('.item-checkbox').prop('checked', true);
+    });
+    
+    $('#selectNone').click(function() {
+        $('.item-checkbox').prop('checked', false);
+    });
+    
+    $('#removeSelected').click(function() {
+        const selectedItems = $('.item-checkbox:checked').map(function() {
+            return $(this).val();
+        }).get();
+        
+        if (selectedItems.length === 0) {
+            alert_toast('Please select items to remove', 'warning');
+            return;
+        }
+        
+        _conf("Are you sure you want to remove the selected items?", "removeSelectedItems", selectedItems);
+    });
+    
+    // Function to remove selected items
+    function removeSelectedItems(selectedItems) {
+        start_loader();
+        $.ajax({
+            url: _base_url_ + "classes/Master.php?f=remove_multiple_from_cart",
+            method: "POST",
+            data: {
+                cart_ids: selectedItems.join(',')
+            },
+            dataType: "json",
+            error: err => {
+                console.error(err);
+                alert_toast("An error occurred", "error");
+                end_loader();
+            },
+            success: function(resp) {
+                if (resp.status == 'success') {
+                    alert_toast(resp.msg, 'success');
+                    location.reload();
+                } else {
+                    alert_toast(resp.msg || 'An error occurred', 'error');
+                }
+                end_loader();
+            }
+        });
+    }
 </script>

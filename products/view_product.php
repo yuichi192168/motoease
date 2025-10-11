@@ -187,6 +187,73 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                     margin-top: 8px; 
                                     min-height: 1.2em;
                                 }
+                                
+                                /* Image Zoom Styles */
+                                .color-slide img {
+                                    cursor: zoom-in;
+                                    transition: transform 0.3s ease;
+                                }
+                                
+                                .color-slide img:hover {
+                                    transform: scale(1.05);
+                                }
+                                
+                                /* Zoom Modal Styles */
+                                .zoom-modal {
+                                    display: none;
+                                    position: fixed;
+                                    z-index: 9999;
+                                    left: 0;
+                                    top: 0;
+                                    width: 100%;
+                                    height: 100%;
+                                    background-color: rgba(0,0,0,0.9);
+                                    cursor: zoom-out;
+                                }
+                                
+                                .zoom-content {
+                                    position: absolute;
+                                    top: 50%;
+                                    left: 50%;
+                                    transform: translate(-50%, -50%);
+                                    max-width: 90%;
+                                    max-height: 90%;
+                                    cursor: default;
+                                }
+                                
+                                .zoom-content img {
+                                    width: 100%;
+                                    height: auto;
+                                    border-radius: 8px;
+                                    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+                                }
+                                
+                                .zoom-close {
+                                    position: absolute;
+                                    top: 20px;
+                                    right: 35px;
+                                    color: #f1f1f1;
+                                    font-size: 40px;
+                                    font-weight: bold;
+                                    cursor: pointer;
+                                    z-index: 10000;
+                                }
+                                
+                                .zoom-close:hover {
+                                    color: #bbb;
+                                }
+                                
+                                .zoom-info {
+                                    position: absolute;
+                                    bottom: 20px;
+                                    left: 50%;
+                                    transform: translateX(-50%);
+                                    color: white;
+                                    text-align: center;
+                                    background: rgba(0,0,0,0.7);
+                                    padding: 10px 20px;
+                                    border-radius: 20px;
+                                }
                             </style>
                             <?php 
                                 $colors = [];
@@ -228,6 +295,18 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                 <?php endforeach; ?>
                             </div>
                             <div class="color-label" id="colorLabel"><?= htmlspecialchars($slides[0]['color']) ?></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Image Zoom Modal -->
+                    <div id="zoomModal" class="zoom-modal">
+                        <span class="zoom-close">&times;</span>
+                        <div class="zoom-content">
+                            <img id="zoomImage" src="" alt="Zoomed Product Image">
+                        </div>
+                        <div class="zoom-info">
+                            <span id="zoomProductName"><?= isset($name) ? htmlspecialchars($name) : '' ?></span> - 
+                            <span id="zoomColorName"></span>
                         </div>
                     </div>
                     <div class="row mt-2">
@@ -336,12 +415,32 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         </div>
     </div>
 </div>
+
+<!-- Related Motorcycles Section -->
+<div class="content py-0">
+    <div class="container">
+        <div class="card card-outline rounded-0 card-info shadow">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Related Motorcycles</h5>
+            </div>
+            <div class="card-body">
+                <div id="related_motorcycles_container">
+                    <!-- Related motorcycles will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     $(function(){
         // Load product recommendations if out of stock
         <?php if($available <= 0): ?>
         loadProductRecommendations();
         <?php endif; ?>
+        
+        // Load related motorcycles
+        loadRelatedMotorcycles();
 
         // Reviews
         loadReviews();
@@ -614,6 +713,35 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         updateCarousel();
     }
     
+    // Image Zoom Functionality
+    $('.color-slide img').click(function() {
+        const imgSrc = $(this).attr('src');
+        const colorName = $(this).closest('.color-slide').data('color');
+        
+        $('#zoomImage').attr('src', imgSrc);
+        $('#zoomColorName').text(colorName);
+        $('#zoomModal').fadeIn(300);
+        
+        // Prevent body scroll when modal is open
+        $('body').css('overflow', 'hidden');
+    });
+    
+    // Close zoom modal
+    $('.zoom-close, #zoomModal').click(function(e) {
+        if (e.target === this) {
+            $('#zoomModal').fadeOut(300);
+            $('body').css('overflow', 'auto');
+        }
+    });
+    
+    // Close modal with Escape key
+    $(document).keyup(function(e) {
+        if (e.keyCode === 27) { // Escape key
+            $('#zoomModal').fadeOut(300);
+            $('body').css('overflow', 'auto');
+        }
+    });
+    
     // Review collapsible functionality
     $('#show_more_reviews').click(function(){
         $('#reviews_collapsible').slideDown(300);
@@ -732,6 +860,56 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                     $('#recommendations_container').html(html);
                 } else {
                     $('#recommendations_container').html('<p class="text-muted">No alternative products available at this time.</p>');
+                }
+            }
+        });
+    }
+    
+    function loadRelatedMotorcycles(){
+        $.ajax({
+            url: _base_url_ + "classes/Master.php?f=get_related_motorcycles",
+            method: "POST",
+            data: {
+                product_id: '<?= isset($id) ? $id : "" ?>',
+                category_id: '<?= isset($category_id) ? $category_id : "" ?>',
+                brand_id: '<?= isset($brand_id) ? $brand_id : "" ?>'
+            },
+            dataType: "json",
+            error: err => {
+                console.log(err);
+            },
+            success: function(resp){
+                if(resp.status == 'success' && resp.related_motorcycles.length > 0){
+                    var html = '<div class="row">';
+                    $.each(resp.related_motorcycles, function(index, motorcycle){
+                        var stock_status = '';
+                        if(motorcycle.available_stock > 10){
+                            stock_status = '<span class="badge badge-success">In Stock</span>';
+                        } else if(motorcycle.available_stock > 0){
+                            stock_status = '<span class="badge badge-warning">Low Stock</span>';
+                        } else {
+                            stock_status = '<span class="badge badge-danger">Out of Stock</span>';
+                        }
+                        
+                        html += '<div class="col-md-4 mb-3">';
+                        html += '<div class="card h-100 shadow-sm">';
+                        html += '<div class="position-relative">';
+                        html += '<img src="' + _base_url_ + motorcycle.image_path + '" class="card-img-top" style="height: 200px; object-fit: cover;" alt="' + motorcycle.name + '">';
+                        html += '<div class="position-absolute top-0 end-0 m-2">' + stock_status + '</div>';
+                        html += '</div>';
+                        html += '<div class="card-body d-flex flex-column">';
+                        html += '<h6 class="card-title">' + motorcycle.name + '</h6>';
+                        html += '<p class="card-text text-muted"><small>' + motorcycle.brand + ' - ' + motorcycle.category + '</small></p>';
+                        html += '<p class="card-text"><strong class="text-primary">₱' + parseFloat(motorcycle.price).toLocaleString() + '</strong></p>';
+                        html += '<div class="mt-auto">';
+                        html += '<a href="./?p=products/view_product&id=' + motorcycle.id + '" class="btn btn-sm btn-primary w-100">View Details</a>';
+                        html += '</div>';
+                        html += '</div></div></div>';
+                    });
+                    html += '</div>';
+                    $('#related_motorcycles_container').html(html);
+                } else {
+                    $('#related_motorcycles_container').html('<p class="text-muted text-center">No related motorcycles found.</p>');
                 }
             }
         });

@@ -264,6 +264,121 @@
             font-size: 0.7rem;
             padding: 0.2rem 0.4rem;
         }
+        
+        /* Mobile sidebar improvements */
+        .main-sidebar {
+            width: 100% !important;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar-open .main-sidebar {
+            transform: translateX(0);
+        }
+        
+        .content-wrapper {
+            margin-left: 0 !important;
+        }
+        
+        /* Mobile table improvements */
+        .table-responsive {
+            font-size: 0.8rem;
+        }
+        
+        .table th, .table td {
+            padding: 0.3rem;
+        }
+        
+        /* Mobile card improvements */
+        .card-body {
+            padding: 0.75rem;
+        }
+        
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+        
+        /* Mobile form improvements */
+        .form-control {
+            font-size: 0.9rem;
+        }
+        
+        .form-group {
+            margin-bottom: 0.75rem;
+        }
+        
+        /* Mobile modal improvements */
+        .modal-dialog {
+            margin: 0.5rem;
+            max-width: calc(100% - 1rem);
+        }
+        
+        .modal-body {
+            padding: 0.75rem;
+        }
+        
+        /* Mobile info boxes */
+        .info-box {
+            margin-bottom: 0.5rem;
+        }
+        
+        .info-box-content {
+            padding: 0.5rem;
+        }
+        
+        .info-box-text {
+            font-size: 0.8rem;
+        }
+        
+        .info-box-number {
+            font-size: 1.2rem;
+        }
+    }
+    
+    /* Tablet improvements */
+    @media (max-width: 768px) and (min-width: 577px) {
+        .main-sidebar {
+            width: 200px;
+        }
+        
+        .content-wrapper {
+            margin-left: 200px;
+        }
+        
+        .table-responsive {
+            font-size: 0.85rem;
+        }
+        
+        .card-body {
+            padding: 1rem;
+        }
+    }
+    
+    /* Mobile navigation toggle */
+    .navbar-toggler {
+        border: none;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .navbar-toggler:focus {
+        box-shadow: none;
+    }
+    
+    /* Mobile sidebar overlay */
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1030;
+        display: none;
+    }
+    
+    .sidebar-open .sidebar-overlay {
+        display: block;
     }
     </style>
 
@@ -290,6 +405,41 @@
     <script src="<?php echo base_url ?>dist/js/adminlte.min.js"></script>
     <script>
         var _base_url_ = '<?php echo base_url ?>';
+        
+        // Mobile sidebar functionality
+        $(document).ready(function() {
+            // Add sidebar overlay
+            $('body').append('<div class="sidebar-overlay"></div>');
+            
+            // Mobile sidebar toggle
+            $('#sidebarToggle').on('click', function(e) {
+                e.preventDefault();
+                if ($(window).width() <= 576) {
+                    $('body').toggleClass('sidebar-open');
+                }
+            });
+            
+            // Close sidebar when clicking overlay
+            $('.sidebar-overlay').on('click', function() {
+                $('body').removeClass('sidebar-open');
+            });
+            
+            // Close sidebar when clicking outside on mobile
+            $(document).on('click', function(e) {
+                if ($(window).width() <= 576) {
+                    if (!$(e.target).closest('.main-sidebar, #sidebarToggle').length) {
+                        $('body').removeClass('sidebar-open');
+                    }
+                }
+            });
+            
+            // Handle window resize
+            $(window).on('resize', function() {
+                if ($(window).width() > 576) {
+                    $('body').removeClass('sidebar-open');
+                }
+            });
+        });
     </script>
     <script src="<?php echo base_url ?>dist/js/script.js"></script>
 

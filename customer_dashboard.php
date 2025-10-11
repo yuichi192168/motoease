@@ -8,7 +8,27 @@ $client_id = $_settings->userdata('id');
 // Get customer data
 $customer = $conn->query("SELECT * FROM client_list WHERE id = '{$client_id}'")->fetch_assoc();
 
-// Account balance and transactions removed from dashboard
+// Get account balance and installment details
+$account_balance = $conn->query("SELECT 
+    COALESCE(SUM(total_amount), 0) as total_balance,
+    COALESCE(SUM(CASE WHEN payment_status = 'installment' THEN total_amount ELSE 0 END), 0) as installment_balance,
+    COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END), 0) as paid_amount
+    FROM order_list 
+    WHERE client_id = '{$client_id}' AND status != 5")->fetch_assoc();
+
+// Get installment details
+$installments = $conn->query("SELECT 
+    ol.ref_code,
+    ol.total_amount,
+    ol.payment_status,
+    ol.date_created,
+    ol.due_date,
+    DATEDIFF(CURDATE(), ol.due_date) as days_overdue
+    FROM order_list ol
+    WHERE ol.client_id = '{$client_id}' 
+    AND ol.payment_status = 'installment' 
+    AND ol.status != 5
+    ORDER BY ol.due_date ASC");
 
 // Get recent orders
 $orders = $conn->query("SELECT * FROM order_list WHERE client_id = '{$client_id}' ORDER BY date_created DESC LIMIT 5");
@@ -52,6 +72,48 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
                 </div>
             </div>
         </div>
+
+        Account Balance Section
+        <!-- <div class="row mb-4">
+            <div class="col-12">
+                <div class="card card-outline card-success shadow rounded-0">
+                    <div class="card-header">
+                        <h4 class="card-title"><b><i class="fas fa-wallet"></i> Account Balance</b></h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="info-box bg-success">
+                                    <span class="info-box-icon"><i class="fas fa-money-bill-wave"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Total Balance</span>
+                                        <span class="info-box-number">₱<?= number_format($account_balance['total_balance'], 2) ?></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-box bg-warning">
+                                    <span class="info-box-icon"><i class="fas fa-credit-card"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Installment Balance</span>
+                                        <span class="info-box-number">₱<?= number_format($account_balance['installment_balance'], 2) ?></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-box bg-info">
+                                    <span class="info-box-icon"><i class="fas fa-check-circle"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Paid Amount</span>
+                                        <span class="info-box-number">₱<?= number_format($account_balance['paid_amount'], 2) ?></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div> -->
 
         <!-- Quick Stats -->
         <div class="row mb-4">
@@ -98,6 +160,65 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
                 </div>
             </div>
         </div>
+
+        <!-- Installment Details Section -->
+        <?php if($installments->num_rows > 0): ?>
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card card-outline card-warning shadow rounded-0">
+                    <div class="card-header">
+                        <h4 class="card-title"><b><i class="fas fa-calendar-alt"></i> Installment Details</b></h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Order Reference</th>
+                                        <th>Amount</th>
+                                        <th>Due Date</th>
+                                        <th>Status</th>
+                                        <th>Days Overdue</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php while($installment = $installments->fetch_assoc()): ?>
+                                    <tr>
+                                        <td>
+                                            <a href="./?p=view_order&id=<?= $installment['ref_code'] ?>" class="text-primary">
+                                                <?= $installment['ref_code'] ?>
+                                            </a>
+                                        </td>
+                                        <td>₱<?= number_format($installment['total_amount'], 2) ?></td>
+                                        <td><?= date('M d, Y', strtotime($installment['due_date'])) ?></td>
+                                        <td>
+                                            <?php if($installment['days_overdue'] > 0): ?>
+                                                <span class="badge badge-danger">Overdue</span>
+                                            <?php elseif($installment['days_overdue'] == 0): ?>
+                                                <span class="badge badge-warning">Due Today</span>
+                                            <?php else: ?>
+                                                <span class="badge badge-success">Up to Date</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if($installment['days_overdue'] > 0): ?>
+                                                <span class="text-danger"><?= $installment['days_overdue'] ?> days</span>
+                                            <?php elseif($installment['days_overdue'] == 0): ?>
+                                                <span class="text-warning">Due today</span>
+                                            <?php else: ?>
+                                                <span class="text-success"><?= abs($installment['days_overdue']) ?> days remaining</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                    <?php endwhile; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <div class="row">
             <!-- Recent Orders -->

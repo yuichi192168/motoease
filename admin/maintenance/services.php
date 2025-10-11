@@ -51,7 +51,19 @@
 								</td>
 								<td class="text-center">
 									<?php if(isset($row['estimated_hours']) && $row['estimated_hours'] > 0): ?>
-										<span class="badge badge-info"><?php echo $row['estimated_hours']; ?>h</span>
+										<?php 
+										$hours = floor($row['estimated_hours']);
+										$minutes = ($row['estimated_hours'] - $hours) * 60;
+										
+										if($hours > 0 && $minutes > 0) {
+											$estimated_time = $hours . 'h ' . round($minutes) . 'm';
+										} elseif($hours > 0) {
+											$estimated_time = $hours . 'h';
+										} else {
+											$estimated_time = round($minutes) . 'm';
+										}
+										?>
+										<span class="badge badge-info"><?php echo $estimated_time; ?></span>
 									<?php else: ?>
 										<span class="text-muted">Not set</span>
 									<?php endif; ?>

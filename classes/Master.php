@@ -658,6 +658,12 @@ Class Master extends DBConnection {
 		extract($_POST);
 		$data = "";
 		$_POST['description'] = addslashes(htmlentities($description));
+		
+		// Convert minutes to hours if estimated_hours is provided
+		if(isset($estimated_hours) && !empty($estimated_hours)) {
+			$_POST['estimated_hours'] = $estimated_hours / 60; // Convert minutes to hours
+		}
+		
 		foreach($_POST as $k =>$v){
 			if(!in_array($k,array('id'))){
 				if(!empty($data)) $data .=",";
@@ -2041,6 +2047,134 @@ Class Master extends DBConnection {
         
         return json_encode($resp);
     }
+    
+    function get_related_motorcycles(){
+        extract($_POST);
+        
+        // Validate inputs
+        if(empty($product_id)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Product ID is required.";
+            return json_encode($resp);
+        }
+        
+        // Sanitize inputs
+        $product_id = $this->conn->real_escape_string($product_id);
+        $category_id = !empty($category_id) ? $this->conn->real_escape_string($category_id) : null;
+        $brand_id = !empty($brand_id) ? $this->conn->real_escape_string($brand_id) : null;
+        
+        // Build the query to get related motorcycles
+        $where_conditions = ["p.delete_flag = 0", "p.status = 1", "p.id != '{$product_id}'"];
+        
+        // Add category filter if provided
+        if($category_id) {
+            $where_conditions[] = "p.category_id = '{$category_id}'";
+        }
+        
+        // Add brand filter if provided
+        if($brand_id) {
+            $where_conditions[] = "p.brand_id = '{$brand_id}'";
+        }
+        
+        $where_clause = implode(" AND ", $where_conditions);
+        
+        // Get related motorcycles with stock information
+        $related_query = $this->conn->query("
+            SELECT p.*, b.name as brand, c.category,
+                   COALESCE(s.total_stock, 0) as current_stock,
+                   COALESCE(o.total_ordered, 0) as total_ordered,
+                   (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) as available_stock
+            FROM product_list p
+            LEFT JOIN brand_list b ON p.brand_id = b.id
+            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN (
+                SELECT product_id, SUM(quantity) as total_stock 
+                FROM stock_list 
+                WHERE type = 1 
+                GROUP BY product_id
+            ) s ON p.id = s.product_id
+            LEFT JOIN (
+                SELECT oi.product_id, SUM(oi.quantity) as total_ordered
+                FROM order_items oi
+                INNER JOIN order_list ol ON oi.order_id = ol.id
+                WHERE ol.status != 5
+                GROUP BY oi.product_id
+            ) o ON p.id = o.product_id
+            WHERE {$where_clause}
+            ORDER BY 
+                CASE WHEN p.brand_id = '{$brand_id}' THEN 1 ELSE 2 END,
+                CASE WHEN p.category_id = '{$category_id}' THEN 1 ELSE 2 END,
+                p.name ASC
+            LIMIT 6
+        ");
+        
+        if($this->capture_err())
+            return $this->capture_err();
+        
+        $related_motorcycles = [];
+        while($row = $related_query->fetch_assoc()){
+            $related_motorcycles[] = $row;
+        }
+        
+        $resp['status'] = 'success';
+        $resp['related_motorcycles'] = $related_motorcycles;
+        
+        return json_encode($resp);
+    }
+    
+    function update_cart_color(){
+        extract($_POST);
+        $resp = array();
+        
+        if(empty($cart_id)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Cart ID is required.";
+            return json_encode($resp);
+        }
+        
+        $cart_id = $this->conn->real_escape_string($cart_id);
+        $color = !empty($color) ? "'" . $this->conn->real_escape_string($color) . "'" : "NULL";
+        
+        $sql = "UPDATE `cart_list` SET color = {$color} WHERE id = '{$cart_id}'";
+        $save = $this->conn->query($sql);
+        
+        if($save){
+            $resp['status'] = 'success';
+            $resp['msg'] = "Color updated successfully.";
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to update color.";
+            $resp['error'] = $this->conn->error;
+        }
+        
+        return json_encode($resp);
+    }
+    
+    function remove_multiple_from_cart(){
+        extract($_POST);
+        $resp = array();
+        
+        if(empty($cart_ids)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "No items selected.";
+            return json_encode($resp);
+        }
+        
+        $cart_ids = $this->conn->real_escape_string($cart_ids);
+        $sql = "DELETE FROM `cart_list` WHERE id IN ({$cart_ids})";
+        $delete = $this->conn->query($sql);
+        
+        if($delete){
+            $resp['status'] = 'success';
+            $resp['msg'] = "Selected items removed from cart.";
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to remove items from cart.";
+            $resp['error'] = $this->conn->error;
+        }
+        
+        return json_encode($resp);
+    }
 }
 
 $Master = new Master();
@@ -2151,6 +2285,15 @@ $sysset = new SystemSettings();
 	break;
 	case 'get_product_recommendations':
 		echo $Master->get_product_recommendations();
+	break;
+	case 'get_related_motorcycles':
+		echo $Master->get_related_motorcycles();
+	break;
+	case 'update_cart_color':
+		echo $Master->update_cart_color();
+	break;
+	case 'remove_multiple_from_cart':
+		echo $Master->remove_multiple_from_cart();
 	break;
 	case 'get_stock_alerts':
 		echo $Master->get_stock_alerts();

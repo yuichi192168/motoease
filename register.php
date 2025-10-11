@@ -63,16 +63,69 @@
 
       .card {
         border-radius: 10px;
+        border: 2px solid #dc3545;
       }
 
       .input-group-text {
         cursor: pointer;
+        background-color: #dc3545;
+        color: white;
+        border-color: #dc3545;
       }
 
       .error-msg {
         font-size: 0.85rem;
         color: #dc3545;
         margin-top: 0.25rem;
+      }
+
+      /* Red and Black Theme */
+      .btn-primary {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        border: none;
+        font-weight: 600;
+      }
+
+      .btn-primary:hover {
+        background: linear-gradient(135deg, #c82333, #a71e2a);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+      }
+
+      .card-header.bg-primary {
+        background: linear-gradient(135deg, #dc3545, #c82333) !important;
+        border-bottom: 2px solid #a71e2a;
+      }
+
+      .form-control:focus {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+      }
+
+      .custom-select:focus {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+      }
+
+      .custom-file-input:focus ~ .custom-file-label {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+      }
+
+      .is-valid {
+        border-color: #28a745;
+      }
+
+      .is-invalid {
+        border-color: #dc3545;
+      }
+
+      .text-primary {
+        color: #dc3545 !important;
+      }
+
+      a.text-primary:hover {
+        color: #c82333 !important;
       }
 
       @media(max-width:767px){

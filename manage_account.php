@@ -1,4 +1,6 @@
 <?php 
+// Updated: Fixed database query errors - removed non-existent payment_status and due_date fields
+// Last updated: 2025-01-27
 if($_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2){
     $qry = $conn->query("SELECT * FROM `client_list` where id = '{$_settings->userdata('id')}'");
     if($qry->num_rows >0){
@@ -15,7 +17,34 @@ if($_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2){
     echo "<script> alert('You are not allowed to access this page.'); location.replace('./') </script>";
 }
 
-// Account balance and transaction UI removed
+// Get account balance and order details
+$client_id = $_settings->userdata('id');
+$account_balance = $conn->query("SELECT 
+    COALESCE(SUM(total_amount), 0) as total_balance,
+    COALESCE(SUM(CASE WHEN status = 4 THEN total_amount ELSE 0 END), 0) as delivered_amount,
+    COALESCE(SUM(CASE WHEN status IN (0,1,2,3) THEN total_amount ELSE 0 END), 0) as pending_amount
+    FROM order_list 
+    WHERE client_id = '{$client_id}' AND status != 5")->fetch_assoc();
+
+// Get order details (using status instead of payment_status)
+$installments = $conn->query("SELECT 
+    ol.ref_code,
+    ol.total_amount,
+    ol.status,
+    ol.date_created,
+    ol.date_updated,
+    CASE 
+        WHEN ol.status = 0 THEN 'Pending'
+        WHEN ol.status = 1 THEN 'Ready for Pickup'
+        WHEN ol.status = 2 THEN 'For Delivery'
+        WHEN ol.status = 3 THEN 'On the Way'
+        WHEN ol.status = 4 THEN 'Delivered'
+        ELSE 'Unknown'
+    END as status_text
+    FROM order_list ol
+    WHERE ol.client_id = '{$client_id}' 
+    AND ol.status != 5
+    ORDER BY ol.date_created DESC");
 
 // Get OR/CR documents
 $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_settings->userdata('id')}' ORDER BY date_created DESC");
@@ -39,7 +68,115 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
             </div>
         </div>
         
-        <!-- Quick Actions (balance removed) -->
+        <!-- Account Balance Section -->
+        <!-- <div class="row mb-4">
+            <div class="col-12">
+                <div class="card card-outline card-success shadow rounded-0">
+                    <div class="card-header">
+                        <h4 class="card-title"><b><i class="fas fa-wallet"></i> Account Balance</b></h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="info-box bg-success">
+                                    <span class="info-box-icon"><i class="fas fa-money-bill-wave"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Total Balance</span>
+                                        <span class="info-box-number">₱<?= number_format($account_balance['total_balance'], 2) ?></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-box bg-warning">
+                                    <span class="info-box-icon"><i class="fas fa-clock"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Pending Orders</span>
+                                        <span class="info-box-number">₱<?= number_format($account_balance['pending_amount'], 2) ?></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-box bg-info">
+                                    <span class="info-box-icon"><i class="fas fa-check-circle"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Delivered Orders</span>
+                                        <span class="info-box-number">₱<?= number_format($account_balance['delivered_amount'], 2) ?></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div> -->
+
+        <!-- Order Details Section -->
+        <?php if($installments->num_rows > 0): ?>
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card card-outline card-warning shadow rounded-0">
+                    <div class="card-header">
+                        <h4 class="card-title"><b><i class="fas fa-shopping-cart"></i> Order History</b></h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Order Reference</th>
+                                        <th>Amount</th>
+                                        <th>Date Ordered</th>
+                                        <th>Status</th>
+                                        <th>Last Updated</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php 
+                                    // Reset the result pointer to ensure we can loop through results
+                                    $installments->data_seek(0);
+                                    while($order = $installments->fetch_assoc()): 
+                                    ?>
+                                    <tr>
+                                        <td>
+                                            <a href="./?p=view_order&id=<?= $order['ref_code'] ?>" class="text-primary">
+                                                <?= $order['ref_code'] ?>
+                                            </a>
+                                        </td>
+                                        <td>₱<?= number_format($order['total_amount'], 2) ?></td>
+                                        <td><?= date('M d, Y', strtotime($order['date_created'])) ?></td>
+                                        <td>
+                                            <?php 
+                                            $status_class = '';
+                                            switch($order['status']) {
+                                                case 0: $status_class = 'badge-secondary'; break;
+                                                case 1: $status_class = 'badge-primary'; break;
+                                                case 2: $status_class = 'badge-info'; break;
+                                                case 3: $status_class = 'badge-warning'; break;
+                                                case 4: $status_class = 'badge-success'; break;
+                                                default: $status_class = 'badge-secondary'; break;
+                                            }
+                                            ?>
+                                            <span class="badge <?= $status_class ?>"><?= $order['status_text'] ?></span>
+                                        </td>
+                                        <td>
+                                            <?php if(isset($order['date_updated']) && $order['date_updated']): ?>
+                                                <?= date('M d, Y H:i', strtotime($order['date_updated'])) ?>
+                                            <?php else: ?>
+                                                <span class="text-muted">Not updated</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                    <?php endwhile; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Quick Actions -->
         <div class="row mb-4">
             <div class="col-md-12">
                 <div class="card card-outline card-info shadow rounded-0">
@@ -48,6 +185,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                     </div>
                     <div class="card-body">
                         <button class="btn btn-info btn-sm" onclick="showVehicleInfo()">Update Vehicle Info</button>
+                        <!-- <button class="btn btn-warning btn-sm" onclick="showORCRUpload()">Upload OR/CR Document</button> -->
                     </div>
                 </div>
             </div>

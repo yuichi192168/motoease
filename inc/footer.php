@@ -225,3 +225,54 @@
       <div class="drp-buttons"><span class="drp-selected"></span><button class="cancelBtn btn btn-sm btn-default" type="button">Cancel</button><button class="applyBtn btn btn-sm btn-primary" disabled="disabled" type="button">Apply</button> </div>
     </div>
     <div class="jqvmap-label" style="display: none; left: 1093.83px; top: 394.361px;">Idaho</div>
+    
+    <!-- Scroll to Top Button -->
+    <button id="scrollToTop" class="btn btn-primary" style="
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: none;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        border: none;
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        transition: all 0.3s ease;
+    " title="Scroll to Top">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+    
+    <style>
+        #scrollToTop:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+            background: linear-gradient(135deg, #c82333, #a71e2a);
+        }
+        
+        #scrollToTop.show {
+            display: block !important;
+        }
+    </style>
+    
+    <script>
+        $(document).ready(function() {
+            // Show/hide scroll to top button
+            $(window).scroll(function() {
+                if ($(this).scrollTop() > 300) {
+                    $('#scrollToTop').fadeIn();
+                } else {
+                    $('#scrollToTop').fadeOut();
+                }
+            });
+            
+            // Smooth scroll to top
+            $('#scrollToTop').click(function() {
+                $('html, body').animate({
+                    scrollTop: 0
+                }, 800);
+                return false;
+            });
+        });
+    </script>
