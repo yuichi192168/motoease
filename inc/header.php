@@ -128,6 +128,7 @@
         transform: translateX(-50%);
         z-index: 2;
         cursor: pointer;
+        color: white;
     }
     
     .scroll-arrow {

@@ -7,6 +7,7 @@
 	<div class="card-header">
 		<h3 class="card-title">OR/CR Documents Management</h3>
 		<div class="card-tools">
+			<button class="btn btn-flat btn-sm btn-primary" type="button" id="add_document"><span class="fa fa-plus"></span> Add Document</button>
 			<button class="btn btn-flat btn-sm btn-default" type="button" id="print_reports"><span class="fa fa-print"></span> Print Report</button>
 		</div>
 	</div>
@@ -386,25 +387,108 @@
 				<div class="modal-body">
 					<input type="hidden" name="document_id" id="update_document_id">
 					<div class="form-group">
-						<label>Document Status</label>
-						<select name="status" class="form-control" required>
+						<label for="update_status">Document Status</label>
+						<select name="status" id="update_status" class="form-control" required>
 							<option value="pending">Pending</option>
 							<option value="released">Released</option>
 							<option value="expired">Expired</option>
 						</select>
 					</div>
 					<div class="form-group">
-						<label>Release Date</label>
-						<input type="date" name="release_date" class="form-control">
+						<label for="update_release_date">Release Date</label>
+						<input type="date" name="release_date" id="update_release_date" class="form-control">
 					</div>
 					<div class="form-group">
-						<label>Remarks</label>
-						<textarea name="remarks" class="form-control" rows="3"></textarea>
+						<label for="update_remarks">Remarks</label>
+						<textarea name="remarks" id="update_remarks" class="form-control" rows="3"></textarea>
 					</div>
 				</div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
 					<button type="submit" class="btn btn-primary">Update Status</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- Add Document Modal -->
+<div class="modal fade" id="addDocumentModal" tabindex="-1" role="dialog">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">Add OR/CR Document</h5>
+				<button type="button" class="close" data-dismiss="modal">
+					<span>&times;</span>
+				</button>
+			</div>
+			<form id="addDocumentForm" enctype="multipart/form-data">
+				<div class="modal-body">
+					<div class="form-group">
+						<label for="client_id">Customer</label>
+						<select name="client_id" id="client_id" class="form-control" required>
+							<option value="">Select Customer</option>
+							<?php 
+							$customers = $conn->query("SELECT * FROM client_list WHERE delete_flag = 0 ORDER BY lastname, firstname");
+							while($customer = $customers->fetch_assoc()):
+							?>
+							<option value="<?= $customer['id'] ?>"><?= ucwords($customer['lastname'] . ', ' . $customer['firstname'] . ' ' . $customer['middlename']) ?></option>
+							<?php endwhile; ?>
+						</select>
+					</div>
+					<div class="form-group">
+						<label for="document_type">Document Type</label>
+						<select name="document_type" id="document_type" class="form-control" required>
+							<option value="">Select Document Type</option>
+							<option value="or">Original Receipt (OR)</option>
+							<option value="cr">Certificate of Registration (CR)</option>
+						</select>
+					</div>
+					<div class="form-group">
+						<label for="document_number">Document Number</label>
+						<input type="text" name="document_number" id="document_number" class="form-control" required>
+					</div>
+					<div class="form-group">
+						<label for="plate_number">Plate Number</label>
+						<input type="text" name="plate_number" id="plate_number" class="form-control">
+					</div>
+					<div class="form-group">
+						<label for="vehicle_model">Vehicle Model</label>
+						<input type="text" name="vehicle_model" id="vehicle_model" class="form-control">
+					</div>
+					<div class="form-group">
+						<label for="vehicle_brand">Vehicle Brand</label>
+						<input type="text" name="vehicle_brand" id="vehicle_brand" class="form-control">
+					</div>
+					<div class="form-group">
+						<label for="release_date">Release Date</label>
+						<input type="date" name="release_date" id="release_date" class="form-control">
+					</div>
+					<div class="form-group">
+						<label for="expiry_date">Expiry Date</label>
+						<input type="date" name="expiry_date" id="expiry_date" class="form-control">
+					</div>
+					<div class="form-group">
+						<label for="document_file">Document File</label>
+						<input type="file" name="document_file" id="document_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
+						<small class="text-muted">Accepted formats: PDF, JPG, JPEG, PNG</small>
+					</div>
+					<div class="form-group">
+						<label for="status">Status</label>
+						<select name="status" id="status" class="form-control" required>
+							<option value="pending">Pending</option>
+							<option value="released">Released</option>
+							<option value="expired">Expired</option>
+						</select>
+					</div>
+					<div class="form-group">
+						<label for="remarks">Remarks</label>
+						<textarea name="remarks" id="remarks" class="form-control" rows="3"></textarea>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<button type="submit" class="btn btn-primary">Add Document</button>
 				</div>
 			</form>
 		</div>
@@ -447,18 +531,57 @@
 			"scrollCollapse": true
 		});
 		
+		$('#add_document').click(function(){
+			$('#addDocumentModal').modal('show');
+		});
+		
 		$('.update_status').click(function(){
 			var id = $(this).attr('data-id');
 			var status = $(this).attr('data-status');
 			
 			$('#update_document_id').val(id);
-			$('select[name="status"]').val(status);
+			$('#update_status').val(status);
 			$('#updateStatusModal').modal('show');
 		});
 		
 		$('.delete_document').click(function(){
 			var id = $(this).attr('data-id');
 			_conf("Are you sure to delete this document?","delete_document",[id]);
+		});
+		
+		$('#addDocumentForm').submit(function(e){
+			e.preventDefault();
+			console.log('Add document form submitted');
+			start_loader();
+			
+			$.ajax({
+				url: _base_url_ + "classes/Master.php?f=add_document",
+				method: "POST",
+				data: new FormData($(this)[0]),
+				cache: false,
+				contentType: false,
+				processData: false,
+				dataType: "json",
+				success: function(resp){
+					console.log('Response:', resp);
+					if(resp.status == 'success'){
+						$('#addDocumentModal').modal('hide');
+						alert_toast(resp.msg, 'success');
+						setTimeout(function(){
+							location.reload();
+						}, 1000);
+					} else {
+						alert_toast(resp.msg, 'error');
+					}
+					end_loader();
+				},
+				error: function(xhr, status, error){
+					console.log('AJAX Error:', error);
+					console.log('Response:', xhr.responseText);
+					alert_toast('An error occurred while adding document', 'error');
+					end_loader();
+				}
+			});
 		});
 		
 		$('#updateStatusForm').submit(function(e){

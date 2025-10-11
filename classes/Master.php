@@ -1090,6 +1090,64 @@ Class Master extends DBConnection {
 		return json_encode($resp);
 	}
 	
+	function add_document(){
+		extract($_POST);
+		
+		// Debug logging
+		error_log("Add document function called with data: " . print_r($_POST, true));
+		error_log("Files: " . print_r($_FILES, true));
+		
+		// Validate and sanitize inputs
+		$client_id = $this->conn->real_escape_string($client_id);
+		$document_type = in_array($document_type, ['or', 'cr']) ? $document_type : 'or';
+		$document_number = $this->conn->real_escape_string($document_number);
+		$plate_number = $this->conn->real_escape_string($plate_number);
+		$vehicle_model = $this->conn->real_escape_string($vehicle_model);
+		$vehicle_brand = $this->conn->real_escape_string($vehicle_brand);
+		$release_date = !empty($release_date) ? "'{$release_date}'" : 'NULL';
+		$expiry_date = !empty($expiry_date) ? "'{$expiry_date}'" : 'NULL';
+		$status = in_array($status, ['pending', 'released', 'expired']) ? $status : 'pending';
+		$remarks = $this->conn->real_escape_string($remarks);
+		
+		$data = "client_id = '{$client_id}', document_type = '{$document_type}', document_number = '{$document_number}', plate_number = '{$plate_number}', vehicle_model = '{$vehicle_model}', vehicle_brand = '{$vehicle_brand}', release_date = {$release_date}, expiry_date = {$expiry_date}, status = '{$status}', remarks = '{$remarks}'";
+		
+		$sql = "INSERT INTO `or_cr_documents` set {$data} ";
+		error_log("SQL Query: " . $sql);
+		$save = $this->conn->query($sql);
+		
+		if($save){
+			$doc_id = $this->conn->insert_id;
+			error_log("Document inserted with ID: " . $doc_id);
+			
+			// Handle file upload
+			if(!empty($_FILES['document_file']['tmp_name'])){
+				$ext = pathinfo($_FILES['document_file']['name'], PATHINFO_EXTENSION);
+				$dir = base_app."uploads/documents/";
+				if(!is_dir($dir))
+					mkdir($dir, 0755, true);
+				$name = $doc_id.".".$ext;
+				if(is_file($dir.$name))
+					unlink($dir.$name);
+				$move = move_uploaded_file($_FILES['document_file']['tmp_name'],$dir.$name);
+				if($move){
+					$this->conn->query("UPDATE `or_cr_documents` set file_path = CONCAT('uploads/documents/$name','?v=',unix_timestamp(CURRENT_TIMESTAMP)) where id = '{$doc_id}'");
+					error_log("File uploaded successfully: " . $dir.$name);
+				} else {
+					error_log("File upload failed");
+				}
+			}
+			
+			$resp['status'] = 'success';
+			$resp['msg'] = "Document successfully added.";
+		}else{
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to add document.";
+			$resp['error'] = $this->conn->error;
+			error_log("Database error: " . $this->conn->error);
+		}
+		return json_encode($resp);
+	}
+	
 	// Customer Account Management functions
 	function get_client_balance(){
 		extract($_POST);
@@ -2135,6 +2193,9 @@ $sysset = new SystemSettings();
 	break;
 	case 'check_appointment_availability':
 		echo $Master->check_appointment_availability();
+	break;
+	case 'add_document':
+		echo $Master->add_document();
 	break;
 	default:
 		break;

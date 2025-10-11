@@ -14,14 +14,14 @@ if ($is_standalone) {
     <?php require_once('inc/topBarNav.php') ?>
 
     <!-- Header-->
-    <header class="bg-dark py-5" id="main-header">
+    <!-- <header class="bg-dark py-5" id="main-header">
         <div class="container h-100 d-flex align-items-end justify-content-center w-100">
             <div class="text-center text-white w-100">
                 <h1 class="display-4 fw-bolder">Service Request</h1>
                 <p class="lead fw-normal text-white-50 mb-0">Request service for your vehicle</p>
             </div>
         </div>
-    </header>
+    </header> -->
 
     <!-- Section-->
     <section class="py-5">
@@ -164,52 +164,67 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                     <h4 class="card-title"><b>My Service Requests</b></h4>
                 </div>
                 <div class="card-body">
-                    <?php if($user_requests->num_rows > 0): ?>
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Vehicle</th>
-                                    <th>Services</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php while($request = $user_requests->fetch_assoc()): ?>
-                                <tr>
-                                    <td><?= isset($request['date_created']) ? date('M d, Y', strtotime($request['date_created'])) : 'N/A' ?></td>
-                                    <td><?= isset($request['vehicle_name']) ? htmlspecialchars($request['vehicle_name']) : 'N/A' ?></td>
-                                    <td>
+                    <div class="container-fluid">
+                        <div class="row">
                                         <?php 
-                                        if (!empty($request['service_id'])) {
-                                            $service_ids = explode(',', $request['service_id']);
-                                            $service_names = [];
-                                            foreach($service_ids as $service_id) {
-                                                if (!empty($service_id)) {
-                                                    $service = $conn->query("SELECT service FROM service_list WHERE id = '$service_id'")->fetch_assoc();
-                                                    if($service) $service_names[] = $service['service'];
-                                                }
-                                            }
-                                            echo implode(', ', $service_names);
-                                        } else {
-                                            echo 'N/A';
-                                        }
-                                        ?>
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-<?= isset($request['status']) && $request['status'] == 'completed' ? 'success' : (isset($request['status']) && $request['status'] == 'in_progress' ? 'warning' : 'secondary') ?>">
-                                            <?= isset($request['status']) ? ucfirst($request['status']) : 'Unknown' ?>
-                                        </span>
-                                    </td>
-                                </tr>
+                            // Get mechanic information for the user's service requests
+                            $mechanic = $conn->query("SELECT * FROM mechanics_list where id in (SELECT mechanic_id FROM `service_requests` where client_id = '{$_settings->userdata('id')}')");
+                            $mechanic_arr = $mechanic && $mechanic->num_rows>0 ? array_column($mechanic->fetch_all(MYSQLI_ASSOC),'name','id') : [];
+                            
+                            // Reset the query result pointer
+                            $user_requests->data_seek(0);
+                            
+                            while($row = $user_requests->fetch_assoc()):
+                                // Status badge logic
+                                $status_badge = '<span class="badge badge-secondary rounded-pill px-3">Pending</span>';
+                                if($row['status'] == 1) $status_badge = '<span class="badge badge-primary rounded-pill px-3">Confirmed</span>';
+                                elseif($row['status'] == 2) $status_badge = '<span class="badge badge-warning rounded-pill px-3">On-progress</span>';
+                                elseif($row['status'] == 3) $status_badge = '<span class="badge badge-success rounded-pill px-3">Done</span>';
+                                elseif($row['status'] == 4) $status_badge = '<span class="badge badge-danger rounded-pill px-3">Cancelled</span>';
+                            ?>
+                            <div class="col-md-6 mb-3">
+                                <div class="card border rounded shadow-sm h-100">
+                                    <div class="card-header bg-primary text-white">
+                                        <h6 class="mb-0">Request #<?= $row['id'] ?></h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div class="text-muted small">Date Requested</div>
+                                            <div class="font-weight-bold"><?= date("M d, Y h:i A", strtotime($row['date_created'])) ?></div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <div class="text-muted small">Service Type</div>
+                                            <div class="font-weight-bold"><?= isset($row['service_type']) ? $row['service_type'] : 'N/A' ?></div>
+                                        </div>
+                                        <?php if(!empty($row['vehicle_name'])): ?>
+                                        <div class="mb-2">
+                                            <div class="text-muted small">Vehicle</div>
+                                            <div><?= $row['vehicle_name'] ?></div>
+                                        </div>
+                                        <?php endif; ?>
+                                        <?php if(!empty($row['vehicle_registration_number'])): ?>
+                                        <div class="mb-2">
+                                            <div class="text-muted small">Plate Number</div>
+                                            <div><?= $row['vehicle_registration_number'] ?></div>
+                                        </div>
+                                        <?php endif; ?>
+                                        <div class="mb-2">
+                                            <div class="text-muted small">Mechanic</div>
+                                            <div><?= isset($mechanic_arr[$row['mechanic_id']]) ? $mechanic_arr[$row['mechanic_id']] : 'Not Assigned' ?></div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="text-muted small">Status</div>
+                                            <div><?= $status_badge ?></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                                 <?php endwhile; ?>
-                            </tbody>
-                        </table>
+                            <?php if($user_requests->num_rows <= 0): ?>
+                            <div class="col-12 text-center text-muted">No service requests yet.</div>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                    <?php else: ?>
-                    <p class="text-muted text-center">No service requests found.</p>
-                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -388,6 +403,7 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                 }
             });
         });
+
     });
 </script>
 

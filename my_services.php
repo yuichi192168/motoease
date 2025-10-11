@@ -18,21 +18,42 @@
                             elseif($row['status'] == 4) $status_badge = '<span class="badge badge-danger rounded-pill px-3">Cancelled</span>';
                         ?>
                         <div class="col-md-6 mb-3">
-                            <div class="border rounded p-3 h-100">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <div class="text-muted small">Date Requested</div>
-                                    <div class="font-weight-bold"><?= date("Y-m-d H:i", strtotime($row['date_created'])) ?></div>
+                            <div class="card border rounded shadow-sm h-100">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">Request #<?= $row['id'] ?></h6>
                                 </div>
-                                <div class="mb-1">
-                                    <div class="text-muted small">Mechanic</div>
-                                    <div><?= isset($mechanic_arr[$row['mechanic_id']]) ? $mechanic_arr[$row['mechanic_id']] : 'N/A' ?></div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="text-muted small">Date Requested</div>
+                                        <div class="font-weight-bold"><?= date("M d, Y h:i A", strtotime($row['date_created'])) ?></div>
+                                    </div>
+                                    <div class="mb-2">
+                                        <div class="text-muted small">Service Type</div>
+                                        <div class="font-weight-bold"><?= isset($row['service_type']) ? $row['service_type'] : 'N/A' ?></div>
+                                    </div>
+                                    <?php if(!empty($row['vehicle_name'])): ?>
+                                    <div class="mb-2">
+                                        <div class="text-muted small">Vehicle</div>
+                                        <div><?= $row['vehicle_name'] ?></div>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if(!empty($row['vehicle_registration_number'])): ?>
+                                    <div class="mb-2">
+                                        <div class="text-muted small">Plate Number</div>
+                                        <div><?= $row['vehicle_registration_number'] ?></div>
+                                    </div>
+                                    <?php endif; ?>
+                                    <div class="mb-2">
+                                        <div class="text-muted small">Mechanic</div>
+                                        <div><?= isset($mechanic_arr[$row['mechanic_id']]) ? $mechanic_arr[$row['mechanic_id']] : 'Not Assigned' ?></div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <div class="text-muted small">Status</div>
+                                        <div><?= $status_badge ?></div>
+                                    </div>
                                 </div>
-                                <div class="mb-2">
-                                    <div class="text-muted small">Status</div>
-                                    <div><?= $status_badge ?></div>
-                                </div>
-                                <div class="text-right">
-                                    <button class="btn btn-sm btn-primary view_data" type="button" data-id="<?= $row['id'] ?>"><i class="fa fa-eye"></i> View</button>
+                                <div class="card-footer bg-light text-right">
+                                    <button class="btn btn-sm btn-primary view_data" type="button" data-id="<?= $row['id'] ?>"><i class="fa fa-eye"></i> View Details</button>
                                 </div>
                             </div>
                         </div>
@@ -47,13 +68,19 @@
     </div>
 </div>
 <script>
-    $(function(){
+    $(document).ready(function(){
+        console.log('My services page loaded');
+        console.log('View data buttons found:', $('.view_data').length);
+        
         $('.view_data').click(function(){
-            uni_modal("Service Request Details","view_request.php?id="+$(this).attr('data-id'),"mid-large")
-        })
+            var id = $(this).attr('data-id');
+            console.log('View data clicked for ID:', id);
+            uni_modal("Service Request Details","view_request.php?id="+id,"mid-large");
+        });
 
-        $('.table th, .table td').addClass("align-middle px-2 py-1")
-		$('.table').dataTable();
-		$('.table').dataTable();
-    })
+        $('.table th, .table td').addClass("align-middle px-2 py-1");
+        if($('.table').length > 0){
+            $('.table').dataTable();
+        }
+    });
 </script>
