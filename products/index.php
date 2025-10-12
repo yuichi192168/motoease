@@ -175,8 +175,8 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                                                 <i class="fa fa-cart-plus"></i> Add to Cart
                                             </button>
                                         <?php else: ?>
-                                            <button class="btn btn-secondary btn-sm w-100" disabled>
-                                                <i class="fa fa-times"></i> Out of Stock
+                                            <button class="btn btn-secondary btn-sm w-100" onclick="showOutOfStockOptions(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name']) ?>', '<?= htmlspecialchars($row['category']) ?>')">
+                                                <i class="fa fa-bell"></i> Notify When Available
                                             </button>
                                         <?php endif; ?>
                                         
@@ -877,4 +877,134 @@ $(document).ready(function() {
         }
     });
 });
+
+// Out of Stock Notification and Alternative Recommendations
+function showOutOfStockOptions(productId, productName, category) {
+    if("<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>" != 1) {
+        Swal.fire({
+            title: 'Login Required',
+            text: 'Please login to set notifications for out-of-stock products.',
+            icon: 'warning',
+            confirmButtonText: 'Login Now',
+            showCancelButton: true,
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                location.href = './login.php';
+            }
+        });
+        return;
+    }
+    
+    // Show loading
+    Swal.fire({
+        title: 'Loading Alternatives...',
+        text: 'Finding similar products for you',
+        icon: 'info',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    // Get alternative recommendations
+    $.ajax({
+        url: '<?= base_url ?>classes/Master.php?f=get_alternative_products',
+        method: 'POST',
+        data: {
+            product_id: productId,
+            category: category
+        },
+        dataType: 'json',
+        success: function(resp) {
+            if(resp.status === 'success') {
+                showOutOfStockModal(productId, productName, resp.alternatives);
+            } else {
+                showOutOfStockModal(productId, productName, []);
+            }
+        },
+        error: function() {
+            showOutOfStockModal(productId, productName, []);
+        }
+    });
+}
+
+function showOutOfStockModal(productId, productName, alternatives) {
+    Swal.close();
+    
+    var alternativesHtml = '';
+    if(alternatives && alternatives.length > 0) {
+        alternativesHtml = '<div class="text-left mt-3"><h6>Similar Products Available:</h6><div class="row">';
+        alternatives.forEach(function(alt) {
+            alternativesHtml += '<div class="col-6 mb-2">';
+            alternativesHtml += '<div class="card border">';
+            alternativesHtml += '<img src="' + alt.image_path + '" class="card-img-top" style="height: 80px; object-fit: cover;">';
+            alternativesHtml += '<div class="card-body p-2">';
+            alternativesHtml += '<h6 class="card-title mb-1" style="font-size: 0.8rem;">' + alt.name + '</h6>';
+            alternativesHtml += '<p class="card-text mb-1" style="font-size: 0.7rem;">₱' + parseFloat(alt.price).toLocaleString() + '</p>';
+            alternativesHtml += '<a href="./?p=products/view_product&id=' + alt.id + '" class="btn btn-sm btn-primary" style="font-size: 0.7rem;">View</a>';
+            alternativesHtml += '</div></div></div>';
+        });
+        alternativesHtml += '</div></div>';
+    } else {
+        alternativesHtml = '<div class="text-center mt-3"><p class="text-muted">No similar products found at the moment.</p></div>';
+    }
+    
+    Swal.fire({
+        title: 'Product Out of Stock',
+        html: '<div class="text-center">' +
+              '<i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>' +
+              '<h5>' + productName + '</h5>' +
+              '<p class="text-muted">This product is currently out of stock.</p>' +
+              alternativesHtml +
+              '</div>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Notify Me When Available',
+        cancelButtonText: 'Close',
+        confirmButtonColor: '#dc3545',
+        width: '600px'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            setProductNotification(productId, productName);
+        }
+    });
+}
+
+function setProductNotification(productId, productName) {
+    $.ajax({
+        url: '<?= base_url ?>classes/Master.php?f=set_product_notification',
+        method: 'POST',
+        data: {
+            product_id: productId
+        },
+        dataType: 'json',
+        success: function(resp) {
+            if(resp.status === 'success') {
+                Swal.fire({
+                    title: 'Notification Set!',
+                    text: 'You will be notified when ' + productName + ' becomes available.',
+                    icon: 'success',
+                    confirmButtonText: 'OK'
+                });
+            } else {
+                Swal.fire({
+                    title: 'Error',
+                    text: resp.msg || 'Failed to set notification',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
+        },
+        error: function() {
+            Swal.fire({
+                title: 'Error',
+                text: 'An error occurred while setting the notification',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+        }
+    });
+}
 </script>

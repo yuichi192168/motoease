@@ -53,7 +53,7 @@
                                     </div>
                                 </div>
                                 <div class="card-footer bg-light text-right">
-                                    <button class="btn btn-sm btn-primary view_data" type="button" data-id="<?= $row['id'] ?>"><i class="fa fa-eye"></i> View Details</button>
+                                    <small class="text-muted">Service ID: <?= $row['id'] ?></small>
                                 </div>
                             </div>
                         </div>
@@ -69,18 +69,29 @@
 </div>
 <script>
     $(document).ready(function(){
-        console.log('My services page loaded');
-        console.log('View data buttons found:', $('.view_data').length);
-        
-        $('.view_data').click(function(){
-            var id = $(this).attr('data-id');
-            console.log('View data clicked for ID:', id);
-            uni_modal("Service Request Details","view_request.php?id="+id,"mid-large");
-        });
-
         $('.table th, .table td').addClass("align-middle px-2 py-1");
         if($('.table').length > 0){
             $('.table').dataTable();
         }
     });
 </script>
+
+<!-- Modal Structure -->
+<div class="modal fade" id="uni_modal" role='dialog'>
+    <div class="modal-dialog rounded-0 modal-md modal-dialog-centered" role="document">
+        <div class="modal-content rounded-0">
+            <div class="modal-header">
+                <h5 class="modal-title"></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id='submit' onclick="$('#uni_modal form').submit()">Save</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>

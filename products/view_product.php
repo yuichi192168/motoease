@@ -280,7 +280,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                 <div class="color-track" id="colorTrack">
                                     <?php foreach($slides as $s): ?>
                                         <div class="color-slide" data-color="<?= htmlspecialchars($s['color']) ?>">
-                                            <img src="<?= validate_image($s['img']) ?>" loading="lazy" alt="<?= htmlspecialchars($s['color']) ?> - <?= isset($name) ? htmlspecialchars($name) : '' ?>">
+                                            <img src="<?= validate_image($s['img']) ?>" loading="lazy" alt="<?= htmlspecialchars($s['color']) ?> - <?= isset($name) ? htmlspecialchars($name) : '' ?>" onclick="openImageModal('<?= validate_image($s['img']) ?>', '<?= htmlspecialchars($s['color']) ?> - <?= isset($name) ? htmlspecialchars($name) : '' ?>')">
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
@@ -938,4 +938,83 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
             });
         }
     }
+    
+    // Fullscreen Image Modal Functions
+    function openImageModal(imageSrc, imageAlt) {
+        var modal = document.getElementById('imageModal');
+        var modalImg = document.getElementById('modalImage');
+        var modalCaption = document.getElementById('modalCaption');
+        
+        modal.style.display = 'block';
+        modalImg.src = imageSrc;
+        modalCaption.innerHTML = imageAlt;
+        
+        // Prevent body scroll
+        document.body.style.overflow = 'hidden';
+        
+        // Add zoom functionality
+        var zoom = 1;
+        modalImg.style.transform = 'scale(' + zoom + ')';
+        modalImg.style.transition = 'transform 0.3s ease';
+        
+        // Touch zoom for mobile
+        var startDistance = 0;
+        var startZoom = 1;
+        
+        modalImg.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 2) {
+                startDistance = getDistance(e.touches[0], e.touches[1]);
+                startZoom = zoom;
+            }
+        });
+        
+        modalImg.addEventListener('touchmove', function(e) {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                var currentDistance = getDistance(e.touches[0], e.touches[1]);
+                var scale = currentDistance / startDistance;
+                zoom = Math.max(1, Math.min(3, startZoom * scale));
+                modalImg.style.transform = 'scale(' + zoom + ')';
+            }
+        });
+        
+        function getDistance(touch1, touch2) {
+            var dx = touch1.clientX - touch2.clientX;
+            var dy = touch1.clientY - touch2.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+    }
+    
+    function closeImageModal() {
+        var modal = document.getElementById('imageModal');
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Close modal when clicking outside the image
+    window.onclick = function(event) {
+        var modal = document.getElementById('imageModal');
+        if (event.target === modal) {
+            closeImageModal();
+        }
+    }
+    
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeImageModal();
+        }
+    });
 </script>
+
+<!-- Fullscreen Image Modal -->
+<div id="imageModal" class="zoom-modal">
+    <span class="zoom-close" onclick="closeImageModal()">&times;</span>
+    <div class="zoom-content">
+        <img id="modalImage" src="" alt="">
+        <div class="zoom-info">
+            <p id="modalCaption"></p>
+            <small>Click outside or press ESC to close</small>
+        </div>
+    </div>
+</div>

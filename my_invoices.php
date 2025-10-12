@@ -25,11 +25,18 @@ $customer_id = $_settings->userdata('id');
             <div class="col-12">
                 <div class="card card-outline card-primary shadow rounded-0">
                     <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-file-invoice fa-3x text-primary me-3"></i>
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-file-invoice fa-3x text-primary me-3"></i>
+                                <div>
+                                    <h3 class="mb-1">My Invoices & Receipts</h3>
+                                    <p class="text-muted mb-0">View and download your purchase invoices and payment receipts</p>
+                                </div>
+                            </div>
                             <div>
-                                <h3 class="mb-1">My Invoices & Receipts</h3>
-                                <p class="text-muted mb-0">View and download your purchase invoices and payment receipts</p>
+                                <a href="./" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-2"></i>Back to Home
+                                </a>
                             </div>
                         </div>
                     </div>

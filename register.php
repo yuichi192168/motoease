@@ -14,11 +14,11 @@
       }
 
       body {
-        background-image: url('<?= validate_image($_settings->info('cover')) ?>');
-        background-size: cover;
-        background-repeat: no-repeat;
-        background-position: center;
-        position: relative;
+        width:calc(100%);
+          height:calc(100%);
+          background-image:url('<?= validate_image($_settings->info('cover')) ?>');
+          background-repeat: no-repeat;
+          background-size:cover;
       }
 
       .overlay {
@@ -131,6 +131,89 @@
       @media(max-width:767px){
         .register-wrapper .row { flex-direction: column; }
         .card { margin-top: 20px; }
+        
+        /* Mobile form improvements */
+        .container-fluid {
+          padding: 10px;
+        }
+        
+        .card {
+          margin: 10px;
+          max-width: 100%;
+        }
+        
+        .card-body {
+          padding: 15px;
+        }
+        
+        .form-group {
+          margin-bottom: 15px;
+        }
+        
+        .form-control, .custom-select {
+          font-size: 16px; /* Prevents zoom on iOS */
+          padding: 8px 12px;
+        }
+        
+        .btn {
+          padding: 10px 20px;
+          font-size: 16px;
+        }
+        
+        /* Stack form elements vertically on mobile */
+        .row .col-md-6 {
+          flex: 0 0 100%;
+          max-width: 100%;
+        }
+        
+        /* Adjust logo size for mobile */
+        #logo-img {
+          width: 80px;
+          height: 80px;
+        }
+        
+        /* Better spacing for mobile */
+        .text-center h3 {
+          font-size: 1.5rem;
+        }
+        
+        .text-center p {
+          font-size: 0.9rem;
+        }
+      }
+      
+      @media(max-width:576px){
+        .register-wrapper {
+          padding: 10px;
+        }
+        
+        .card {
+          margin: 5px;
+        }
+        
+        .card-body {
+          padding: 10px;
+        }
+        
+        .form-control, .custom-select {
+          font-size: 16px;
+          padding: 10px;
+        }
+        
+        .btn {
+          width: 100%;
+          margin-top: 10px;
+        }
+        
+        /* Hide left panel on very small screens */
+        .col-lg-5 {
+          display: none;
+        }
+        
+        .col-lg-7 {
+          flex: 0 0 100%;
+          max-width: 100%;
+        }
       }
     </style>
 

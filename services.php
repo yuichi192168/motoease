@@ -97,6 +97,16 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
     font-weight: 500;
 }
 
+/* Skeleton Loading Animation */
+@keyframes skeleton-loading {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .horizontal-categories {
@@ -111,6 +121,16 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
     
     .filter-content {
         padding: 15px;
+    }
+    
+    /* Mobile skeleton improvements */
+    .skeleton-line {
+        height: 16px !important;
+        margin-bottom: 6px !important;
+    }
+    
+    .skeleton-line:first-child {
+        height: 18px !important;
     }
 }
 </style>
@@ -177,22 +197,16 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                 
                 <!-- Loading Skeleton -->
                 <div id="services-skeleton" class="row gx-4 gx-lg-5 row-cols-1 row-cols-sm-1 row-cols-md-2 row-cols-xl-2" style="display: none;">
-                    <div class="col item">
+                    <?php for($i = 0; $i < 6; $i++): ?>
+                    <div class="col item mb-3">
                         <div class="callout callout-primary border-primary rounded-0">
-                            <div class="skeleton-line" style="height: 20px; background: #e0e0e0; margin-bottom: 10px; border-radius: 4px;"></div>
-                            <div class="skeleton-line" style="height: 15px; background: #e0e0e0; margin-bottom: 8px; border-radius: 4px;"></div>
-                            <div class="skeleton-line" style="height: 15px; background: #e0e0e0; margin-bottom: 8px; border-radius: 4px;"></div>
-                            <div class="skeleton-line" style="height: 15px; background: #e0e0e0; border-radius: 4px;"></div>
+                            <div class="skeleton-line" style="height: 20px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: skeleton-loading 1.5s infinite; margin-bottom: 10px; border-radius: 4px;"></div>
+                            <div class="skeleton-line" style="height: 15px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: skeleton-loading 1.5s infinite; margin-bottom: 8px; border-radius: 4px; width: 85%;"></div>
+                            <div class="skeleton-line" style="height: 15px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: skeleton-loading 1.5s infinite; margin-bottom: 8px; border-radius: 4px; width: 70%;"></div>
+                            <div class="skeleton-line" style="height: 15px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: skeleton-loading 1.5s infinite; border-radius: 4px; width: 60%;"></div>
                         </div>
                     </div>
-                    <div class="col item">
-                        <div class="callout callout-primary border-primary rounded-0">
-                            <div class="skeleton-line" style="height: 20px; background: #e0e0e0; margin-bottom: 10px; border-radius: 4px;"></div>
-                            <div class="skeleton-line" style="height: 15px; background: #e0e0e0; margin-bottom: 8px; border-radius: 4px;"></div>
-                            <div class="skeleton-line" style="height: 15px; background: #e0e0e0; margin-bottom: 8px; border-radius: 4px;"></div>
-                            <div class="skeleton-line" style="height: 15px; background: #e0e0e0; border-radius: 4px;"></div>
-                    </div>
-                </div>
+                    <?php endfor; ?>
                 </div>
                 <!-- Services Container -->
                 <div id="services-container" class="row gx-4 gx-lg-5 row-cols-1 row-cols-sm-1 row-cols-md-2 row-cols-xl-2" style="min-height: 200px;">
@@ -428,6 +442,12 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
             $('#services-skeleton').hide();
             $('#services-container').show();
         }
+        
+        // Hide skeleton on page load
+        $(document).ready(function(){
+            hideSkeleton();
+        });
+        
         $('#services-container .item').hover(function(){
             $(this).find('.callout').addClass('shadow')
         })

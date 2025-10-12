@@ -1,16 +1,50 @@
 <style>
     .prod-cart-img{
-        width:10em;
-        height:10em;
-        object-fit:scale-down;
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
         object-position: center center;
+        border-radius: 8px;
     }
+    
+    .cart-item {
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .cart-item:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+    
+    .cart-item .card-body {
+        padding: 20px;
+    }
+    
+    .product-image-container {
+        position: relative;
+        overflow: hidden;
+        border-radius: 8px;
+        background: #f8f9fa;
+    }
+    
+    .product-image-container img {
+        transition: transform 0.3s ease;
+    }
+    
+    .product-image-container:hover img {
+        transform: scale(1.05);
+    }
+    
     .stock-warning {
         color: #dc3545;
         font-size: 0.8em;
     }
     .stock-info {
-        color: #dc3545;
+        color: #28a745;
         font-size: 0.8em;
     }
     
@@ -34,6 +68,52 @@
     .form-check-input:checked {
         background-color: #dc3545;
         border-color: #dc3545;
+    }
+    
+    /* Mobile Responsive Cart */
+    @media (max-width: 768px) {
+        .cart-item .card-body {
+            padding: 15px;
+        }
+        
+        .prod-cart-img {
+            height: 150px;
+        }
+        
+        .cart-item .row {
+            flex-direction: column;
+        }
+        
+        .cart-item .col-auto {
+            margin-bottom: 15px;
+        }
+        
+        .product-image-container {
+            margin-bottom: 15px;
+        }
+        
+        .add-ons-section .row {
+            flex-direction: column;
+        }
+        
+        .add-ons-section .col-6 {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .prod-cart-img {
+            height: 120px;
+        }
+        
+        .cart-item .card-body {
+            padding: 12px;
+        }
+        
+        .add-ons-section .card-body {
+            padding: 10px;
+        }
     }
 </style>
 <div class="content py-5 mt-3">
@@ -68,7 +148,9 @@
                                 </div>
                             </div>
                             <div class="col-auto">
-                                <img src="<?= validate_image($row['image_path']) ?>" alt="Product Image" class="img-thumbnail prod-cart-img">
+                                <div class="product-image-container">
+                                    <img src="<?= validate_image($row['image_path']) ?>" alt="Product Image" class="prod-cart-img">
+                                </div>
                             </div>
                             <div class="col flex-grow-1">
                                 <a href="./?p=products/view_product&id=<?= $row['product_id'] ?>" class="h4 text-muted">

@@ -112,9 +112,10 @@
                         </div>
                         
                         <div class="mt-3">
-                            <button class="btn btn-primary btn-sm btn-block view_data" type="button" data-id="<?= $row['id'] ?>">
-                                <i class="fa fa-eye"></i> View Details
-                            </button>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">Order ID: <?= $row['id'] ?></small>
+                                <small class="text-muted"><?= date("M d, Y H:i", strtotime($row['date_created'])) ?></small>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -135,12 +136,28 @@
 </div>
 <script>
     $(function(){
-        $('.view_data').click(function(){
-            uni_modal("Order Details","view_order.php?id="+$(this).attr('data-id'),"large")
-        })
-
         $('.table th, .table td').addClass("align-middle px-2 py-1")
 		$('.table').dataTable();
 		$('.table').dataTable();
     })
 </script>
+
+<!-- Modal Structure -->
+<div class="modal fade" id="uni_modal" role='dialog'>
+    <div class="modal-dialog rounded-0 modal-md modal-dialog-centered" role="document">
+        <div class="modal-content rounded-0">
+            <div class="modal-header">
+                <h5 class="modal-title"></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id='submit' onclick="$('#uni_modal form').submit()">Save</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>

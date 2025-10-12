@@ -41,61 +41,28 @@ while($promo = $promo_query->fetch_assoc()) {
             <div class="title-underline mx-auto mt-3"></div>
         </div>
         
-        <!-- Promo Carousel -->
-        <div id="promoCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="4000">
-            <div class="carousel-indicators promo-indicators">
-                <?php for($i = 0; $i < ceil(count($promos) / 3); $i++): ?>
-                <button type="button" data-bs-target="#promoCarousel" data-bs-slide-to="<?= $i ?>" <?= $i === 0 ? 'class="active" aria-current="true"' : '' ?> aria-label="Promo Slide <?= $i + 1 ?>"></button>
-                <?php endfor; ?>
-            </div>
-            
-            <div class="carousel-inner">
-                <?php 
-                $slide_count = 0;
-                for($i = 0; $i < count($promos); $i += 3): 
-                    $is_active = $slide_count === 0 ? 'active' : '';
-                ?>
-                <div class="carousel-item <?= $is_active ?>">
-                    <div class="row g-4">
-                        <?php 
-                        $end_index = min($i + 3, count($promos));
-                        for($j = $i; $j < $end_index; $j++): 
-                            $promo = $promos[$j];
-                        ?>
-                        <div class="col-lg-4 col-md-6">
-                            <div class="promo-card h-100">
-                                <div class="promo-image-container">
-                                    <img src="<?php echo validate_image($promo['image_path']) ?>" class="promo-image" alt="<?php echo htmlspecialchars($promo['title']) ?>">
-                                    <div class="promo-overlay">
-                                        <div class="promo-content">
-                                            <h5 class="promo-title"><?php echo htmlspecialchars($promo['title']) ?></h5>
-                                            <?php if(!empty($promo['description'])): ?>
-                                            <p class="promo-description"><?php echo htmlspecialchars($promo['description']) ?></p>
-                                            <?php endif; ?>
-                                            <a href="https://www.facebook.com/share/p/1CcUsmdruW/" target="_blank" class="btn btn-light btn-sm rounded-pill">Learn More</a>
-                                        </div>
-                                    </div>
+        <!-- Promo Images Display -->
+        <div class="promo-images-container">
+            <div class="row g-4">
+                <?php foreach($promos as $promo): ?>
+                <div class="col-lg-4 col-md-6 col-sm-6">
+                    <div class="promo-card h-100">
+                        <div class="promo-image-container">
+                            <img src="<?php echo validate_image($promo['image_path']) ?>" class="promo-image" alt="<?php echo htmlspecialchars($promo['title']) ?>">
+                            <div class="promo-overlay">
+                                <div class="promo-content">
+                                    <h5 class="promo-title"><?php echo htmlspecialchars($promo['title']) ?></h5>
+                                    <?php if(!empty($promo['description'])): ?>
+                                    <p class="promo-description"><?php echo htmlspecialchars($promo['description']) ?></p>
+                                    <?php endif; ?>
+                                    <a href="https://www.facebook.com/share/p/1CcUsmdruW/" target="_blank" class="btn btn-light btn-sm rounded-pill">Learn More</a>
                                 </div>
                             </div>
                         </div>
-                        <?php endfor; ?>
                     </div>
                 </div>
-                <?php 
-                $slide_count++;
-                endfor; 
-                ?>
+                <?php endforeach; ?>
             </div>
-            
-            <!-- Carousel Controls -->
-            <button class="carousel-control-prev promo-control" type="button" data-bs-target="#promoCarousel" data-bs-slide="prev">
-                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                <span class="visually-hidden">Previous</span>
-            </button>
-            <button class="carousel-control-next promo-control" type="button" data-bs-target="#promoCarousel" data-bs-slide="next">
-                <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                <span class="visually-hidden">Next</span>
-            </button>
         </div>
     </div>
 </section>
@@ -250,12 +217,12 @@ while($customer = $customer_query->fetch_assoc()) {
             const totalCards = carouselTrack.children.length / 2; // Half because we duplicate
             const maxPosition = -(totalCards * cardWidth);
             
-            // Auto-scroll function
+            // Auto-scroll function (right to left)
             function autoScroll() {
                 if (!isAnimating) {
-                    currentPosition -= 1;
-                    if (currentPosition <= maxPosition) {
-                        currentPosition = 0;
+                    currentPosition += 1; // Move right to left
+                    if (currentPosition >= 0) {
+                        currentPosition = maxPosition;
                     }
                     carouselTrack.style.transform = `translateX(${currentPosition}px)`;
                 }
@@ -308,24 +275,6 @@ while($customer = $customer_query->fetch_assoc()) {
                     }
                 });
             }
-        }
-        
-        // Promo Carousel functionality
-        const promoCarousel = document.getElementById('promoCarousel');
-        if (promoCarousel) {
-            promoCarousel.addEventListener('mouseenter', function() {
-                const bsCarousel = bootstrap.Carousel.getInstance(promoCarousel);
-                if (bsCarousel) {
-                    bsCarousel.pause();
-                }
-            });
-            
-            promoCarousel.addEventListener('mouseleave', function() {
-                const bsCarousel = bootstrap.Carousel.getInstance(promoCarousel);
-                if (bsCarousel) {
-                    bsCarousel.cycle();
-                }
-            });
         }
         
         // Smooth scroll for hero section

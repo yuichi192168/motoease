@@ -118,12 +118,12 @@ if(isset($_GET['id'])){
     <div class="row">
         <div class="col-12 text-right">
             <?php if(isset($status)  && $status == 0): ?>
-            <button class="btn btn-danger btn-flat btn-sm" id="btn-cancel" type="button">Cancel Order</button>
+            <button class="btn btn-danger btn-flat btn-sm" id="btn-cancel" type="button"><i class="fa fa-times"></i> Cancel Order</button>
             <?php endif; ?>
             <?php if(isset($status)  && in_array($status, [4])): ?>
-            <button class="btn btn-success btn-flat btn-sm" id="btn-claim" type="button">Mark as Claimed</button>
+            <button class="btn btn-success btn-flat btn-sm" id="btn-claim" type="button"><i class="fa fa-check"></i> Mark as Claimed</button>
             <?php endif; ?>
-            <button class="btn btn-dark btn-flat btn-sm" type="button" data-dismiss="modal"><i class="fa fa-times"></i> Close</button>
+            <button class="btn btn-secondary btn-flat btn-sm" type="button" data-dismiss="modal"><i class="fa fa-arrow-left"></i> Back</button>
         </div>
     </div>
 </div>

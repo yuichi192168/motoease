@@ -12,33 +12,22 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'home';
 
     <!-- Right navbar links -->
     <ul class="navbar-nav ml-auto">
-        <!-- Notifications Dropdown Menu -->
-        <li class="nav-item dropdown">
-            <a class="nav-link" data-toggle="dropdown" href="#">
-                <i class="far fa-bell"></i>
-                <span class="badge badge-warning navbar-badge">15</span>
+        <!-- Profile Settings - Only show on desktop -->
+        <li class="nav-item dropdown d-none d-lg-block">
+            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="adminProfileDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <img src="<?php echo validate_image($_settings->userdata('avatar')) ?>" class="rounded-circle me-2" style="width: 25px; height: 25px; object-fit: cover;" alt="Avatar">
+                <span><?= $_settings->userdata('firstname') ? ucwords($_settings->userdata('firstname')) : $_settings->userdata('email') ?></span>
             </a>
-            <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
-                <span class="dropdown-item dropdown-header">15 Notifications</span>
+            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="adminProfileDropdownMenuLink">
+                <a class="dropdown-item" href="./?page=profile"><i class="fas fa-user me-2"></i>My Profile</a>
+                <a class="dropdown-item" href="./?page=settings"><i class="fas fa-cog me-2"></i>Settings</a>
                 <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item">
-                    <i class="fas fa-envelope mr-2"></i> 4 new messages
-                    <span class="float-right text-muted text-sm">3 mins</span>
-                </a>
+                <a class="dropdown-item" href="../" target="_blank"><i class="fas fa-external-link-alt me-2"></i>View Website</a>
                 <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item">
-                    <i class="fas fa-users mr-2"></i> 8 friend requests
-                    <span class="float-right text-muted text-sm">12 hours</span>
-                </a>
-                <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item">
-                    <i class="fas fa-file mr-2"></i> 3 new reports
-                    <span class="float-right text-muted text-sm">2 days</span>
-                </a>
-                <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item dropdown-footer">See All Notifications</a>
+                <a class="dropdown-item" href="./classes/Login.php?f=logout"><i class="fas fa-sign-out-alt me-2"></i>Logout</a>
             </div>
         </li>
+        
         <li class="nav-item">
             <a class="nav-link" data-widget="fullscreen" href="#" role="button">
                 <i class="fas fa-expand-arrows-alt"></i>
@@ -85,6 +74,29 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'home';
             </div>
             <div class="info">
                 <a href="#" class="d-block"><?php echo ucwords($_settings->userdata('firstname').' '.$_settings->userdata('lastname')) ?></a>
+                <small class="text-muted"><?php echo ucfirst($role_type) ?></small>
+            </div>
+        </div>
+        
+        <!-- Mobile Profile Actions -->
+        <div class="mobile-profile-actions d-lg-none">
+            <div class="profile-actions">
+                <a href="./?page=profile" class="profile-action-btn">
+                    <i class="fas fa-user"></i>
+                    <span>My Profile</span>
+                </a>
+                <a href="./?page=settings" class="profile-action-btn">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+                <a href="../" target="_blank" class="profile-action-btn">
+                    <i class="fas fa-external-link-alt"></i>
+                    <span>View Website</span>
+                </a>
+                <a href="./classes/Login.php?f=logout" class="profile-action-btn logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
             </div>
         </div>
 

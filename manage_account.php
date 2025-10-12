@@ -69,46 +69,101 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
         </div>
         
         <!-- Account Balance Section -->
-        <!-- <div class="row mb-4">
+        <div class="row mb-4">
             <div class="col-12">
                 <div class="card card-outline card-success shadow rounded-0">
                     <div class="card-header">
-                        <h4 class="card-title"><b><i class="fas fa-wallet"></i> Account Balance</b></h4>
+                        <h4 class="card-title"><b><i class="fas fa-wallet"></i> Account Balances & Payment Status</b></h4>
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-4">
-                                <div class="info-box bg-success">
+                            <div class="col-md-3">
+                                <div class="info-box bg-primary">
                                     <span class="info-box-icon"><i class="fas fa-money-bill-wave"></i></span>
                                     <div class="info-box-content">
-                                        <span class="info-box-text">Total Balance</span>
-                                        <span class="info-box-number">₱<?= number_format($account_balance['total_balance'], 2) ?></span>
+                                        <span class="info-box-text">Total Price</span>
+                                        <span class="info-box-number">₱157,350</span>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="info-box bg-warning">
-                                    <span class="info-box-icon"><i class="fas fa-clock"></i></span>
+                                    <span class="info-box-icon"><i class="fas fa-credit-card"></i></span>
                                     <div class="info-box-content">
-                                        <span class="info-box-text">Pending Orders</span>
-                                        <span class="info-box-number">₱<?= number_format($account_balance['pending_amount'], 2) ?></span>
+                                        <span class="info-box-text">Estimated Down Payment</span>
+                                        <span class="info-box-number">₱16,200</span>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="info-box bg-info">
+                                    <span class="info-box-icon"><i class="fas fa-calendar-alt"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Monthly Payment</span>
+                                        <span class="info-box-number">₱7,340</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-box bg-success">
                                     <span class="info-box-icon"><i class="fas fa-check-circle"></i></span>
                                     <div class="info-box-content">
-                                        <span class="info-box-text">Delivered Orders</span>
-                                        <span class="info-box-number">₱<?= number_format($account_balance['delivered_amount'], 2) ?></span>
+                                        <span class="info-box-text">Payment Status</span>
+                                        <span class="info-box-number">
+                                            <span class="badge badge-success">Up-to-date</span>
+                                        </span>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- Payment Status Alert -->
+                        <div class="alert alert-success mt-3" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>Payment Status:</strong> Your motorcycle payments are up-to-date. Next payment due: <strong>March 15, 2025</strong>
+                        </div>
+                        
+                        <!-- Payment History Table -->
+                        <div class="table-responsive mt-3">
+                            <table class="table table-bordered table-striped">
+                                <thead class="thead-dark">
+                                    <tr>
+                                        <th>Payment Date</th>
+                                        <th>Amount</th>
+                                        <th>Payment Method</th>
+                                        <th>Status</th>
+                                        <th>Receipt</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>January 15, 2025</td>
+                                        <td>₱7,340</td>
+                                        <td>Cash</td>
+                                        <td><span class="badge badge-success">Paid</span></td>
+                                        <td><a href="#" class="btn btn-sm btn-info">View</a></td>
+                                    </tr>
+                                    <tr>
+                                        <td>December 15, 2024</td>
+                                        <td>₱7,340</td>
+                                        <td>Cash</td>
+                                        <td><span class="badge badge-success">Paid</span></td>
+                                        <td><a href="#" class="btn btn-sm btn-info">View</a></td>
+                                    </tr>
+                                    <tr>
+                                        <td>November 15, 2024</td>
+                                        <td>₱7,340</td>
+                                        <td>Cash</td>
+                                        <td><span class="badge badge-success">Paid</span></td>
+                                        <td><a href="#" class="btn btn-sm btn-info">View</a></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div> -->
+        </div>
 
         <!-- Order Details Section -->
         <?php if($installments->num_rows > 0): ?>
