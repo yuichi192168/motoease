@@ -2,8 +2,11 @@
 require_once('./../../config.php');
 if(isset($_GET['id'])){
 $qry = $conn->query("SELECT s.*,concat(c.lastname,', ', c.firstname,' ',c.middlename) as fullname,c.email,c.contact, c.address FROM `service_requests` s inner join client_list c on s.client_id = c.id where s.id = '{$_GET['id']}' ");
-foreach($qry->fetch_array() as $k => $v){
-    $$k = $v;
+$request_data = $qry->fetch_assoc();
+if($request_data) {
+    foreach($request_data as $k => $v){
+        $$k = $v;
+    }
 }
 $meta = $conn->query("SELECT * FROM `request_meta` where request_id = '{$id}'");
 while($row = $meta->fetch_assoc()){
@@ -90,12 +93,12 @@ while($row = $meta->fetch_assoc()){
                 <div class="form-group " id="mechanic-holder">
                     <label for="mechanic_id" class="control-label">Assigned To:</label>
                     <select name="mechanic_id" id="mechanic_id" class="form-select form-select-sm rounded-0" required>
-                        <option disabled <?php echo !isset($mechenic_id) || (isset($mechanic_id) && empty($mechanic_id)) ? "selected" : "" ?>></option>
+                        <option disabled <?php echo !isset($mechanic_id) || (isset($mechanic_id) && empty($mechanic_id)) ? "selected" : "" ?>></option>
                         <?php 
                         $mechanic = $conn->query("SELECT * FROM `mechanics_list` where status = 1 order by `name` asc");
                         while($row = $mechanic->fetch_assoc()):
                         ?>
-                        <option value="<?php echo $row['id'] ?>" <?php echo isset($mechanic_id) && in_array($row['id'],explode(",",$mechanic_id))? "selected" : '' ?>><?php echo  $row['name'] ?></option>
+                        <option value="<?php echo $row['id'] ?>" <?php echo isset($mechanic_id) && $mechanic_id == $row['id'] ? "selected" : '' ?>><?php echo  $row['name'] ?></option>
                         <?php endwhile; ?>
                     </select>
                 </div>

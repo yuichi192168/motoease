@@ -75,10 +75,12 @@
 										<span class="sr-only">Toggle Dropdown</span>
 									</button>
 									<div class="dropdown-menu" role="menu">
+										<?php if($_settings->userdata('login_type') == 1): // Admin only ?>
 										<a class="dropdown-item adjust_balance" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
 											<span class="fa fa-edit text-primary"></span> Adjust Balance
 										</a>
 										<div class="dropdown-divider"></div>
+										<?php endif; ?>
 										<a class="dropdown-item view_transactions" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>">
 											<span class="fa fa-list text-info"></span> View Transactions
 										</a>

@@ -896,7 +896,7 @@ function showOutOfStockOptions(productId, productName, category) {
         return;
     }
     
-    // Show loading
+    // Show loading with optimized approach
     Swal.fire({
         title: 'Loading Alternatives...',
         text: 'Finding similar products for you',
@@ -908,7 +908,7 @@ function showOutOfStockOptions(productId, productName, category) {
         }
     });
     
-    // Get alternative recommendations
+    // Get alternative recommendations with better error handling
     $.ajax({
         url: '<?= base_url ?>classes/Master.php?f=get_alternative_products',
         method: 'POST',
@@ -917,22 +917,27 @@ function showOutOfStockOptions(productId, productName, category) {
             category: category
         },
         dataType: 'json',
+        timeout: 10000, // 10 second timeout
         success: function(resp) {
-            if(resp.status === 'success') {
+            console.log('Alternatives response:', resp);
+            // Close loading modal first, then show results
+            Swal.close();
+            if(resp.status === 'success' && resp.alternatives) {
                 showOutOfStockModal(productId, productName, resp.alternatives);
             } else {
                 showOutOfStockModal(productId, productName, []);
             }
         },
-        error: function() {
+        error: function(xhr, status, error) {
+            console.error('Error fetching alternatives:', error);
+            console.error('Response text:', xhr.responseText);
+            Swal.close();
             showOutOfStockModal(productId, productName, []);
         }
     });
 }
 
 function showOutOfStockModal(productId, productName, alternatives) {
-    Swal.close();
-    
     var alternativesHtml = '';
     if(alternatives && alternatives.length > 0) {
         alternativesHtml = '<div class="text-left mt-3"><h6>Similar Products Available:</h6><div class="row">';
@@ -951,28 +956,47 @@ function showOutOfStockModal(productId, productName, alternatives) {
         alternativesHtml = '<div class="text-center mt-3"><p class="text-muted">No similar products found at the moment.</p></div>';
     }
     
-    Swal.fire({
-        title: 'Product Out of Stock',
-        html: '<div class="text-center">' +
-              '<i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>' +
-              '<h5>' + productName + '</h5>' +
-              '<p class="text-muted">This product is currently out of stock.</p>' +
-              alternativesHtml +
-              '</div>',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Notify Me When Available',
-        cancelButtonText: 'Close',
-        confirmButtonColor: '#dc3545',
-        width: '600px'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            setProductNotification(productId, productName);
-        }
+    // Use requestAnimationFrame to avoid forced reflow
+    requestAnimationFrame(function() {
+        Swal.fire({
+            title: 'Product Out of Stock',
+            html: '<div class="text-center">' +
+                  '<i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>' +
+                  '<h5>' + productName + '</h5>' +
+                  '<p class="text-muted">This product is currently out of stock.</p>' +
+                  alternativesHtml +
+                  '</div>',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Notify Me When Available',
+            cancelButtonText: 'Close',
+            confirmButtonColor: '#dc3545',
+            width: '600px',
+            allowOutsideClick: true,
+            allowEscapeKey: true,
+            focusConfirm: false,
+            focusCancel: false
+        }).then((result) => {
+            if (result.isConfirmed) {
+                setProductNotification(productId, productName);
+            }
+        });
     });
 }
 
 function setProductNotification(productId, productName) {
+    // Show loading state
+    Swal.fire({
+        title: 'Setting Notification...',
+        text: 'Please wait',
+        icon: 'info',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
     $.ajax({
         url: '<?= base_url ?>classes/Master.php?f=set_product_notification',
         method: 'POST',
@@ -980,29 +1004,51 @@ function setProductNotification(productId, productName) {
             product_id: productId
         },
         dataType: 'json',
+        timeout: 5000, // 5 second timeout
         success: function(resp) {
-            if(resp.status === 'success') {
-                Swal.fire({
-                    title: 'Notification Set!',
-                    text: 'You will be notified when ' + productName + ' becomes available.',
-                    icon: 'success',
-                    confirmButtonText: 'OK'
-                });
-            } else {
+            console.log('Notification response:', resp);
+            Swal.close();
+            // Use requestAnimationFrame to prevent forced reflow
+            requestAnimationFrame(function() {
+                if(resp.status === 'success') {
+                    Swal.fire({
+                        title: 'Notification Set!',
+                        text: 'You will be notified when ' + productName + ' becomes available.',
+                        icon: 'success',
+                        confirmButtonText: 'OK',
+                        allowOutsideClick: true,
+                        allowEscapeKey: true,
+                        focusConfirm: false
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error',
+                        text: resp.msg || 'Failed to set notification',
+                        icon: 'error',
+                        confirmButtonText: 'OK',
+                        allowOutsideClick: true,
+                        allowEscapeKey: true,
+                        focusConfirm: false
+                    });
+                }
+            });
+        },
+        error: function(xhr, status, error) {
+            console.error('Error setting notification:', error);
+            console.error('Response text:', xhr.responseText);
+            console.error('Status:', xhr.status);
+            Swal.close();
+            // Use requestAnimationFrame to prevent forced reflow
+            requestAnimationFrame(function() {
                 Swal.fire({
                     title: 'Error',
-                    text: resp.msg || 'Failed to set notification',
+                    text: 'An error occurred while setting the notification. Response: ' + xhr.responseText.substring(0, 100),
                     icon: 'error',
-                    confirmButtonText: 'OK'
+                    confirmButtonText: 'OK',
+                    allowOutsideClick: true,
+                    allowEscapeKey: true,
+                    focusConfirm: false
                 });
-            }
-        },
-        error: function() {
-            Swal.fire({
-                title: 'Error',
-                text: 'An error occurred while setting the notification',
-                icon: 'error',
-                confirmButtonText: 'OK'
             });
         }
     });

@@ -400,10 +400,22 @@ $(document).ready(function(){
     validateField('#cpassword', val => val === $('#password').val(), 'Passwords do not match.');
   });
 
+  // Add click handler for submit button
+  $('button[type="submit"]').click(function(e){
+    console.log('Submit button clicked!'); // Debug log
+    $('#register-frm').submit();
+  });
+
   // Submit form
   $('#register-frm').submit(function(e){
     e.preventDefault();
+    console.log('Form submitted!'); // Debug log
     var _this = $(this);
+    var el = $('<div>');
+    el.addClass("alert alert-danger err-msg");
+    el.hide();
+    
+    $('.err-msg').remove();
     $('.error-msg').text('');
 
     // Check all fields
@@ -419,32 +431,49 @@ $(document).ready(function(){
     if(!valid) return false;
 
     start_loader();
+    
+    // Prepare form data
+    var formData = new FormData($(this)[0]);
+    
     $.ajax({
       url: _base_url_ + "classes/Users.php?f=save_client",
-      data: new FormData($(this)[0]),
+      data: formData,
       cache: false,
       contentType: false,
       processData: false,
       method: 'POST',
       type: 'POST',
       dataType: 'json',
-      error: err => {
-        console.log(err);
-        alert_toast("An error occurred", 'error');
+      beforeSend: function(){
+        _this.find('button[type="submit"]').prop('disabled', true).html('Registering...');
+      },
+      error: function(xhr, status, error) {
+        console.error('Registration error:', error);
+        el.text('An error occurred. Please try again.');
+        _this.prepend(el);
+        el.show('slow');
+        _this.find('button[type="submit"]').prop('disabled', false).html('Register');
         end_loader();
       },
       success: function(resp){
+        console.log('Registration Response:', resp);
         if(typeof resp === 'object' && resp.status === 'success'){
-          location.href = "./login.php";
+          alert_toast("Registration successful! Redirecting to login...", 'success');
+          setTimeout(function(){
+            location.href = "./login.php";
+          }, 2000);
         } else if(resp.status == 'failed' && !!resp.msg){
-          var el = $('<div>').addClass("alert alert-danger err-msg").text(resp.msg);
+          el.text(resp.msg);
           _this.prepend(el);
           el.show('slow');
-          end_loader();
         } else {
-          alert_toast("An error occurred", 'error');
-          end_loader();
+          console.log('Unexpected response:', resp);
+          el.text('An unexpected error occurred. Please try again.');
+          _this.prepend(el);
+          el.show('slow');
         }
+        _this.find('button[type="submit"]').prop('disabled', false).html('Register');
+        end_loader();
         $('html, body').scrollTop(0);
       }
     });

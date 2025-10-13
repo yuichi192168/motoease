@@ -7,6 +7,7 @@ if(!isset($_GET['id']) || empty($_GET['id'])){
 }
 
 $invoice_id = $_GET['id'];
+$print_type = $_GET['type'] ?? 'invoice'; // 'invoice' or 'receipt'
 
 // Debug: Log the invoice ID
 error_log("Print Invoice - Invoice ID: " . $invoice_id);
@@ -50,7 +51,7 @@ while($row = $settings_qry->fetch_assoc()){
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice <?= $invoice['invoice_number'] ?></title>
+    <title><?= $print_type == 'receipt' ? 'Receipt' : 'Invoice' ?> <?= $invoice['invoice_number'] ?></title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -194,7 +195,7 @@ while($row = $settings_qry->fetch_assoc()){
                 <h2><?= $settings['company_name'] ?? 'Star Honda Calamba' ?></h2>
                 <p><?= $settings['company_address'] ?? 'National Highway Brgy. Parian, Calamba City, Laguna' ?></p>
                 <p>Phone: <?= $settings['company_phone'] ?? '0948-235-3207' ?> | Email: <?= $settings['company_email'] ?? 'starhondacalamba55@gmail.com' ?></p>
-                <h3>INVOICE</h3>
+                <h3><?= $print_type == 'receipt' ? 'RECEIPT' : 'INVOICE' ?></h3>
             </div>
             
             <!-- Secondary Logo -->

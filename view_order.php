@@ -1,186 +1,220 @@
-<?php 
+<?php
 require_once('./config.php');
-if(isset($_GET['id'])){
-    $qry = $conn->query("SELECT * FROM `order_list` where id = '{$_GET['id']}'");
-    if($qry->num_rows > 0){
-        foreach($qry->fetch_array() as $k => $v){
-            if(!is_numeric($k))
-            $$k = $v;
-        }
+
+if(!isset($_GET['id']) || empty($_GET['id'])){
+    echo "<script>alert('Invalid Order ID'); window.close();</script>";
+    exit;
+}
+
+$order_id = $_GET['id'];
+
+// Get order details
+$order = $conn->query("SELECT o.*, c.firstname, c.lastname, c.middlename, c.email, c.contact, c.address
+                      FROM order_list o 
+                      INNER JOIN client_list c ON o.client_id = c.id 
+                      WHERE o.id = '{$order_id}'")->fetch_assoc();
+
+if(!$order){
+    echo "<script>alert('Order not found'); window.close();</script>";
+    exit;
+}
+
+// Get order items
+$items = $conn->query("SELECT oi.*, p.name as product_name, p.description as product_description, p.image_path
+                      FROM order_items oi 
+                      INNER JOIN product_list p ON oi.product_id = p.id 
+                      WHERE oi.order_id = '{$order_id}'");
+
+// Get status text
+function getStatusText($status) {
+    switch($status) {
+        case 0: return 'Pending';
+        case 1: return 'Ready for pickup';
+        case 2: return 'For Delivery';
+        case 3: return 'On the Way';
+        case 4: return 'Delivered';
+        case 5: return 'Cancelled';
+        case 6: return 'Claimed';
+        default: return 'Unknown';
+    }
+}
+
+function getStatusClass($status) {
+    switch($status) {
+        case 0: return 'badge-secondary';
+        case 1: return 'badge-primary';
+        case 2: return 'badge-success';
+        case 3: return 'badge-warning';
+        case 4: return 'badge-info';
+        case 5: return 'badge-danger';
+        case 6: return 'badge-success';
+        default: return 'badge-secondary';
     }
 }
 ?>
-<style>
-    #uni_modal .modal-footer{
-        display:none;
-    }
-    .prod-cart-img{
-        width:7em;
-        height:7em;
-        object-fit:scale-down;
-        object-position: center center;
-    }
-</style>
+
 <div class="container-fluid">
     <div class="row">
-        <div class="col-md-6">
-            <label for="" class="text-muted">Reference Code</label>
-            <div class="ml-3"><b><?= isset($ref_code) ? $ref_code : "N/A" ?></b></div>
-        </div>
-        <div class="col-md-6">
-            <label for="" class="text-muted">Date Ordered</label>
-            <div class="ml-3"><b><?= isset($date_created) ? date("M d, Y h:i A", strtotime($date_created)) : "N/A" ?></b></div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-6">
-            <label for="" class="text-muted">Status</label>
-            <div class="ml-3">
-                <?php if(isset($status)): ?>
-                    <?php if($status == 0): ?>
-                        <span class="badge badge-secondary px-3 rounded-pill">Pending</span>
-                    <?php elseif($status == 1): ?>
-                        <span class="badge badge-primary px-3 rounded-pill">Ready for pickup</span>
-                    <?php elseif($status == 2): ?>
-                        <span class="badge badge-success px-3 rounded-pill">For Delivery</span>
-                    <?php elseif($status == 3): ?>
-                        <span class="badge badge-warning px-3 rounded-pill">On the Way</span>
-                    <?php elseif($status == 4): ?>
-                        <span class="badge badge-default bg-gradient-teal px-3 rounded-pill">Delivered</span>
-                    <?php elseif($status == 6): ?>
-                        <span class="badge badge-success px-3 rounded-pill">Claimed</span>
-                    <?php else: ?>
-                        <span class="badge badge-danger px-3 rounded-pill">Cancelled</span>
-                    <?php endif; ?>
-                <?php else: ?>
-                    N/A
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
-    <div class="clear-fix my-2"></div>
-    <div class="row">
         <div class="col-12">
-        <div class="w-100" id="order-list">
-                <?php 
-                $total = 0;
-                if(isset($id)):
-                $order_item = $conn->query("SELECT o.*,p.name, p.price, p.image_path,b.name as brand, cc.category FROM `order_items` o inner join product_list p on o.product_id = p.id inner join brand_list b on p.brand_id = b.id inner join categories cc on p.category_id = cc.id where o.order_id = '{$id}' order by p.name asc");
-                while($row = $order_item->fetch_assoc()):
-                    $total += ($row['quantity'] * $row['price']);
-                ?>
-                <div class="d-flex align-items-center w-100 border cart-item" data-id="<?= $row['id'] ?>">
-                    <div class="col-auto flex-grow-1 flex-shrink-1 px-1 py-1">
-                        <div class="d-flex align-items-center w-100 ">
-                            <div class="col-auto">
-                                <img src="<?= validate_image($row['image_path']) ?>" alt="Product Image" class="img-thumbnail prod-cart-img">
-                            </div>
-                            <div class="col-auto flex-grow-1 flex-shrink-1">
-                                <a href="./?p=products/view_product&id=<?= $row['product_id'] ?>" class="h4 text-muted" target="_blank">
-                                    <p class="text-truncate-1 m-0"><?= $row['name'] ?></p>
-                                </a>
-                                <small><?= $row['brand'] ?></small><br>
-                                <small><?= $row['category'] ?></small><br>
-                                <div class="d-flex align-items-center w-100 mb-1">
-                                    <span><?= number_format($row['quantity']) ?></span>
-                                    <span class="ml-2">X <?= number_format($row['price'],2) ?></span>
-                                </div>
-                            </div>
-                         </div>
-                    </div>
-                    <div class="col-auto text-right">
-                        <h3><b><?= number_format($row['quantity'] * $row['price'],2) ?></b></h3>
-                    </div>
+            <!-- Order Header -->
+            <div class="card card-outline card-primary">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-shopping-cart"></i> Order Details</h3>
                 </div>
-                <?php 
-                    endwhile; 
-                    endif;
-                ?>
-                <?php if(isset($order_item) && $order_item->num_rows <= 0): ?>
-                <div class="d-flex align-items-center w-100 border justify-content-center">
-                    <div class="col-12 flex-grow-1 flex-shrink-1 px-1 py-1">
-                           <small class="text-muted">No Data</small>
-                    </div>
-                </div>
-                <?php endif; ?>
-                <div class="d-flex align-items-center w-100 border">
-                    <div class="col-auto flex-grow-1 flex-shrink-1 px-1 py-1">
-                            <h3 class="text-center">TOTAL</h3>
-                    </div>
-                    <div class="col-auto text-right">
-                        <h3><b><?= number_format($total,2) ?></b></h3>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Order Information</h5>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Order ID:</strong></td>
+                                    <td><?= $order['id'] ?></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Reference Code:</strong></td>
+                                    <td><?= $order['ref_code'] ?></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Date Ordered:</strong></td>
+                                    <td><?= date('F d, Y H:i A', strtotime($order['date_created'])) ?></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Status:</strong></td>
+                                    <td><span class="badge <?= getStatusClass($order['status']) ?> px-3 rounded-pill"><?= getStatusText($order['status']) ?></span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Total Amount:</strong></td>
+                                    <td><strong class="text-primary">₱<?= number_format($order['total_amount'], 2) ?></strong></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Customer Information</h5>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Name:</strong></td>
+                                    <td><?= $order['firstname'] . ' ' . $order['lastname'] ?></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Email:</strong></td>
+                                    <td><?= $order['email'] ?></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Contact:</strong></td>
+                                    <td><?= $order['contact'] ?></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Address:</strong></td>
+                                    <td><?= $order['address'] ?></td>
+                                </tr>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-    <div class="clear-fix my-2"></div>
-    <div class="row">
-        <div class="col-12 text-right">
-            <?php if(isset($status)  && $status == 0): ?>
-            <button class="btn btn-danger btn-flat btn-sm" id="btn-cancel" type="button"><i class="fa fa-times"></i> Cancel Order</button>
+
+            <!-- Order Items -->
+            <div class="card card-outline card-info">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-list"></i> Order Items</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Product</th>
+                                    <th>Description</th>
+                                    <th class="text-center">Quantity</th>
+                                    <th class="text-right">Unit Price</th>
+                                    <th class="text-right">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                $i = 1;
+                                while($item = $items->fetch_assoc()): 
+                                ?>
+                                <tr>
+                                    <td><?= $i++ ?></td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <?php if(!empty($item['image_path'])): ?>
+                                            <img src="<?= validate_image($item['image_path']) ?>" alt="Product Image" class="img-thumbnail" style="width: 50px; height: 50px; object-fit: cover; margin-right: 10px;">
+                                            <?php endif; ?>
+                                            <strong><?= $item['product_name'] ?></strong>
+                                        </div>
+                                    </td>
+                                    <td><?= $item['product_description'] ?: '-' ?></td>
+                                    <td class="text-center"><?= $item['quantity'] ?></td>
+                                    <td class="text-right">₱<?= number_format($item['price'], 2) ?></td>
+                                    <td class="text-right"><strong>₱<?= number_format($item['quantity'] * $item['price'], 2) ?></strong></td>
+                                </tr>
+                                <?php endwhile; ?>
+                            </tbody>
+                            <tfoot>
+                                <tr class="bg-light">
+                                    <th colspan="5" class="text-right">Total Amount:</th>
+                                    <th class="text-right text-primary">₱<?= number_format($order['total_amount'], 2) ?></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Notes -->
+            <?php if(!empty($order['notes'])): ?>
+            <div class="card card-outline card-warning">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-sticky-note"></i> Order Notes</h3>
+                </div>
+                <div class="card-body">
+                    <p><?= nl2br($order['notes']) ?></p>
+                </div>
+            </div>
             <?php endif; ?>
-            <?php if(isset($status)  && in_array($status, [4])): ?>
-            <button class="btn btn-success btn-flat btn-sm" id="btn-claim" type="button"><i class="fa fa-check"></i> Mark as Claimed</button>
-            <?php endif; ?>
-            <button class="btn btn-secondary btn-flat btn-sm" type="button" data-dismiss="modal"><i class="fa fa-arrow-left"></i> Back</button>
+
+            <!-- Action Buttons -->
+            <div class="card card-outline card-secondary">
+                <div class="card-body text-center">
+                    <button type="button" class="btn btn-primary" onclick="printOrder()">
+                        <i class="fas fa-print"></i> Print Order
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="window.close()">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
-<script>
-    $('#btn-cancel').click(function(){
-        _conf("Are you sure to cancel this order?","cancel_order",[])
-    })
-    function cancel_order(){
-        start_loader();
-        $.ajax({
-            url:_base_url_+'classes/master.php?f=cancel_order',
-            data:{id : "<?= isset($id) ? $id : '' ?>"},
-            method:'POST',
-            dataType:'json',
-            error:err=>{
-                console.error(err)
-                alert_toast('An error occurred.','error')
-                end_loader()
-            },
-            success:function(resp){
-                if(resp.status == 'success'){
-                    location.reload()
-                }else if(!!resp.msg){
-                    alert_toast(resp.msg,'error')
-                }else{
-                    alert_toast('An error occurred.','error')
-                }
-                end_loader();
-            }
-        })
-    }
 
-    $('#btn-claim').click(function(){
-        _conf("Confirm this order has been claimed?","claim_order",[])
-    })
-    function claim_order(){
-        start_loader();
-        $.ajax({
-            url:_base_url_+'classes/master.php?f=update_order_status',
-            data:{id : "<?= isset($id) ? $id : '' ?>", status: 6},
-            method:'POST',
-            dataType:'json',
-            error:err=>{
-                console.error(err)
-                alert_toast('An error occurred.','error')
-                end_loader()
-            },
-            success:function(resp){
-                if(resp.status == 'success'){
-                    location.reload()
-                }else if(!!resp.msg){
-                    alert_toast(resp.msg,'error')
-                }else{
-                    alert_toast('An error occurred.','error')
-                }
-                end_loader();
-            }
-        })
-    }
+<script>
+function printOrder() {
+    window.print();
+}
+
+// Auto-print when page loads (optional)
+// window.onload = function() {
+//     printOrder();
+// };
 </script>
+
+<style>
+@media print {
+    .card-header, .btn, .card-outline {
+        border: 1px solid #000 !important;
+    }
+    .btn {
+        display: none !important;
+    }
+    body {
+        font-size: 12px;
+    }
+    .table th, .table td {
+        padding: 5px !important;
+    }
+}
+</style>

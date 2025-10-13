@@ -1520,14 +1520,45 @@ Class Master extends DBConnection {
 	}
 	
 	function get_abc_analysis(){
-		// Get ABC analysis data
-		$abc_query = $this->conn->query("SELECT * FROM abc_analysis_view ORDER BY abc_category, price DESC");
+		// Get ABC analysis data directly from product_list with stock information
+		$abc_query = $this->conn->query("
+			SELECT p.*,
+				   COALESCE(s.total_stock, 0) as current_stock,
+				   COALESCE(o.total_ordered, 0) as total_ordered,
+				   (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) as available_stock,
+				   CASE 
+					   WHEN (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) <= p.reorder_point THEN 'LOW_STOCK'
+					   WHEN (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) >= p.max_stock THEN 'OVERSTOCK'
+					   ELSE 'NORMAL'
+				   END as stock_status
+			FROM product_list p
+			LEFT JOIN (
+				SELECT product_id, SUM(quantity) as total_stock 
+				FROM stock_list 
+				WHERE type = 1 
+				GROUP BY product_id
+			) s ON p.id = s.product_id
+			LEFT JOIN (
+				SELECT oi.product_id, SUM(oi.quantity) as total_ordered
+				FROM order_items oi
+				JOIN order_list ol ON oi.order_id = ol.id
+				WHERE ol.status != 5
+				GROUP BY oi.product_id
+			) o ON p.id = o.product_id
+			WHERE p.delete_flag = 0
+			ORDER BY COALESCE(p.abc_category, 'C'), p.price DESC
+		");
 		
 		$data = [];
 		$category_stats = ['A' => 0, 'B' => 0, 'C' => 0];
 		$total_value = 0;
 		
 		while($row = $abc_query->fetch_assoc()){
+			// Ensure abc_category is set, default to 'C' if not
+			if(empty($row['abc_category'])) {
+				$row['abc_category'] = 'C';
+			}
+			
 			$data[] = $row;
 			$category_stats[$row['abc_category']]++;
 			$total_value += ($row['price'] * $row['available_stock']);
@@ -1673,6 +1704,172 @@ Class Master extends DBConnection {
 		} else {
 			$resp['status'] = 'failed';
 			$resp['msg'] = "Failed to resolve alert.";
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function get_alternative_products(){
+		$resp = array();
+		
+		// Set content type to JSON
+		header('Content-Type: application/json');
+		
+		try {
+			extract($_POST);
+			
+			// Validate inputs
+			if(empty($product_id)){
+				$resp['status'] = 'failed';
+				$resp['msg'] = "Product ID is required.";
+				return json_encode($resp);
+			}
+		
+			// Sanitize inputs
+			$product_id = $this->conn->real_escape_string($product_id);
+			$category = isset($category) ? $this->conn->real_escape_string($category) : '';
+			
+			// Get alternative products from the same category
+			$alternatives_query = $this->conn->query("
+				SELECT p.*, b.name as brand, c.category,
+					   COALESCE(s.total_stock, 0) as current_stock,
+					   COALESCE(o.total_ordered, 0) as total_ordered,
+					   (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) as available_stock
+				FROM product_list p
+				INNER JOIN brand_list b ON p.brand_id = b.id
+				INNER JOIN categories c ON p.category_id = c.id
+				LEFT JOIN (
+					SELECT product_id, SUM(quantity) as total_stock 
+					FROM stock_list 
+					WHERE type = 1 
+					GROUP BY product_id
+				) s ON p.id = s.product_id
+				LEFT JOIN (
+					SELECT oi.product_id, SUM(oi.quantity) as total_ordered
+					FROM order_items oi
+					JOIN order_list ol ON oi.order_id = ol.id
+					WHERE ol.status != 5
+					GROUP BY oi.product_id
+				) o ON p.id = o.product_id
+				WHERE p.delete_flag = 0 
+				AND p.status = 1 
+				AND p.id != '{$product_id}'
+				AND (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) > 0
+				" . (!empty($category) ? "AND c.category = '{$category}'" : "") . "
+				ORDER BY p.price ASC
+				LIMIT 4
+			");
+			
+			$alternatives = [];
+			if($alternatives_query){
+				while($row = $alternatives_query->fetch_assoc()){
+					$alternatives[] = $row;
+				}
+			}
+			
+			$resp['status'] = 'success';
+			$resp['alternatives'] = $alternatives;
+			
+		} catch (Exception $e) {
+			$resp['status'] = 'failed';
+			$resp['msg'] = "An error occurred: " . $e->getMessage();
+			$resp['alternatives'] = [];
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function set_product_notification(){
+		$resp = array();
+		
+		// Set content type to JSON
+		header('Content-Type: application/json');
+		
+		try {
+			extract($_POST);
+			
+			// Debug logging
+			error_log("Product notification request - Product ID: " . (isset($product_id) ? $product_id : 'not set'));
+			error_log("POST data: " . print_r($_POST, true));
+			
+			// Validate inputs
+			if(empty($product_id)){
+				$resp['status'] = 'failed';
+				$resp['msg'] = "Product ID is required.";
+				return json_encode($resp);
+			}
+			
+			// Check if user is logged in
+			$user_id = $this->settings->userdata('id');
+			$login_type = $this->settings->userdata('login_type');
+			
+			if(empty($user_id) || $login_type != 2){
+				$resp['status'] = 'failed';
+				$resp['msg'] = "Please login to set product notifications.";
+				return json_encode($resp);
+			}
+			
+			// Sanitize inputs
+			$product_id = $this->conn->real_escape_string($product_id);
+			$user_id = $this->conn->real_escape_string($user_id);
+			
+			// Check if product_notifications table exists, create if not
+			$table_check = $this->conn->query("SHOW TABLES LIKE 'product_notifications'");
+			if($table_check->num_rows == 0){
+				$create_table = $this->conn->query("
+					CREATE TABLE `product_notifications` (
+						`id` int(11) NOT NULL AUTO_INCREMENT,
+						`product_id` int(11) NOT NULL,
+						`user_id` int(11) NOT NULL,
+						`is_active` tinyint(1) DEFAULT 1,
+						`created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+						`notified_at` datetime DEFAULT NULL,
+						PRIMARY KEY (`id`),
+						KEY `product_id` (`product_id`),
+						KEY `user_id` (`user_id`),
+						KEY `is_active` (`is_active`),
+						UNIQUE KEY `unique_notification` (`product_id`, `user_id`)
+					) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+				");
+				if(!$create_table){
+					$resp['status'] = 'failed';
+					$resp['msg'] = "Failed to create notifications table: " . $this->conn->error;
+					return json_encode($resp);
+				}
+			}
+			
+			// Check if product exists
+			$product_check = $this->conn->query("SELECT id FROM product_list WHERE id = '{$product_id}' AND delete_flag = 0");
+			if($product_check->num_rows == 0){
+				$resp['status'] = 'failed';
+				$resp['msg'] = "Product not found.";
+				return json_encode($resp);
+			}
+			
+			// Check if notification already exists
+			$existing = $this->conn->query("SELECT id FROM product_notifications WHERE product_id = '{$product_id}' AND user_id = '{$user_id}' AND is_active = 1");
+			
+			if($existing->num_rows > 0){
+				$resp['status'] = 'failed';
+				$resp['msg'] = "You are already subscribed to notifications for this product.";
+				return json_encode($resp);
+			}
+			
+			// Create notification
+			$insert_query = "INSERT INTO product_notifications (product_id, user_id, is_active, created_at) VALUES ('{$product_id}', '{$user_id}', 1, NOW())";
+			$insert = $this->conn->query($insert_query);
+			
+			if($insert){
+				$resp['status'] = 'success';
+				$resp['msg'] = "Notification set successfully. You will be notified when this product becomes available.";
+			} else {
+				$resp['status'] = 'failed';
+				$resp['msg'] = "Failed to set notification: " . $this->conn->error;
+			}
+			
+		} catch (Exception $e) {
+			$resp['status'] = 'failed';
+			$resp['msg'] = "An error occurred: " . $e->getMessage();
 		}
 		
 		return json_encode($resp);
@@ -2303,6 +2500,12 @@ $sysset = new SystemSettings();
 	break;
 	case 'auto_classify_abc':
 		echo $Master->auto_classify_abc();
+	break;
+	case 'get_alternative_products':
+		echo $Master->get_alternative_products();
+	break;
+	case 'set_product_notification':
+		echo $Master->set_product_notification();
 	break;
 	case 'save_review':
 		echo $Master->save_review();

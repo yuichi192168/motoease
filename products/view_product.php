@@ -917,11 +917,53 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
     
     function notifyWhenAvailable(product_id){
         if("<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>" == 1){
+            // Show loading state
             Swal.fire({
-                title: 'Notification Set',
-                text: 'You will be notified when this product becomes available.',
-                icon: 'success',
-                confirmButtonText: 'OK'
+                title: 'Setting Notification...',
+                text: 'Please wait while we set up your notification.',
+                icon: 'info',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // Make AJAX call to save notification
+            $.ajax({
+                url: _base_url_ + 'classes/Master.php?f=set_product_notification',
+                method: 'POST',
+                data: {
+                    product_id: product_id,
+                    customer_id: <?= $_settings->userdata('id') ?>
+                },
+                dataType: 'json',
+                success: function(resp){
+                    if(resp.status == 'success'){
+                        Swal.fire({
+                            title: 'Notification Set!',
+                            text: 'You will be notified when this product becomes available.',
+                            icon: 'success',
+                            confirmButtonText: 'OK'
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Error',
+                            text: resp.message || 'Failed to set notification. Please try again.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX error setting notification:', error);
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Failed to set notification. Please try again.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
             });
         } else {
             Swal.fire({

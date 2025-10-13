@@ -139,7 +139,17 @@
         $('.table th, .table td').addClass("align-middle px-2 py-1")
 		$('.table').dataTable();
 		$('.table').dataTable();
+		
+		// Handle view order button clicks
+		$('.view_data').click(function(){
+			var order_id = $(this).data('id');
+			viewOrder(order_id);
+		});
     })
+    
+    function viewOrder(order_id){
+		uni_modal("Order Details", "view_order.php?id=" + order_id, "modal-lg");
+	}
 </script>
 
 <!-- Modal Structure -->

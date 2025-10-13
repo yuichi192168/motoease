@@ -467,6 +467,229 @@
             font-size: 0.9rem;
         }
         
+    /* Mobile Sidebar Styles - Copied from Client Side */
+    .mobile-sidebar {
+        position: fixed;
+        top: 0;
+        left: -50vw;
+        width: 50vw;
+        height: 100vh;
+        background: #fff;
+        z-index: 1050;
+        transition: left 0.3s ease;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        overflow-y: auto;
+    }
+    
+    .mobile-sidebar.show {
+        left: 0;
+    }
+    
+    .mobile-sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1040;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .mobile-sidebar-overlay.show {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .sidebar-header {
+        padding: 15px 20px;
+        background: #dc3545;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .sidebar-brand {
+        display: flex;
+        align-items: center;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    
+    .sidebar-brand img {
+        margin-right: 10px;
+    }
+    
+    .sidebar-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.2rem;
+        cursor: pointer;
+        padding: 5px;
+    }
+    
+    .sidebar-content {
+        padding: 0;
+    }
+    
+    .sidebar-user {
+        padding: 20px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .user-info {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .user-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        margin-right: 15px;
+        object-fit: cover;
+    }
+    
+    .user-name {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 2px;
+    }
+    
+    .user-email {
+        font-size: 0.9rem;
+        color: #666;
+    }
+    
+    .quick-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .quick-action-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px;
+        background: #dc3545;
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+    }
+    
+    .quick-action-btn:hover {
+        background: #c82333;
+        color: white;
+        text-decoration: none;
+    }
+    
+    .quick-action-btn i {
+        margin-right: 8px;
+    }
+    
+    .quick-action-btn .badge {
+        margin-left: 8px;
+    }
+    
+    .sidebar-nav {
+        padding: 0;
+    }
+    
+    .sidebar-nav .nav-item {
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .sidebar-nav .nav-link {
+        padding: 15px 20px;
+        color: #333;
+        display: flex;
+        align-items: center;
+        transition: all 0.2s ease;
+    }
+    
+    .sidebar-nav .nav-link:hover {
+        background: #f8f9fa;
+        color: #dc3545;
+    }
+    
+    .sidebar-nav .nav-link.active {
+        background: #dc3545;
+        color: white;
+    }
+    
+    .sidebar-nav .nav-link i {
+        width: 20px;
+        margin-right: 15px;
+        text-align: center;
+    }
+    
+    .nav-divider {
+        height: 1px;
+        background: #e9ecef;
+        margin: 10px 0;
+    }
+    
+    .sidebar-nav .badge {
+        margin-left: auto;
+    }
+    
+    /* Body scroll lock when sidebar is open */
+    body.sidebar-open {
+        overflow: hidden;
+    }
+    
+    /* Mobile navbar adjustments */
+    @media (max-width: 991.98px) {
+        .navbar-nav.ms-auto {
+            margin-left: auto !important;
+        }
+        
+        .navbar-nav .nav-item {
+            margin-left: 10px;
+        }
+        
+        .navbar-nav .nav-link {
+            padding: 8px 12px;
+        }
+        
+        .navbar-nav .dropdown-menu {
+            position: absolute;
+            right: 0;
+            left: auto;
+        }
+    }
+    
+    /* Responsive sidebar width */
+    @media (max-width: 576px) {
+        .mobile-sidebar {
+            width: 80vw;
+            left: -80vw;
+        }
+    }
+    
+    @media (min-width: 577px) and (max-width: 768px) {
+        .mobile-sidebar {
+            width: 60vw;
+            left: -60vw;
+        }
+    }
+    
+    @media (min-width: 769px) and (max-width: 991px) {
+        .mobile-sidebar {
+            width: 50vw;
+            left: -50vw;
+        }
+    }
+
     /* Mobile sidebar width adjustments */
     .main-sidebar {
         width: 80vw !important;
@@ -483,7 +706,7 @@
     .content-wrapper {
         margin-left: 0 !important;
     }
-    
+
     /* Ensure sidebar is visible on mobile */
     @media (max-width: 991.98px) {
         .main-sidebar {
@@ -493,20 +716,20 @@
             height: 100vh !important;
             z-index: 1040 !important;
         }
-        
+
         .main-sidebar.show {
             transform: translateX(0) !important;
         }
-        
+
         .content-wrapper {
             margin-left: 0 !important;
         }
-        
+
         .main-header {
             z-index: 1030 !important;
         }
     }
-    
+
     @media (min-width: 577px) and (max-width: 768px) {
         .main-sidebar {
             width: 60vw !important;
@@ -515,16 +738,16 @@
             position: fixed !important;
             z-index: 1040 !important;
         }
-        
+
         .main-sidebar.show {
             transform: translateX(0) !important;
         }
-        
+
         .content-wrapper {
             margin-left: 0 !important;
         }
     }
-    
+
     @media (min-width: 769px) and (max-width: 991px) {
         .main-sidebar {
             width: 50vw !important;
@@ -533,16 +756,109 @@
             position: fixed !important;
             z-index: 1040 !important;
         }
-        
+
         .main-sidebar.show {
             transform: translateX(0) !important;
         }
-        
+
         .content-wrapper {
             margin-left: 0 !important;
         }
     }
     
+    /* Admin Sidebar Profile Image Fix */
+    .user-panel .image img {
+        width: 40px !important;
+        height: 40px !important;
+        object-fit: cover !important;
+        border-radius: 50% !important;
+    }
+
+    /* Mobile-friendly Admin Header */
+    @media (max-width: 991.98px) {
+        .main-header .navbar-nav .nav-item {
+            margin-left: 5px;
+        }
+
+        .main-header .navbar-nav .nav-link {
+            padding: 8px 10px;
+            font-size: 0.9rem;
+        }
+
+        .main-header .navbar-nav .nav-link img {
+            width: 20px;
+            height: 20px;
+        }
+
+        .main-header .navbar-nav .nav-link span {
+            display: none;
+        }
+
+        .main-header .navbar-nav .dropdown-menu {
+            position: absolute;
+            right: 0;
+            left: auto;
+            min-width: 200px;
+        }
+
+        .main-header .navbar-nav .dropdown-menu .dropdown-item {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+
+        /* Mobile sidebar improvements */
+        .main-sidebar {
+            width: 100% !important;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            position: fixed !important;
+            z-index: 1040 !important;
+        }
+
+        .main-sidebar.show {
+            transform: translateX(0) !important;
+        }
+
+        .content-wrapper {
+            margin-left: 0 !important;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .main-header .navbar-nav .nav-item {
+            margin-left: 3px;
+        }
+
+        .main-header .navbar-nav .nav-link {
+            padding: 6px 8px;
+            font-size: 0.8rem;
+        }
+
+        .main-header .navbar-nav .nav-link img {
+            width: 18px;
+            height: 18px;
+        }
+
+        .main-header .navbar-nav .dropdown-menu {
+            min-width: 180px;
+            font-size: 0.9rem;
+        }
+
+        .main-header .navbar-nav .dropdown-menu .dropdown-item {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+
+        .main-header .navbar-brand {
+            font-size: 0.9rem;
+        }
+
+        /* Mobile sidebar width adjustments */
+        .main-sidebar {
+            width: 80vw !important;
+        }
+    }
+
     /* Mobile Profile Actions */
     .mobile-profile-actions {
         padding: 0 15px 15px 15px;
@@ -629,37 +945,89 @@
     <script>
         var _base_url_ = '<?php echo base_url ?>';
         
-        // Mobile sidebar functionality
+        // Mobile sidebar functionality - Enhanced from Client Side
         $(document).ready(function() {
             // Add sidebar overlay
             $('body').append('<div class="sidebar-overlay"></div>');
-            
-            // Mobile sidebar toggle
+
+            // Sidebar toggle - works for both desktop and mobile
             $('#sidebarToggle').on('click', function(e) {
                 e.preventDefault();
-                if ($(window).width() <= 576) {
+                if ($(window).width() <= 991.98) {
+                    // Mobile behavior - use overlay and slide animation
                     $('body').toggleClass('sidebar-open');
+                    $('.main-sidebar').toggleClass('show');
+                    $('.sidebar-overlay').toggleClass('show');
+                } else {
+                    // Desktop behavior - use AdminLTE's built-in functionality
+                    $('body').toggleClass('sidebar-collapse');
                 }
             });
-            
+
+            // Also handle the data-widget="pushmenu" attribute for AdminLTE compatibility
+            $('[data-widget="pushmenu"]').on('click', function(e) {
+                e.preventDefault();
+                if ($(window).width() <= 991.98) {
+                    // Mobile behavior
+                    $('body').toggleClass('sidebar-open');
+                    $('.main-sidebar').toggleClass('show');
+                    $('.sidebar-overlay').toggleClass('show');
+                } else {
+                    // Desktop behavior
+                    $('body').toggleClass('sidebar-collapse');
+                }
+            });
+
             // Close sidebar when clicking overlay
             $('.sidebar-overlay').on('click', function() {
                 $('body').removeClass('sidebar-open');
+                $('.main-sidebar').removeClass('show');
+                $('.sidebar-overlay').removeClass('show');
             });
-            
+
             // Close sidebar when clicking outside on mobile
             $(document).on('click', function(e) {
-                if ($(window).width() <= 576) {
+                if ($(window).width() <= 991.98) {
                     if (!$(e.target).closest('.main-sidebar, #sidebarToggle').length) {
                         $('body').removeClass('sidebar-open');
+                        $('.main-sidebar').removeClass('show');
+                        $('.sidebar-overlay').removeClass('show');
                     }
                 }
             });
-            
+
             // Handle window resize
             $(window).on('resize', function() {
-                if ($(window).width() > 576) {
+                if ($(window).width() > 991.98) {
                     $('body').removeClass('sidebar-open');
+                    $('.main-sidebar').removeClass('show');
+                    $('.sidebar-overlay').removeClass('show');
+                }
+            });
+
+            // Close sidebar when clicking on nav links
+            $('.main-sidebar .nav-link').click(function() {
+                if ($(window).width() <= 991.98) {
+                    $('body').removeClass('sidebar-open');
+                    $('.main-sidebar').removeClass('show');
+                    $('.sidebar-overlay').removeClass('show');
+                }
+            });
+
+            // Handle window resize to switch between desktop and mobile behavior
+            $(window).on('resize', function() {
+                if ($(window).width() > 991.98) {
+                    // Desktop - remove mobile classes
+                    $('body').removeClass('sidebar-open');
+                    $('.main-sidebar').removeClass('show');
+                    $('.sidebar-overlay').removeClass('show');
+                }
+            });
+
+            // Prevent body scroll when sidebar is open
+            $(document).on('touchmove', function(e) {
+                if ($('body').hasClass('sidebar-open')) {
+                    e.preventDefault();
                 }
             });
         });

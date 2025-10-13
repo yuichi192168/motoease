@@ -7,12 +7,13 @@
             <table class="table table-stripped table-bordered">
                 <colgroup>
                     <col width="5%">
+                    <col width="12%">
+                    <col width="12%">
                     <col width="15%">
-                    <col width="15%">
-                    <col width="15%">
-                    <col width="20%">
-                    <col width="15%">
-                    <col width="15%">
+                    <col width="25%">
+                    <col width="12%">
+                    <col width="12%">
+                    <col width="7%">
                 </colgroup>
                 <thead>
                     <tr class="bg-gradient-dark text-light">
@@ -20,6 +21,7 @@
                         <th class="text-center">Date Ordered</th>
                         <th class="text-center">Ref. Code</th>
                         <th class="text-center">Client</th>
+                        <th class="text-center">Products</th>
                         <th class="text-center">Total Amount</th>
                         <th class="text-center">Status</th>
                         <th class="text-center">Action</th>
@@ -28,7 +30,14 @@
                 <tbody>
                     <?php 
                     $i = 1;
-                    $orders = $conn->query("SELECT o.*,concat(c.lastname,', ', c.firstname,' ',c.middlename) as fullname FROM `order_list` o inner join client_list c on o.client_id = c.id order by o.status asc, unix_timestamp(o.date_created) desc ");
+                    $orders = $conn->query("SELECT o.*,concat(c.lastname,', ', c.firstname,' ',c.middlename) as fullname,
+                                           GROUP_CONCAT(p.name SEPARATOR ', ') as product_names
+                                           FROM `order_list` o 
+                                           inner join client_list c on o.client_id = c.id 
+                                           left join order_items oi on o.id = oi.order_id
+                                           left join product_list p on oi.product_id = p.id
+                                           group by o.id
+                                           order by o.status asc, unix_timestamp(o.date_created) desc ");
                     while($row = $orders->fetch_assoc()):
                     ?>
                         <tr>
@@ -36,7 +45,12 @@
                             <td><?= date("Y-m-d H:i", strtotime($row['date_created'])) ?></td>
                             <td><?= $row['ref_code'] ?></td>
                             <td><?= $row['fullname'] ?></td>
-                            <td class="text-right"><?= number_format($row['total_amount'],2) ?></td>
+                            <td>
+                                <small class="text-muted">
+                                    <?= $row['product_names'] ?: 'No products' ?>
+                                </small>
+                            </td>
+                            <td class="text-right">₱<?= number_format($row['total_amount'],2) ?></td>
                             <td class="text-center">
                                 <?php if($row['status'] == 0): ?>
                                     <span class="badge badge-secondary px-3 rounded-pill">Pending</span>
@@ -66,9 +80,13 @@
 </div>
 <script>
     $(function(){
-
         $('.table th, .table td').addClass("align-middle px-2 py-1")
 		$('.table').dataTable();
 		$('.table').dataTable();
+		
+		// Auto-refresh every 30 seconds to show new orders
+		setInterval(function(){
+			location.reload();
+		}, 30000);
     })
 </script>

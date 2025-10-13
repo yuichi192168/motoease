@@ -10,13 +10,76 @@
   .btn-rounded{
         border-radius: 50px;
   }
+
+  /* Mobile-friendly admin header */
+  @media (max-width: 991.98px) {
+    .main-header .navbar-nav .nav-item {
+        margin-left: 5px;
+    }
+
+    .main-header .navbar-nav .nav-link {
+        padding: 8px 10px;
+        font-size: 0.9rem;
+    }
+
+    .main-header .navbar-nav .nav-link img {
+        width: 20px;
+        height: 20px;
+    }
+
+    .main-header .navbar-nav .nav-link span {
+        display: none;
+    }
+
+    .main-header .navbar-nav .dropdown-menu {
+        position: absolute;
+        right: 0;
+        left: auto;
+        min-width: 200px;
+    }
+
+    .main-header .navbar-nav .dropdown-menu .dropdown-item {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .main-header .navbar-nav .nav-item {
+        margin-left: 3px;
+    }
+
+    .main-header .navbar-nav .nav-link {
+        padding: 6px 8px;
+        font-size: 0.8rem;
+    }
+
+    .main-header .navbar-nav .nav-link img {
+        width: 18px;
+        height: 18px;
+    }
+
+    .main-header .navbar-nav .dropdown-menu {
+        min-width: 180px;
+        font-size: 0.9rem;
+    }
+
+    .main-header .navbar-nav .dropdown-menu .dropdown-item {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+
+    .main-header .navbar-brand {
+        font-size: 0.9rem;
+    }
+  }
 </style>
 <!-- Navbar -->
       <nav class="main-header navbar navbar-expand navbar-light text-sm shadow">
         <!-- Left navbar links -->
         <ul class="navbar-nav">
           <li class="nav-item">
-          <a class="nav-link" data-widget="pushmenu" href="#" role="button" id="sidebarToggle"><i class="fas fa-bars"></i></a>
+          <a class="nav-link" data-widget="pushmenu" href="#" role="button" id="sidebarToggle"><i class="fas fa-bars"></i></a>                                  
           </li>
           <li class="nav-item d-none d-sm-inline-block">
             <a href="<?php echo base_url ?>" class="nav-link"><?php echo (!isMobileDevice()) ? $_settings->info('name'):$_settings->info('short_name'); ?> - Admin</a>

@@ -94,6 +94,48 @@
 <script>
   $(document).ready(function(){
     end_loader();
+    
+    // Handle login form submission
+    $('#clogin-frm').submit(function(e){
+        e.preventDefault();
+        var _this = $(this);
+        var el = $('<div>');
+        el.addClass("alert alert-danger err-msg");
+        el.hide();
+        
+        $('.err-msg').remove();
+        
+        $.ajax({
+            url: _base_url_ + 'classes/Login.php?f=login_client',
+            method: 'POST',
+            data: $(this).serialize(),
+            dataType: 'json',
+            beforeSend: function(){
+                _this.find('button[type="submit"]').prop('disabled', true).html('Signing in...');
+            },
+            success: function(resp){
+                if(resp.status == 'success'){
+                    location.href = './';
+                } else if(resp.status == 'locked') {
+                    el.text(resp.msg);
+                    _this.prepend(el);
+                    el.show('slow');
+                } else {
+                    el.text(resp.msg || 'Login failed. Please try again.');
+                    _this.prepend(el);
+                    el.show('slow');
+                }
+                _this.find('button[type="submit"]').prop('disabled', false).html('Sign In');
+            },
+            error: function(xhr, status, error) {
+                console.error('Login error:', error);
+                el.text('An error occurred. Please try again.');
+                _this.prepend(el);
+                el.show('slow');
+                _this.find('button[type="submit"]').prop('disabled', false).html('Sign In');
+            }
+        });
+    });
   })
 </script>
 </body>

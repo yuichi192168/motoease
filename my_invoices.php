@@ -127,8 +127,8 @@ $customer_id = $_settings->userdata('id');
                 <!-- Invoice details will be loaded here -->
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="print_invoice_btn">Print Invoice</button>
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="download_invoice">Print Invoice</button>
             </div>
         </div>
     </div>
@@ -150,46 +150,51 @@ $(document).ready(function(){
         viewInvoice(invoice_id);
     });
 
+    // Download receipt
+    $(document).on('click', '.download_receipt', function(){
+        var invoice_id = $(this).data('id');
+        downloadReceipt(invoice_id);
+    });
+
     // Print invoice
-    $('#download_invoice').click(function(){
-        var $btn = $(this);
-        var originalText = $btn.text();
-        
-        // Show loading state
-        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Loading...');
-        
+    $(document).on('click', '#print_invoice_btn', function(){
         var invoice_id = $('#viewInvoiceModal').data('invoice-id');
-        console.log('Invoice ID:', invoice_id); // Debug log
-        
         if(invoice_id && invoice_id !== 'undefined'){
-            // Get invoice details for printing
-            $.ajax({
-                url: _base_url_ + 'classes/Invoice.php?action=get_invoice&invoice_id=' + invoice_id,
-                method: 'GET',
-                dataType: 'json',
-                success: function(resp){
-                    if(resp.status == 'success'){
-                        var invoice = resp.data;
-                        printInvoice(invoice);
-                    } else {
-                        alert('Error loading invoice details for printing. Please try again.');
-                    }
-                    // Reset button state
-                    $btn.prop('disabled', false).text(originalText);
-                },
-                error: function(xhr, status, error) {
-                    console.error('AJAX error loading invoice:', error);
-                    alert('Error loading invoice details for printing. Please try again.');
-                    // Reset button state
-                    $btn.prop('disabled', false).text(originalText);
-                }
-            });
+            window.open(_base_url_ + 'admin/invoices/print_invoice.php?id=' + invoice_id, '_blank');
         } else {
-            alert('Error: Invoice ID not found. Please try viewing the invoice again.');
-            // Reset button state
-            $btn.prop('disabled', false).text(originalText);
+            alert('Invoice ID not found');
         }
     });
+
+    // Handle modal close events
+    $('#viewInvoiceModal').on('hidden.bs.modal', function () {
+        // Clear modal data when closed
+        $(this).removeData('invoice-id');
+        $('#invoice_details').empty();
+    });
+
+    // Ensure close button works properly
+    $('#viewInvoiceModal .close, #viewInvoiceModal [data-dismiss="modal"]').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Close button clicked'); // Debug log
+        $('#viewInvoiceModal').modal('hide');
+    });
+
+    // Alternative close method using ESC key
+    $(document).on('keydown', function(e) {
+        if (e.keyCode === 27) { // ESC key
+            $('#viewInvoiceModal').modal('hide');
+        }
+    });
+
+    // Force modal to close when clicking outside
+    $('#viewInvoiceModal').on('click', function(e) {
+        if (e.target === this) {
+            $(this).modal('hide');
+        }
+    });
+
 
     function loadInvoices(){
         $.ajax({
@@ -226,7 +231,9 @@ $(document).ready(function(){
                         html += '<td>' + (invoice.receipt_number ? '<span class="badge badge-success">' + invoice.receipt_number + '</span>' : '-') + '</td>';
                         html += '<td>';
                         html += '<button class="btn btn-sm btn-primary view_invoice" data-id="' + invoice.id + '">View</button> ';
-                        html += '<button class="btn btn-sm btn-info" onclick="window.open(\'admin/invoices/print_invoice.php?id=' + invoice.id + '\', \'_blank\')">Download</button>';
+                        if(invoice.payment_status == 'paid' && invoice.receipt_number) {
+                            html += '<button class="btn btn-sm btn-success download_receipt" data-id="' + invoice.id + '">Download Receipt</button>';
+                        }
                         html += '</td>';
                         html += '</tr>';
                     });
@@ -281,7 +288,13 @@ $(document).ready(function(){
         });
     }
 
-    function printInvoice(invoice){
+    function downloadReceipt(invoice_id){
+        // Open receipt in new window for printing/downloading
+        window.open(_base_url_ + 'admin/invoices/print_invoice.php?id=' + invoice_id + '&type=receipt', '_blank');
+    }
+
+    // Print function removed - no longer needed
+    function printInvoice_removed(invoice){
         // Create print content
         var printContent = generatePrintInvoiceHTML(invoice);
         

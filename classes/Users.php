@@ -84,10 +84,15 @@ Class Users extends DBConnection {
 		return json_encode($resp);
 	}
 	public function save_client(){
+		$resp = array();
+		
+		// Handle password encryption
 		if(!empty($_POST['password']))
-		$_POST['password'] = md5($_POST['password']);
+			$_POST['password'] = md5($_POST['password']);
 		else
-		unset($_POST['password']);
+			unset($_POST['password']);
+			
+		// Handle old password verification for updates
 		if(isset($_POST['oldpassword'])){
 			if($this->settings->userdata('id') > 0 && $this->settings->userdata('login_type') == 2){
 				$get = $this->conn->query("SELECT * FROM `client_list` where id = '{$this->settings->userdata('id')}'");
@@ -132,6 +137,12 @@ Class Users extends DBConnection {
 			}
 		}
 		
+		// Set default values for new registrations
+		if(empty($_POST['id'])){
+			$_POST['status'] = 1; // Active status
+			$_POST['delete_flag'] = 0; // Not deleted
+		}
+		
 		extract($_POST);
 		$data = "";
 		foreach($_POST as $k => $v){
@@ -140,6 +151,8 @@ Class Users extends DBConnection {
 				$data .= " `{$k}` = '{$v}' ";
 			}
 		}
+		
+		// Check if email already exists
 		$check = $this->conn->query("SELECT * FROM `client_list` where email = '{$email}' and delete_flag ='0' ".(is_numeric($id) && $id > 0 ? " and id != '{$id}'" : "")." ")->num_rows;
 		if($check > 0){
 			$resp['status'] = 'failed';
@@ -150,6 +163,7 @@ Class Users extends DBConnection {
 			}else{
 				$sql = "UPDATE `client_list` set $data where id = '{$id}'";
 			}
+			
 			$save = $this->conn->query($sql);
 			if($save){
 				$resp['status'] = 'success';
@@ -167,20 +181,20 @@ Class Users extends DBConnection {
 				}
 			}else{
 				$resp['status'] = 'failed';
+				$resp['msg'] = " Database error: " . $this->conn->error;
 				if(empty($id)){
-					$resp['msg'] = " Account has failed to register for some reason.";
+					$resp['msg'] = " Account has failed to register: " . $this->conn->error;
 				}else if($this->settings->userdata('id') == $id && $this->settings->userdata('login_type') == 2){
-					$resp['msg'] = " Account Details has failed to update.";
+					$resp['msg'] = " Account Details has failed to update: " . $this->conn->error;
 				}else{
-					$resp['msg'] = " Client's Account Details has failed to update.";
+					$resp['msg'] = " Client's Account Details has failed to update: " . $this->conn->error;
 				}
 			}
 		}
 		
 		if($resp['status'] == 'success')
-		$this->settings->set_flashdata('success',$resp['msg']);
+			$this->settings->set_flashdata('success',$resp['msg']);
 		return json_encode($resp);
-
 	} 
 
 	function delete_client(){
