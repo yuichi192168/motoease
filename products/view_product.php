@@ -10,6 +10,14 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         $stocks = $stocks > 0 ? $stocks : 0;
         $out = $out > 0 ? $out : 0;
         $available = $stocks - $out;
+        // Load multi-compatibility models if available
+        $compat_models = [];
+        if($id){
+            $cm_rs = $conn->query("SELECT model_name FROM product_compatibility WHERE product_id = '{$id}' ORDER BY model_name ASC");
+            if($cm_rs){
+                while($cm = $cm_rs->fetch_assoc()) $compat_models[] = $cm['model_name'];
+            }
+        }
     }else{
     echo "<script> alert('Unknown Product ID!'); location.replace('./?page=products');</script>";
 
@@ -321,8 +329,16 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                     </div>
                     <div class="row">
                         <div class="col-md-12">
-                            <small class="mx-2 text-muted">Compatible Motorcycle</small>
-                            <div class="pl-4"><?= isset($models) ? $models : '' ?></div>
+                            <small class="mx-2 text-muted">Compatibility</small>
+                            <div class="pl-4">
+                                <?php if(!empty($compat_models)): ?>
+                                    <?php foreach($compat_models as $m): ?>
+                                        <span class="badge badge-secondary mr-1 mb-1"><?= htmlspecialchars($m) ?></span>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <?= isset($models) ? $models : '' ?>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                     <div class="row">

@@ -336,20 +336,10 @@
         </div>
         <div class="clear-fix my-3"></div>
         
-        <!-- Bulk Actions -->
+        <!-- Actions -->
         <div class="row mb-3">
             <div class="col-md-6">
-                <div class="btn-group" role="group">
-                    <button type="button" class="btn btn-outline-primary btn-sm" id="selectAll">
-                        <i class="fa fa-check-square"></i> Select All
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" id="selectNone">
-                        <i class="fa fa-square"></i> Select None
-                    </button>
-                    <button type="button" class="btn btn-outline-danger btn-sm" id="removeSelected">
-                        <i class="fa fa-trash"></i> Remove Selected
-                    </button>
-                </div>
+                
             </div>
             <div class="col-md-6 text-right">
                 <button class="btn btn-primary btn-lg" type="button" id="checkout">
@@ -400,7 +390,8 @@
             update_quantity(cart_id, "+ 1");
         })
         $('.btn-remove').click(function(){
-            _conf("Are you sure to remove this product from cart list?","remove_from_cart",[$(this).attr('data-id')])
+            var cartId = $(this).attr('data-id');
+            _conf("Are you sure to remove this product from cart list?","remove_from_cart",[cartId])
         })
         $('#checkout').click(function(){
             if($('#cart-list .cart-item').length > 0){
@@ -562,52 +553,5 @@
         });
     });
     
-    // Bulk selection functionality
-    $('#selectAll').click(function() {
-        $('.item-checkbox').prop('checked', true);
-    });
-    
-    $('#selectNone').click(function() {
-        $('.item-checkbox').prop('checked', false);
-    });
-    
-    $('#removeSelected').click(function() {
-        const selectedItems = $('.item-checkbox:checked').map(function() {
-            return $(this).val();
-        }).get();
-        
-        if (selectedItems.length === 0) {
-            alert_toast('Please select items to remove', 'warning');
-            return;
-        }
-        
-        _conf("Are you sure you want to remove the selected items?", "removeSelectedItems", selectedItems);
-    });
-    
-    // Function to remove selected items
-    function removeSelectedItems(selectedItems) {
-        start_loader();
-        $.ajax({
-            url: _base_url_ + "classes/Master.php?f=remove_multiple_from_cart",
-            method: "POST",
-            data: {
-                cart_ids: selectedItems.join(',')
-            },
-            dataType: "json",
-            error: err => {
-                console.error(err);
-                alert_toast("An error occurred", "error");
-                end_loader();
-            },
-            success: function(resp) {
-                if (resp.status == 'success') {
-                    alert_toast(resp.msg, 'success');
-                    location.reload();
-                } else {
-                    alert_toast(resp.msg || 'An error occurred', 'error');
-                }
-                end_loader();
-            }
-        });
-    }
+    // Bulk selection functionality removed per request
 </script>

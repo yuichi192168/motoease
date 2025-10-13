@@ -72,6 +72,28 @@ if($bq && $bq->num_rows>0){ $honda_id = $bq->fetch_array()[0]; }
                 <textarea name="description" id="description" type="text" class="form-control rounded-0 summernote" required><?php echo isset($description) ? $description : ''; ?></textarea>
             </div>
 
+            <!-- Multi-compatibility for oil products -->
+            <div class="form-group">
+                <label for="compatible_models" class="control-label">Compatible Motorcycle Models (for Oils)</label>
+                <select name="compatible_models[]" id="compatible_models" class="custom-select select2" multiple>
+                    <?php 
+                    $models_list = [
+                        "ADV 160","Airblade 150","Airblade 160","Beat","Click 125i","Click 125i SE","Click 160","CRF150L","DIO","Giorno+","PCX 150","PCX 160 ABS","PCX 160 CBS","RS 125","Supra GTR 150","TMX 125 ALPHA","TMX SUPREMO","Wave RSX(DISC)","Wave RSX(DRUM)","Winner X (Premium)","Winner X (Racing)","XR 150i","XRM 125 Dual Sport Fi","CB150x"
+                    ];
+                    $selected_compat = [];
+                    if(isset($id)){
+                        $compat_rs = $conn->query("SELECT model_name FROM product_compatibility WHERE product_id = '{$id}' ORDER BY model_name ASC");
+                        if($compat_rs){
+                            while($cr = $compat_rs->fetch_assoc()) $selected_compat[] = $cr['model_name'];
+                        }
+                    }
+                    foreach($models_list as $m): ?>
+                        <option value="<?= htmlspecialchars($m) ?>" <?= in_array($m, $selected_compat) ? 'selected' : '' ?>><?= htmlspecialchars($m) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <small class="text-muted">Leave empty if not applicable. Use for oils usable across multiple models.</small>
+            </div>
+
 			<div class="form-group">
 				<label for="price" class="control-label">Price</label>
 				<input name="price" id="price" type="text" class="form-control form-control-sm text-right" value="<?php echo isset($price) ? $price : ''; ?>" placeholder="000000.00" required>
@@ -264,7 +286,21 @@ $(document).ready(function(){
             },
             success:function(resp){
                 if(typeof resp =='object' && resp.status == 'success'){
-                    location.href = "./?page=products/view_product&id="+resp.id;
+                    // Save compatibility selections if any
+                    var compat = $('#compatible_models').val() || [];
+                    if(compat.length > 0){
+                        $.ajax({
+                            url:_base_url_+"classes/Master.php?f=save_product_compatibility",
+                            method:'POST',
+                            dataType:'json',
+                            data:{product_id: resp.id, models: compat},
+                            complete:function(){
+                                location.href = "./?page=products/view_product&id="+resp.id;
+                            }
+                        });
+                    } else {
+                        location.href = "./?page=products/view_product&id="+resp.id;
+                    }
                 }else if(resp.status == 'failed' && !!resp.msg){
                     var el = $('<div>')
                         el.addClass("alert alert-danger err-msg").text(resp.msg)

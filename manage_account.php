@@ -130,32 +130,24 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                                     <tr>
                                         <th>Payment Date</th>
                                         <th>Amount</th>
-                                        <th>Payment Method</th>
                                         <th>Status</th>
-                                        <th>Receipt</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
                                         <td>January 15, 2025</td>
                                         <td>₱7,340</td>
-                                        <td>Cash</td>
                                         <td><span class="badge badge-success">Paid</span></td>
-                                        <td><a href="#" class="btn btn-sm btn-info">View</a></td>
                                     </tr>
                                     <tr>
                                         <td>December 15, 2024</td>
                                         <td>₱7,340</td>
-                                        <td>Cash</td>
                                         <td><span class="badge badge-success">Paid</span></td>
-                                        <td><a href="#" class="btn btn-sm btn-info">View</a></td>
                                     </tr>
                                     <tr>
                                         <td>November 15, 2024</td>
                                         <td>₱7,340</td>
-                                        <td>Cash</td>
                                         <td><span class="badge badge-success">Paid</span></td>
-                                        <td><a href="#" class="btn btn-sm btn-info">View</a></td>
                                     </tr>
                                 </tbody>
                             </table>

@@ -458,10 +458,39 @@ $(document).ready(function(){
       success: function(resp){
         console.log('Registration Response:', resp);
         if(typeof resp === 'object' && resp.status === 'success'){
-          alert_toast("Registration successful! Redirecting to login...", 'success');
-          setTimeout(function(){
-            location.href = "./login.php";
-          }, 2000);
+          if(resp.auto_login && resp.user_id){
+            // Auto-login the user after registration
+            alert_toast("Registration successful! Logging you in...", 'success');
+            setTimeout(function(){
+              // Perform auto-login
+              $.ajax({
+                url: _base_url_ + 'classes/Login.php?f=login_client',
+                method: 'POST',
+                data: {
+                  email: $('#email').val(),
+                  password: $('#password').val()
+                },
+                dataType: 'json',
+                success: function(loginResp){
+                  if(loginResp.status === 'success'){
+                    location.href = "./";
+                  } else {
+                    alert_toast("Registration successful! Please login manually.", 'success');
+                    location.href = "./login.php";
+                  }
+                },
+                error: function(){
+                  alert_toast("Registration successful! Please login manually.", 'success');
+                  location.href = "./login.php";
+                }
+              });
+            }, 1000);
+          } else {
+            alert_toast("Registration successful! Redirecting to login...", 'success');
+            setTimeout(function(){
+              location.href = "./login.php";
+            }, 2000);
+          }
         } else if(resp.status == 'failed' && !!resp.msg){
           el.text(resp.msg);
           _this.prepend(el);

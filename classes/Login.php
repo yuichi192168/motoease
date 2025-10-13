@@ -108,57 +108,82 @@ class Login extends DBConnection {
 		}
 	}
 	public function login_client(){
-		extract($_POST);
-		$password = md5($password);
+		$resp = array();
 		
-		// Check if account is locked
-		$lock_check = $this->checkAccountLock('client_list', 'email', $email);
-		if($lock_check) {
-			return json_encode(array('status'=>'locked', 'msg'=> is_array($lock_check) ? $lock_check['msg'] : $lock_check, 'locked_until' => is_array($lock_check) ? $lock_check['locked_until'] : null, 'locked_until_ts' => is_array($lock_check) ? $lock_check['locked_until_ts'] : null));
+		try {
+			extract($_POST);
+			$password = md5($password);
+			
+			// Check if account is locked
+			$lock_check = $this->checkAccountLock('client_list', 'email', $email);
+			if($lock_check) {
+				return json_encode(array('status'=>'locked', 'msg'=> is_array($lock_check) ? $lock_check['msg'] : $lock_check, 'locked_until' => is_array($lock_check) ? $lock_check['locked_until'] : null, 'locked_until_ts' => is_array($lock_check) ? $lock_check['locked_until_ts'] : null));
+			}
+			
+			$stmt = $this->conn->prepare("SELECT * from client_list where email = ? and `password` =? and delete_flag = ?  ");
+			$delete_flag = 0;
+			$stmt->bind_param("ssi",$email,$password,$delete_flag);
+			$stmt->execute();
+			$result = $stmt->get_result();
+			
+			if($result->num_rows > 0){
+				$data = $result->fetch_array();
+				if($data['status'] == 1){
+					// Reset login attempts on successful login
+					$this->updateLoginAttempts('client_list', 'email', $email, true);
+					
+					// Debug logging
+					error_log("Login successful for user: " . $email);
+					error_log("User data: " . print_r($data, true));
+					
+					// Clear any existing session data
+					unset($_SESSION['userdata']);
+					
+					// Set user data in session
+					foreach($data as $k => $v){
+						if(!is_numeric($k) && $k != 'password'){
+							$this->settings->set_userdata($k,$v);
+						}
+					}
+					$this->settings->set_userdata('login_type',2);
+					
+					// Force session write
+					session_write_close();
+					session_start();
+					
+					// Debug: Check if session data is set
+					error_log("Session data after login: " . print_r($_SESSION['userdata'], true));
+					
+					// Update last login
+					$this->conn->query("UPDATE client_list SET last_login = NOW() WHERE email = '{$email}'");
+					
+					$resp['status'] = 'success';
+					$resp['msg'] = 'Login successful';
+					$resp['user_id'] = $data['id'];
+					$resp['login_type'] = 2;
+				}else{
+					$resp['status'] = 'failed';
+					$resp['msg'] = ' Your Account has been blocked by the management.';
+				}
+			}else{
+				// Increment failed login attempts and detect if locked now
+				$lockedNow = $this->updateLoginAttempts('client_list', 'email', $email, false);
+				if ($lockedNow) {
+					$lockInfo = $this->checkAccountLock('client_list', 'email', $email);
+					$resp['status'] = 'locked';
+					$resp['msg'] = is_array($lockInfo) ? $lockInfo['msg'] : ($lockInfo ?: 'Account is locked.');
+					$resp['locked_until'] = is_array($lockInfo) ? $lockInfo['locked_until'] : null;
+					$resp['locked_until_ts'] = is_array($lockInfo) ? $lockInfo['locked_until_ts'] : null;
+				} else {
+					$resp['status'] = 'failed';
+					$resp['msg'] = ' Incorrect Email or Password.';
+				}
+			}
+		} catch (Exception $e) {
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'An error occurred during login: ' . $e->getMessage();
 		}
 		
-		$stmt = $this->conn->prepare("SELECT * from client_list where email = ? and `password` =? and delete_flag = ?  ");
-		$delete_flag = 0;
-		$stmt->bind_param("ssi",$email,$password,$delete_flag);
-		$stmt->execute();
-		$result = $stmt->get_result();
-		if($result->num_rows > 0){
-			$data = $result->fetch_array();
-			if($data['status'] == 1){
-				// Reset login attempts on successful login
-				$this->updateLoginAttempts('client_list', 'email', $email, true);
-				
-				foreach($data as $k => $v){
-					if(!is_numeric($k) && $k != 'password'){
-						$this->settings->set_userdata($k,$v);
-					}
-				}
-				$this->settings->set_userdata('login_type',2);
-				
-				// Update last login
-				$this->conn->query("UPDATE client_list SET last_login = NOW() WHERE email = '{$email}'");
-				
-				$resp['status'] = 'success';
-			}else{
-				$resp['status'] = 'failed';
-				$resp['msg'] = ' Your Account has been blocked by the management.';
-			}
-        }else{
-            // Increment failed login attempts and detect if locked now
-			$lockedNow = $this->updateLoginAttempts('client_list', 'email', $email, false);
-			if ($lockedNow) {
-				$lockInfo = $this->checkAccountLock('client_list', 'email', $email);
-				$resp['status'] = 'locked';
-				$resp['msg'] = is_array($lockInfo) ? $lockInfo['msg'] : ($lockInfo ?: 'Account is locked.');
-				$resp['locked_until'] = is_array($lockInfo) ? $lockInfo['locked_until'] : null;
-				$resp['locked_until_ts'] = is_array($lockInfo) ? $lockInfo['locked_until_ts'] : null;
-			} else {
-                $resp['status'] = 'failed';
-                $resp['msg'] = ' Incorrect Email or Password.';
-                $resp['error'] = $this->conn->error;
-                $resp['res'] = $result;
-            }
-        }
 		return json_encode($resp);
 	}
 	public function logout_client(){

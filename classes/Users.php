@@ -169,6 +169,8 @@ Class Users extends DBConnection {
 				$resp['status'] = 'success';
 				if(empty($id)){
 					$resp['msg'] = " Account is successfully registered.";
+					$resp['auto_login'] = true; // Flag for auto-login
+					$resp['user_id'] = $this->conn->insert_id; // Get the new user ID
 				}else if($this->settings->userdata('id') == $id && $this->settings->userdata('login_type') == 2){
 					$resp['msg'] = " Account Details has been updated successfully.";
 					foreach($_POST as $k => $v){

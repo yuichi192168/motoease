@@ -561,12 +561,13 @@ Class Master extends DBConnection {
 		$_POST['description'] = htmlentities($_POST['description']);
 		extract($_POST);
 		$data = "";
-		foreach($_POST as $k =>$v){
-			if(!in_array($k,array('id'))){
-				$v = $this->conn->real_escape_string($v);
-				if(!empty($data)) $data .=",";
-				$data .= " `{$k}`='{$v}' ";
-			}
+		foreach($_POST as $k => $v){
+			// Skip non-persisted or array fields
+			if(in_array($k, array('id', 'compatible_models'))) continue;
+			if(is_array($v)) continue;
+			$v = $this->conn->real_escape_string($v);
+			if(!empty($data)) $data .= ",";
+			$data .= " `{$k}`='{$v}' ";
 		}
 		$check = $this->conn->query("SELECT * FROM `product_list` where `name` = '{$name}' ".(!empty($id) ? " and id != {$id} " : "")." ")->num_rows;
 		if($this->capture_err())
@@ -635,6 +636,66 @@ Class Master extends DBConnection {
 		}
 		if(isset($resp['msg']) && $resp['status'] == 'success'){
 			$this->settings->set_flashdata('success',$resp['msg']);
+		}
+		return json_encode($resp);
+	}
+
+	function createTestNotification(){
+		$client_id = $this->settings->userdata('id');
+		$resp = ['status'=>'failed'];
+		if(empty($client_id)){
+			$resp['msg'] = 'Not logged in.';
+			return json_encode($resp);
+		}
+		// Ensure notifications table exists
+		$this->conn->query("CREATE TABLE IF NOT EXISTS notifications (\n\t\tid INT AUTO_INCREMENT PRIMARY KEY,\n\t\tuser_id INT NOT NULL,\n\t\ttype VARCHAR(50) NOT NULL,\n\t\ttitle VARCHAR(255) NOT NULL,\n\t\tmessage TEXT NOT NULL,\n\t\tdata JSON DEFAULT NULL,\n\t\tis_read TINYINT(1) NOT NULL DEFAULT 0,\n\t\tdate_created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n\t\tKEY user_id (user_id), KEY is_read (is_read), KEY type (type)\n\t) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+		$title = 'Test Notification';
+		$msg = 'This is a test notification to verify the bell dropdown.';
+		$esc_title = $this->conn->real_escape_string($title);
+		$esc_msg = $this->conn->real_escape_string($msg);
+		$ins = $this->conn->query("INSERT INTO notifications (user_id, type, title, message, data, is_read, date_created) VALUES ('{$client_id}','test','{$esc_title}','{$esc_msg}', NULL, 0, NOW())");
+		if($ins){
+			$resp['status'] = 'success';
+			$resp['msg'] = 'Test notification created.';
+		}else{
+			$resp['msg'] = 'Failed to create notification.';
+			$resp['error'] = $this->conn->error;
+		}
+		return json_encode($resp);
+	}
+
+	function save_product_compatibility(){
+		extract($_POST);
+		$resp = array('status' => 'failed');
+		$product_id = isset($product_id) ? (int)$product_id : 0;
+		if($product_id <= 0){
+			$resp['msg'] = 'Invalid product ID.';
+			return json_encode($resp);
+		}
+		$models = isset($models) ? (array)$models : [];
+		$this->conn->begin_transaction();
+		try{
+			// Ensure table exists (idempotent)
+			$this->conn->query("CREATE TABLE IF NOT EXISTS product_compatibility (\n				id INT AUTO_INCREMENT PRIMARY KEY,\n				product_id INT NOT NULL,\n				model_name VARCHAR(255) NOT NULL,\n				UNIQUE KEY unique_product_model (product_id, model_name),\n				KEY product_id (product_id)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+			// Clear existing
+			$this->conn->query("DELETE FROM product_compatibility WHERE product_id = '{$product_id}'");
+			// Insert new
+			if(count($models)){
+				$values = [];
+				foreach($models as $m){
+					$mn = $this->conn->real_escape_string($m);
+					$values[] = "('{$product_id}','{$mn}')";
+				}
+				$this->conn->query("INSERT INTO product_compatibility (product_id, model_name) VALUES ".implode(',', $values));
+			}
+			$this->conn->commit();
+			$resp['status'] = 'success';
+			$resp['msg'] = 'Compatibility saved.';
+		}catch(Exception $e){
+			$this->conn->rollback();
+			$resp['msg'] = 'Failed to save compatibility.';
+			$resp['error'] = $e->getMessage();
 		}
 		return json_encode($resp);
 	}
@@ -1417,7 +1478,23 @@ Class Master extends DBConnection {
 			$movement_data = "('{$product_id}', 'IN', '{$quantity}', '{$current_stock}', '{$new_stock}', '{$reason}', 'STOCK_ADD', 'PURCHASE', NOW(), NULL)";
                 $this->conn->query("INSERT INTO stock_movements (product_id, movement_type, quantity, previous_stock, new_stock, reason, reference_id, reference_type, date_created, created_by) VALUES {$movement_data}");
 			
-			$this->check_stock_alerts($product_id, $new_stock);
+				$this->check_stock_alerts($product_id, $new_stock);
+
+				// If previously out of stock and now available, trigger back-in-stock notifications
+				try {
+					$was_zero = ($current_stock <= 0);
+					$now_positive = ($new_stock > 0);
+					if($was_zero && now_positive){
+						// Fire product availability notifications via Notification class if present
+						if(file_exists(base_app.'classes/Notification.php')){
+							require_once(base_app.'classes/Notification.php');
+							$notif = new Notification();
+							if(method_exists($notif, 'sendProductAvailabilityNotification')){
+								$notif->sendProductAvailabilityNotification($product_id);
+							}
+						}
+					}
+				} catch (Exception $e) { /* non-fatal */ }
 			
 			$this->conn->commit();
 			$resp['status'] = 'success';
@@ -2431,6 +2508,12 @@ $sysset = new SystemSettings();
 	break;
 	case 'mark_notification_read':
 		echo $Master->markNotificationRead();
+	break;
+	case 'create_test_notification':
+		echo $Master->createTestNotification();
+	break;
+	case 'save_product_compatibility':
+		echo $Master->save_product_compatibility();
 	break;
 	case 'save_brand':
 		echo $Master->save_brand();

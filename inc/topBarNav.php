@@ -296,7 +296,7 @@
     $.ajax({
         url: _base_url_ + "classes/Master.php?f=mark_notification_read",
         method: "POST",
-        data: {id: id},
+        data: {notification_id: id},
         dataType: "json",
         success: function(resp){
             if(resp.status == 'success'){

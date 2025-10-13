@@ -87,6 +87,24 @@
         </ul>
         <!-- Right navbar links -->
         <ul class="navbar-nav ml-auto">
+          <!-- Notifications Dropdown -->
+          <li class="nav-item dropdown">
+            <a class="nav-link position-relative" data-toggle="dropdown" href="#" id="admin-notifications-dropdown">
+              <i class="far fa-bell"></i>
+              <span class="badge badge-warning navbar-badge" id="admin-notifications-count" style="display:none;">0</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" id="admin-notifications-list">
+              <span class="dropdown-header">Notifications</span>
+              <div class="dropdown-divider"></div>
+              <div id="admin-notifications-content">
+                <div class="text-center p-3">
+                  <i class="fas fa-spinner fa-spin"></i> Loading...
+                </div>
+              </div>
+              <div class="dropdown-divider"></div>
+              <a href="#" class="dropdown-item dropdown-footer" onclick="adminLoadAllNotifications()">View All Notifications</a>
+            </div>
+          </li>
           <!-- Navbar Search -->
           <!-- <li class="nav-item">
             <a class="nav-link" data-widget="navbar-search" href="#" role="button">
@@ -134,3 +152,95 @@
         </ul>
       </nav>
       <!-- /.navbar -->
+<script>
+(function(){
+  function adminLoadNotificationsCount(){
+    $.ajax({
+      url: _base_url_ + "classes/Master.php?f=get_notifications_count",
+      method: "POST",
+      dataType: "json",
+      success: function(resp){
+        if(resp && resp.status === 'success'){
+          var c = parseInt(resp.count || 0, 10);
+          var $badge = $('#admin-notifications-count');
+          $badge.text(c);
+          if(c > 0){ $badge.show(); } else { $badge.hide(); }
+        }
+      }
+    });
+  }
+
+  function adminFormatTimeAgo(dateString){
+    var now = new Date();
+    var date = new Date(dateString);
+    var diff = now - date;
+    var seconds = Math.floor(diff / 1000);
+    var minutes = Math.floor(seconds / 60);
+    var hours = Math.floor(minutes / 60);
+    var days = Math.floor(hours / 24);
+    if(days > 0) return days + 'd ago';
+    if(hours > 0) return hours + 'h ago';
+    if(minutes > 0) return minutes + 'm ago';
+    return 'Just now';
+  }
+
+  window.adminLoadNotifications = function(){
+    $.ajax({
+      url: _base_url_ + "classes/Master.php?f=get_notifications",
+      method: "POST",
+      data: {limit: 7},
+      dataType: "json",
+      success: function(resp){
+        if(resp && resp.status === 'success'){
+          var html = '';
+          if(resp.data && resp.data.length){
+            resp.data.forEach(function(n){
+              html += '<a href="#" class="dropdown-item notification-item ' + (n.is_read == 0 ? 'unread' : '') + '" onclick="adminMarkNotificationRead(' + n.id + ')">';
+              html += '<div class="d-flex align-items-start">';
+              html += '<div class="notification-icon mr-2"><i class="fas fa-bell text-warning"></i></div>';
+              html += '<div class="notification-content">';
+              html += '<div class="notification-title">' + (n.title || 'Notification') + '</div>';
+              html += '<div class="notification-text">' + (n.message || n.description || '') + '</div>';
+              html += '<div class="notification-time">' + adminFormatTimeAgo(n.date_created) + '</div>';
+              html += '</div></div></a>';
+              html += '<div class="dropdown-divider"></div>';
+            });
+          } else {
+            html = '<div class="text-center p-3 text-muted">No notifications</div>';
+          }
+          $('#admin-notifications-content').html(html);
+        }
+      }
+    });
+  }
+
+  window.adminMarkNotificationRead = function(id){
+    $.ajax({
+      url: _base_url_ + "classes/Master.php?f=mark_notification_read",
+      method: "POST",
+      data: {notification_id: id},
+      dataType: "json",
+      success: function(resp){
+        if(resp && resp.status === 'success'){
+          adminLoadNotificationsCount();
+          adminLoadNotifications();
+        }
+      }
+    });
+  }
+
+  window.adminLoadAllNotifications = function(){
+    // Placeholder for an admin notifications list page
+    toastr.info('Coming soon: Notifications list page');
+  }
+
+  $(document).ready(function(){
+    adminLoadNotificationsCount();
+    adminLoadNotifications();
+    setInterval(adminLoadNotificationsCount, 30000);
+    $('#admin-notifications-dropdown').on('click', function(){
+      adminLoadNotifications();
+    });
+  });
+})();
+</script>

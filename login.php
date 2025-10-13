@@ -114,8 +114,13 @@
                 _this.find('button[type="submit"]').prop('disabled', true).html('Signing in...');
             },
             success: function(resp){
+                console.log('Login response:', resp);
                 if(resp.status == 'success'){
-                    location.href = './';
+                    console.log('Login successful, redirecting...');
+                    // Add a small delay to ensure session is written
+                    setTimeout(function(){
+                        location.href = './';
+                    }, 100);
                 } else if(resp.status == 'locked') {
                     el.text(resp.msg);
                     _this.prepend(el);
