@@ -29,8 +29,6 @@ $services  = $conn->query("SELECT * FROM service_list where id in ({$service_id}
                 <dd class="pl-2"><?php echo $email ?></dd>
                 <dt><b>Owner Address</b></dt>
                 <dd class="pl-2"><?php echo $address ?></dd>
-                <dt><b>Request Type</b></dt>
-                <dd class="pl-2"><?php echo $service_type ?></dd>
                 <dt><b>Status</b></dt>
                 <dd class="pl-2">
                     <?php if($status == 1): ?>
@@ -55,6 +53,10 @@ $services  = $conn->query("SELECT * FROM service_list where id in ({$service_id}
                 <dd class="pl-2"><?php echo $vehicle_registration_number ?></dd>
                 <dt><b>Vehicle Model</b></dt>
                 <dd class="pl-2"><?php echo $vehicle_model ?></dd>
+                <?php if(isset($service_description) && !empty($service_description)): ?>
+                <dt><b>Service Description</b></dt>
+                <dd class="pl-2"><?php echo nl2br($service_description) ?></dd>
+                <?php endif; ?>
                 <dt><b>Service/s:</b></dt>
                 <dd class="pl-2">
                     <ul>

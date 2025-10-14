@@ -171,21 +171,22 @@
                                 </div>
                             </div>
                             
-                            <!-- Delivery Information -->
+                            <!-- Pickup-based orders: Delivery address removed. Show client info summary instead. -->
                             <div class="form-group">
-                                <label for="delivery_address" class="form-label"><strong>Delivery Address *</strong></label>
-                                <textarea class="form-control" name="delivery_address" id="delivery_address" 
-                                          rows="3" placeholder="Enter your complete delivery address" required></textarea>
-                                <div class="invalid-feedback" id="delivery_address_error"></div>
+                                <label class="form-label"><strong>Customer Information</strong></label>
+                                <?php 
+                                $cust = $conn->query("SELECT CONCAT(lastname, ', ', firstname, ' ', middlename) AS fullname, contact, address FROM client_list WHERE id = '{$_settings->userdata('id')}'");
+                                $cinfo = $cust && $cust->num_rows ? $cust->fetch_assoc() : ['fullname'=>'','contact'=>'','address'=>''];
+                                ?>
+                                <div class="border rounded p-2 bg-light">
+                                    <div><small class="text-muted">Name</small><br><strong><?= htmlspecialchars($cinfo['fullname']) ?></strong></div>
+                                    <div class="mt-2"><small class="text-muted">Contact</small><br><strong><?= htmlspecialchars($cinfo['contact']) ?></strong></div>
+                                    <div class="mt-2"><small class="text-muted">Address</small><br><strong><?= htmlspecialchars($cinfo['address']) ?></strong></div>
+                                </div>
+                                <small class="text-muted">Pickup-based orders: Please verify your contact details.</small>
                             </div>
                             
-                            <!-- Contact Information -->
-                            <div class="form-group">
-                                <label for="contact_number" class="form-label"><strong>Contact Number *</strong></label>
-                                <input type="tel" class="form-control" name="contact_number" id="contact_number" 
-                                       pattern="09[0-9]{9}" placeholder="09xxxxxxxxx" required>
-                                <div class="invalid-feedback" id="contact_number_error"></div>
-                            </div>
+                            <!-- Contact Information removed; shown in Customer Information on Cart page -->
                             
                             <!-- Terms and Conditions -->
                             <div class="form-group">
@@ -360,30 +361,9 @@
                 }
             }
             
-            // Validate delivery address
-            var deliveryAddress = $('#delivery_address').val().trim();
-            if(!deliveryAddress) {
-                $('#delivery_address').addClass('is-invalid');
-                $('#delivery_address_error').text('Please enter delivery address.');
-                isValid = false;
-            } else {
-                $('#delivery_address').addClass('is-valid');
-            }
+            // Delivery address validation removed (pickup-based orders)
             
-            // Validate contact number
-            var contactNumber = $('#contact_number').val().trim();
-            var phonePattern = /^09[0-9]{9}$/;
-            if(!contactNumber) {
-                $('#contact_number').addClass('is-invalid');
-                $('#contact_number_error').text('Please enter contact number.');
-                isValid = false;
-            } else if(!phonePattern.test(contactNumber)) {
-                $('#contact_number').addClass('is-invalid');
-                $('#contact_number_error').text('Please enter a valid 11-digit mobile number starting with 09.');
-                isValid = false;
-            } else {
-                $('#contact_number').addClass('is-valid');
-            }
+            // Contact number validation removed (already captured in customer profile)
             
             // Validate terms acceptance
             if(!$('#terms_accepted').is(':checked')) {

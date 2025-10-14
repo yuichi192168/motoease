@@ -4,7 +4,7 @@
     </div>
     <div class="card-body">
         <div class="container-fluid">
-            <table class="table table-stripped table-bordered">
+            <table class="table table-striped table-bordered">
                 <colgroup>
                     <col width="5%">
                     <col width="12%">
@@ -18,7 +18,7 @@
                 <thead>
                     <tr class="bg-gradient-dark text-light">
                         <th class="text-center">#</th>
-                        <th class="text-center">Date Ordered</th>
+                        <th class="text-center">Date Created</th>
                         <th class="text-center">Ref. Code</th>
                         <th class="text-center">Client</th>
                         <th class="text-center">Products</th>
@@ -81,7 +81,6 @@
 <script>
     $(function(){
         $('.table th, .table td').addClass("align-middle px-2 py-1")
-		$('.table').dataTable();
 		$('.table').dataTable();
 		
 		// Auto-refresh every 30 seconds to show new orders

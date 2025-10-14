@@ -81,10 +81,7 @@ while($row = $meta->fetch_assoc()){
                         <?php endwhile; ?>
                     </select>
                 </div>
-                <div class="form-group" style="display:none">
-                    <label for="pickup_address" class="control-label">Pick up Address</label>
-                    <textarea rows="3" name="pickup_address" id="pickup_address" class="form-control form-control-sm rounded-0" style="resize:none"><?php echo isset($pickup_address) ? $pickup_address : "" ?></textarea>
-                </div>
+                
             </div>
         </div>
         <hr class="border-light">

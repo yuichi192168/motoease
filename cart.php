@@ -121,6 +121,28 @@
         <h3><b>My Shopping Cart</b></h3>
         <hr>
         <div class="card card-outline card-primary shadow rounded-0">
+            <div class="w-100 p-3">
+                <?php 
+                $cust = $conn->query("SELECT CONCAT(lastname, ', ', firstname, ' ', middlename) AS fullname, contact, address FROM client_list WHERE id = '{$_settings->userdata('id')}'");
+                $cinfo = $cust && $cust->num_rows ? $cust->fetch_assoc() : ['fullname'=>'','contact'=>'','address'=>''];
+                ?>
+                <div class="border rounded p-3 mb-2 bg-light">
+                    <div class="d-flex flex-wrap justify-content-between">
+                        <div class="mb-2">
+                            <small class="text-muted">Name</small><br>
+                            <strong><?= htmlspecialchars($cinfo['fullname']) ?></strong>
+                        </div>
+                        <div class="mb-2">
+                            <small class="text-muted">Contact</small><br>
+                            <strong><?= htmlspecialchars($cinfo['contact']) ?></strong>
+                        </div>
+                        <div class="mb-2">
+                            <small class="text-muted">Address</small><br>
+                            <strong><?= htmlspecialchars($cinfo['address']) ?></strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="w-100" id="cart-list">
                 <?php 
                 $total = 0;
@@ -404,35 +426,10 @@
                         return false; // break loop
                     }
                 });
-                
+
                 if(hasMotorcycles){
-                    // Show credit application reminder
-                    Swal.fire({
-                        title: 'Credit Application Required',
-                        html: `
-                            <div class="text-center">
-                                <i class="fa fa-file-alt text-warning" style="font-size: 3rem;"></i>
-                                <p class="mt-3">Your cart contains motorcycle items.</p>
-                                <p class="text-muted">You'll need to complete the Motorcentral Credit Application form before checkout.</p>
-                                <div class="alert alert-info text-left">
-                                    <strong>Required Documents:</strong><br>
-                                    • 2 Valid IDs with 3 signatures (front & back)<br>
-                                    • Proof of billing (Meralco, Water, or Internet bill)<br>
-                                    • Proof of income (Payslip, COE, or Bank Statement)<br>
-                                    • Sketch of your house location
-                                </div>
-                            </div>
-                        `,
-                        icon: 'info',
-                        showCancelButton: true,
-                        confirmButtonText: 'Continue to Checkout',
-                        cancelButtonText: 'Cancel',
-                        confirmButtonColor: '#007bff'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            proceedToCheckout();
-                        }
-                    });
+                    // Redirect directly to Motorcentral Credit Application form as checkout step
+                    window.location.href = 'https://form.jotform.com/242488642552463';
                 } else {
                     proceedToCheckout();
                 }

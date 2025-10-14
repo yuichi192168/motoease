@@ -27,10 +27,17 @@
                                         <div class="text-muted small">Date Requested</div>
                                         <div class="font-weight-bold"><?= date("M d, Y h:i A", strtotime($row['date_created'])) ?></div>
                                     </div>
+                                    <?php 
+                                    // Fetch service description from meta
+                                    $desc = $conn->query("SELECT meta_value FROM request_meta WHERE request_id = '{$row['id']}' AND meta_field = 'service_description'");
+                                    $service_description_val = ($desc && $desc->num_rows) ? $desc->fetch_assoc()['meta_value'] : '';
+                                    ?>
+                                    <?php if(!empty($service_description_val)): ?>
                                     <div class="mb-2">
-                                        <div class="text-muted small">Service Type</div>
-                                        <div class="font-weight-bold"><?= isset($row['service_type']) ? $row['service_type'] : 'N/A' ?></div>
+                                        <div class="text-muted small">Service Description</div>
+                                        <div class="font-weight-bold"><?= htmlspecialchars($service_description_val) ?></div>
                                     </div>
+                                    <?php endif; ?>
                                     <?php if(!empty($row['vehicle_name'])): ?>
                                     <div class="mb-2">
                                         <div class="text-muted small">Vehicle</div>

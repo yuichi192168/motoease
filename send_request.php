@@ -133,11 +133,7 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                           placeholder="Please describe the service you need or the problem you're experiencing"></textarea>
                 <div class="error-msg" id="service_description_error"></div>
             </div>
-            <div class="form-group col-md-12">
-                <label for="pickup_address" class="control-label">Pickup Address</label>
-                <textarea name="pickup_address" id="pickup_address" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" rows="2" 
-                          placeholder="Enter your address if you need pickup service (optional)"></textarea>
-            </div>
+            
         </div>
         
         <?php if (!$is_standalone): ?>
