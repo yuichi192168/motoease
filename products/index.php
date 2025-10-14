@@ -94,7 +94,7 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                     if(!empty($search)){
                         $where.=" and (p.name LIKE '%{$search}%' or p.description LIKE '%{$search}%' or b.name LIKE '%{$search}%' or c.category LIKE '%{$search}%') ";
                     }
-                        $products = $conn->query("SELECT p.*,b.name as brand, c.category FROM `product_list` p inner join brand_list b on p.brand_id = b.id inner join `categories` c on p.category_id = c.id where p.delete_flag = 0 and p.status = 1 {$where} order by RAND()");
+                        $products = $conn->query("SELECT p.id as pid, p.*, b.name as brand, c.category FROM `product_list` p inner join brand_list b on p.brand_id = b.id inner join `categories` c on p.category_id = c.id where p.delete_flag = 0 and p.status = 1 {$where} order by RAND()");
                         while($row= $products->fetch_assoc()):
                             // Calculate stock availability
                             $stocks = $conn->query("SELECT SUM(quantity) FROM stock_list where product_id = '{$row['id']}'")->fetch_array()[0];
@@ -122,7 +122,7 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                                     <!-- Compare Checkbox -->
                                     <div class="position-absolute" style="top:6px; right:6px;">
                                         <label class="badge mb-0" style="cursor:pointer; background:#fff; color:#fff; border:1px solid #2c2c2c;">
-                                            <input type="checkbox" class="compare-checkbox" data-id="<?= $row['id'] ?>" style="vertical-align:middle;"> <span style="color:#dc3545;font-weight:600;">Compare</span>
+                                            <input type="checkbox" class="compare-checkbox" data-id="<?= (int)$row['pid'] ?>" style="vertical-align:middle;"> <span style="color:#dc3545;font-weight:600;">Compare</span>
                                         </label>
                                     </div>
                                     
@@ -171,16 +171,16 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                                     <!-- Add to Cart Button -->
                                     <div class="mt-3">
                                         <?php if($available > 0): ?>
-                                            <button class="btn btn-primary btn-sm w-100" onclick="if('<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>' != 1){ Swal.fire({ title: 'Login Required', text: 'Please login first to add items to cart.', icon: 'warning', confirmButtonText: 'Login Now', showCancelButton: true, cancelButtonText: 'Cancel' }).then((result) => { if (result.isConfirmed) { location.href = './login.php'; } }); return false; } addToCart(<?= $row['id'] ?>);">
+                                            <button class="btn btn-primary btn-sm w-100" onclick="if('<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>' != 1){ Swal.fire({ title: 'Login Required', text: 'Please login first to add items to cart.', icon: 'warning', confirmButtonText: 'Login Now', showCancelButton: true, cancelButtonText: 'Cancel' }).then((result) => { if (result.isConfirmed) { location.href = './login.php'; } }); return false; } addToCart(<?= (int)$row['pid'] ?>);">
                                                 <i class="fa fa-cart-plus"></i> Add to Cart
                                             </button>
                                         <?php else: ?>
-                                            <button class="btn btn-secondary btn-sm w-100" onclick="showOutOfStockOptions(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name']) ?>', '<?= htmlspecialchars($row['category']) ?>')">
+                                            <button class="btn btn-secondary btn-sm w-100" onclick="showOutOfStockOptions(<?= (int)$row['pid'] ?>, '<?= htmlspecialchars($row['name']) ?>', '<?= htmlspecialchars($row['category']) ?>')">
                                                 <i class="fa fa-bell"></i> Notify When Available
                                             </button>
                                         <?php endif; ?>
                                         
-                                        <a href="./?p=products/view_product&id=<?= $row['id'] ?>" class="btn btn-outline-primary btn-sm w-100 mt-1">
+                                        <a href="./?p=products/view_product&id=<?= (int)$row['pid'] ?>" class="btn btn-outline-primary btn-sm w-100 mt-1">
                                             <i class="fa fa-eye"></i> View Details
                                         </a>
                                     </div>

@@ -569,6 +569,16 @@ Class Master extends DBConnection {
 			if(!empty($data)) $data .= ",";
 			$data .= " `{$k}`='{$v}' ";
 		}
+
+		// Ensure required foreign keys and defaults for new records
+		if(empty($id)){
+			// Default placeholder image to satisfy NOT NULL constraint
+			$hasImageUpload = !empty($_FILES['img']['tmp_name']);
+			if(!$hasImageUpload && stripos($data, "`image_path`") === false){
+				if(!empty($data)) $data .= ",";
+				$data .= " `image_path`='dist/img/no-image-available.png' ";
+			}
+		}
 		$check = $this->conn->query("SELECT * FROM `product_list` where `name` = '{$name}' ".(!empty($id) ? " and id != {$id} " : "")." ")->num_rows;
 		if($this->capture_err())
 			return $this->capture_err();
