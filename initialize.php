@@ -6,7 +6,7 @@ if(!defined('dev_data')) define('dev_data',$dev_data);
 if(!defined('DB_SERVER')) define('DB_SERVER',"localhost");
 if(!defined('DB_USERNAME')) define('DB_USERNAME',"root");
 if(!defined('DB_PASSWORD')) define('DB_PASSWORD',"");
-if(!defined('DB_NAME')) define('DB_NAME',"bpsms_db");
+if(!defined('DB_NAME')) define('DB_NAME',"if0_40141531_motoease_7");
 if(!defined('DB_PORT')) define('DB_PORT',"3307");
 ?>
 
@@ -18,6 +18,6 @@ if(!defined('DB_PORT')) define('DB_PORT',"3307");
 // if(!defined('DB_SERVER')) define('DB_SERVER',"sql212.infinityfree.com");
 // if(!defined('DB_USERNAME')) define('DB_USERNAME',"if0_40141531");
 // if(!defined('DB_PASSWORD')) define('DB_PASSWORD',"192168motoease");
-// if(!defined('DB_NAME')) define('DB_NAME',"if0_40141531_motoease");
+// if(!defined('DB_NAME')) define('DB_NAME',"if0_40141531_motoease_2");
 // if(!defined('DB_PORT')) define('DB_PORT',"3306");
 ?>
