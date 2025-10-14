@@ -34,7 +34,7 @@ if(isset($_GET['id'])){
                     <div class="ml-3"><b><?= isset($ref_code) ? $ref_code : "N/A" ?></b></div>
                 </div>
                 <div class="col-md-6">
-                    <label for="" class="text-muted">Date Ordered</label>
+                    <label for="" class="text-muted">Date Created</label>
                     <div class="ml-3"><b><?= isset($date_created) ? date("M d, Y h:i A", strtotime($date_created)) : "N/A" ?></b></div>
                 </div>
             </div>
@@ -48,11 +48,11 @@ if(isset($_GET['id'])){
                             <?php elseif($status == 1): ?>
                                 <span class="badge badge-primary px-3 rounded-pill">Ready for pickup</span>
                             <?php elseif($status == 2): ?>
-                                <span class="badge badge-success px-3 rounded-pill">For Delivery</span>
+                                <span class="badge badge-info px-3 rounded-pill">Processing</span>
                             <?php elseif($status == 3): ?>
-                                <span class="badge badge-warning px-3 rounded-pill">On the Way</span>
+                                <span class="badge badge-warning px-3 rounded-pill">Ready for Pickup</span>
                             <?php elseif($status == 4): ?>
-                                <span class="badge badge-default bg-gradient-teal px-3 rounded-pill">Delivered</span>
+                                <span class="badge badge-default bg-gradient-teal px-3 rounded-pill">Completed</span>
                             <?php elseif($status == 6): ?>
                                 <span class="badge badge-success px-3 rounded-pill">Claimed</span>
                             <?php else: ?>

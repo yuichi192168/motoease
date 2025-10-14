@@ -266,6 +266,39 @@ $(document).ready(function(){
         e.preventDefault();
         var _this = $(this);
         $('.err-msg').remove();
+        // Client-side validation
+        var hasError = false;
+        function markInvalid(selector, msg){
+            hasError = true;
+            var $el = $(selector);
+            $el.addClass('is-invalid');
+            var $msg = $('<div>').addClass('invalid-feedback d-block').text(msg);
+            if($el.next('.invalid-feedback').length==0){ $el.after($msg); }
+        }
+        $(this).find('.is-invalid').removeClass('is-invalid');
+        $(this).find('.invalid-feedback').remove();
+
+        var nameVal = ($('#name').val()||'').trim();
+        if(nameVal.length < 3) markInvalid('#name','Name must be at least 3 characters.');
+
+        var catVal = ($('#category_id').val()||'');
+        if(!catVal) markInvalid('#category_id','Please select a category.');
+
+        var modelVal = ($('#models').val()||'');
+        if(!modelVal) markInvalid('#models','Please select a compatible model.');
+
+        var priceVal = ($('#price').val()||'').replace(/,/g,'');
+        if(!priceVal || isNaN(priceVal) || parseFloat(priceVal) <= 0){ markInvalid('#price','Enter a valid price greater than 0.'); }
+
+        var descHtml = $('#description').val()||'';
+        var descText = $('<div>').html(descHtml).text().trim();
+        if(descText.length < 10){ markInvalid('#description','Specifications must be at least 10 characters.'); }
+
+        if(hasError){
+            alert_toast('Please correct the highlighted fields.','error');
+            return false;
+        }
+
         start_loader();
         // sanitize price: remove commas before submit
         var rawPrice = $('#price').val();

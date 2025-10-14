@@ -75,7 +75,7 @@
   }
 </style>
 <!-- Navbar -->
-      <nav class="main-header navbar navbar-expand navbar-light text-sm shadow">
+      <nav class="main-header navbar navbar-expand navbar-light text-sm shadow" style="font-size:0.95rem; font-weight:600;">
         <!-- Left navbar links -->
         <ul class="navbar-nav">
           <li class="nav-item">

@@ -1,6 +1,6 @@
 <div class="card card-outline card-dark shadow rounded-0">
     <div class="card-header">
-        <h3 class="card-title"><b>Order List</b></h3>
+        <h3 class="card-title text-dark"><b>Order List</b></h3>
     </div>
     <div class="card-body">
         <div class="container-fluid">
@@ -16,7 +16,7 @@
                     <col width="7%">
                 </colgroup>
                 <thead>
-                    <tr class="bg-gradient-dark text-light">
+                    <tr class="bg-gradient-dark text-dark">
                         <th class="text-center">#</th>
                         <th class="text-center">Date Created</th>
                         <th class="text-center">Ref. Code</th>
@@ -57,11 +57,11 @@
                                 <?php elseif($row['status'] == 1): ?>
                                     <span class="badge badge-primary px-3 rounded-pill">Ready for pickup</span>
                                 <?php elseif($row['status'] == 2): ?>
-                                    <span class="badge badge-success px-3 rounded-pill">For Delivery</span>
+                                    <span class="badge badge-info px-3 rounded-pill">Processing</span>
                                 <?php elseif($row['status'] == 3): ?>
-                                    <span class="badge badge-warning px-3 rounded-pill">On the Way</span>
+                                    <span class="badge badge-warning px-3 rounded-pill">Ready for Pickup</span>
                                 <?php elseif($row['status'] == 4): ?>
-                                    <span class="badge badge-default bg-gradient-teal px-3 rounded-pill">Delivered</span>
+                                    <span class="badge badge-default bg-gradient-teal px-3 rounded-pill">Completed</span>
                                 <?php elseif($row['status'] == 6): ?>
                                     <span class="badge badge-success px-3 rounded-pill">Claimed</span>
                                 <?php else: ?>

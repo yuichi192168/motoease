@@ -245,7 +245,16 @@ Class Master extends DBConnection {
 		// Sanitize inputs
 		$cart_id = $this->conn->real_escape_string($cart_id);
 		
-		// Verify ownership and delete
+		// Verify ownership first
+		$exists = $this->conn->query("SELECT id FROM cart_list WHERE id = '{$cart_id}' AND client_id = '{$client_id}'");
+		if(!$exists || $exists->num_rows == 0){
+			// Idempotent success: item already gone or not owned by user
+			$resp['status'] = 'success';
+			$resp['msg'] = "Item removed from cart successfully.";
+			return json_encode($resp);
+		}
+		
+		// Delete item
 		$delete = $this->conn->query("DELETE FROM cart_list WHERE id = '{$cart_id}' AND client_id = '{$client_id}'");
 		
 		if($delete){
@@ -321,7 +330,7 @@ Class Master extends DBConnection {
             $order_data = "client_id = '{$client_id}', 
                            ref_code = '{$ref_code}', 
                            total_amount = '{$total_amount}', 
-                           delivery_address = '" . $this->conn->real_escape_string($saved_address) . "', 
+                           delivery_address = '', 
                            status = 0";
 			
 			$create_order = $this->conn->query("INSERT INTO order_list SET {$order_data}");
@@ -391,6 +400,23 @@ Class Master extends DBConnection {
 			$resp['msg'] = "Order placed successfully!";
 			$resp['ref_code'] = $ref_code;
 			$resp['order_id'] = $order_id;
+			
+			// Create notifications for client and admins
+			try {
+				if(file_exists(base_app.'classes/Notification.php')){
+					require_once base_app.'classes/Notification.php';
+					$notif = new Notification();
+					// Client notification
+					$notif->createNotification($client_id, 'order', 'Order Created', "Your order {$ref_code} was created successfully.", [ 'order_id' => $order_id, 'ref_code' => $ref_code ]);
+					// Admin notifications (all system users)
+					$admins = $this->conn->query("SELECT id FROM users WHERE status = 1");
+					if($admins){
+						while($a = $admins->fetch_assoc()){
+							$notif->createNotification($a['id'], 'order', 'New Order', "New order {$ref_code} placed.", [ 'order_id' => $order_id, 'ref_code' => $ref_code, 'client_id' => $client_id ]);
+						}
+					}
+				}
+			} catch (Exception $e) { /* non-fatal */ }
 			
 		} catch (Exception $e) {
 			// Rollback transaction
@@ -887,6 +913,19 @@ Class Master extends DBConnection {
 		}
 		if($save){
 			$resp['status'] = 'success';
+			$mid = empty($id) ? $this->conn->insert_id : $id;
+			if(!empty($_FILES['img']['tmp_name'])){
+				$ext = pathinfo($_FILES['img']['name'], PATHINFO_EXTENSION);
+				$dir = base_app."uploads/mechanics/";
+				if(!is_dir($dir)) mkdir($dir, 0777, true);
+				$namef = $mid.".".$ext;
+				if(is_file($dir.$namef)) unlink($dir.$namef);
+				$move = move_uploaded_file($_FILES['img']['tmp_name'],$dir.$namef);
+				if($move){
+					$this->conn->query("ALTER TABLE mechanics_list ADD COLUMN IF NOT EXISTS avatar VARCHAR(255) NULL");
+					$this->conn->query("UPDATE `mechanics_list` set avatar = CONCAT('uploads/mechanics/$namef','?v=',unix_timestamp(CURRENT_TIMESTAMP)) where id = '{$mid}'");
+				}
+			}
 			if(empty($id))
 				$this->settings->set_flashdata('success',"New Mechanic successfully saved.");
 			else
@@ -953,6 +992,16 @@ Class Master extends DBConnection {
 				$resp['msg'] = " Service Request has been submitted successfully.";
 				else
 				$resp['msg'] = " Service Request details has been updated successfully.";
+				// Send notifications (client + admins)
+				try {
+					if(file_exists(base_app.'classes/Notification.php')){
+						require_once base_app.'classes/Notification.php';
+						$notif = new Notification();
+						$notif->createNotification($client_id, 'service', 'Service Request Submitted', 'Your service request was submitted successfully.', [ 'service_id' => $rid ]);
+						$admins = $this->conn->query("SELECT id FROM users WHERE status = 1");
+						if($admins){ while($a = $admins->fetch_assoc()){ $notif->createNotification($a['id'], 'service', 'New Service Request', 'A new service request has been submitted.', [ 'service_id' => $rid, 'client_id' => $client_id ]); } }
+					}
+				} catch (Exception $e) { /* non-fatal */ }
 			}else{
 				$resp['status'] = 'failed';
 				$resp['error'] = $this->conn->error;

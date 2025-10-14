@@ -332,26 +332,26 @@
                 <?php endif; ?>
                 <div class="d-flex align-items-center w-100 border">
                     <div class="col-auto flex-grow-1 flex-shrink-1 px-1 py-1">
-                            <h4 class="text-center">SUBTOTAL</h4>
+                            <h4 class="text-center text-dark">SUBTOTAL</h4>
                     </div>
                     <div class="col-auto text-right">
-                        <h4><b>₱<?= number_format($total,2) ?></b></h4>
+                        <h4 class="text-dark"><b>₱<?= number_format($total,2) ?></b></h4>
                     </div>
                 </div>
                 <div class="d-flex align-items-center w-100 border">
                     <div class="col-auto flex-grow-1 flex-shrink-1 px-1 py-1">
-                            <h4 class="text-center text-success">ADD-ONS TOTAL</h4>
+                            <h4 class="text-center text-dark">ADD-ONS TOTAL</h4>
                     </div>
                     <div class="col-auto text-right">
-                        <h4 class="text-success"><b id="addons_total_display">₱0.00</b></h4>
+                        <h4 class="text-dark"><b id="addons_total_display">₱0.00</b></h4>
                     </div>
                 </div>
                 <div class="d-flex align-items-center w-100 border border-primary">
                     <div class="col-auto flex-grow-1 flex-shrink-1 px-1 py-1">
-                            <h3 class="text-center text-primary">GRAND TOTAL</h3>
+                            <h3 class="text-center text-dark">GRAND TOTAL</h3>
                     </div>
                     <div class="col-auto text-right">
-                        <h3 class="text-primary"><b id="grand_total">₱<?= number_format($total,2) ?></b></h3>
+                        <h3 class="text-dark"><b id="grand_total">₱<?= number_format($total,2) ?></b></h3>
                     </div>
                 </div>
             </div>
@@ -428,8 +428,21 @@
                 });
 
                 if(hasMotorcycles){
-                    // Redirect directly to Motorcentral Credit Application form as checkout step
-                    window.location.href = 'https://form.jotform.com/242488642552463';
+                    // Show link to credit application instead of redirecting
+                    Swal.fire({
+                        title: 'Motorcycle Purchase Notice',
+                        html: '<p>For motorcycle orders, a credit application is required.</p>' +
+                              '<p><a href="https://form.jotform.com/242488642552463" target="_blank">Open Credit Application Form</a></p>' +
+                              '<small class="text-muted">Complete the form, then proceed to checkout.</small>',
+                        icon: 'info',
+                        showCancelButton: true,
+                        confirmButtonText: 'Proceed to Checkout',
+                        cancelButtonText: 'Cancel'
+                    }).then((result)=>{
+                        if(result.isConfirmed){
+                            proceedToCheckout();
+                        }
+                    });
                 } else {
                     proceedToCheckout();
                 }

@@ -66,6 +66,12 @@
         border: 2px solid #dc3545;
       }
 
+      /* Keep scrolling inside the form only */
+      .register-wrapper .card-body {
+        max-height: 70vh;
+        overflow: auto;
+      }
+
       .input-group-text {
         cursor: pointer;
         background-color: #dc3545;

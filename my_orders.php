@@ -55,8 +55,10 @@
                                                 <span class="badge badge-danger px-3 rounded-pill">Cancelled</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td class="text-center">
-                                            <button class="btn btn-flat btn-sm btn-default border view_data" type="button" data-id="<?= $row['id'] ?>"><i class="fa fa-eye"></i> View</button>
+                                        <td class="text-center align-middle">
+                                            <a class="btn btn-sm btn-outline-primary view_data" href="view_order.php?id=<?= $row['id'] ?>">
+                                                <i class="fa fa-eye"></i> View
+                                            </a>
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>

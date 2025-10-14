@@ -295,14 +295,13 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                 <button type="button" class="nav-btn nav-prev" id="ccPrev" aria-label="Previous">‹</button>
                                 <button type="button" class="nav-btn nav-next" id="ccNext" aria-label="Next">›</button>
                             </div>
-                            <div class="color-dots" id="colorDots">
+                            <div class="mt-2 text-center">
+                                <small class="text-muted">Available Colors:</small>
                                 <?php foreach($slides as $idx=>$s): ?>
-                                    <div class="color-dot<?= $idx==0 ? ' active':'' ?>" data-idx="<?= $idx ?>" title="<?= htmlspecialchars($s['color']) ?>">
-                                        <img src="<?= validate_image($s['img']) ?>" loading="lazy" alt="<?= htmlspecialchars($s['color']) ?>">
-                                    </div>
+                                    <span class="badge badge-secondary mx-1 mb-1"><?= htmlspecialchars($s['color']) ?></span>
                                 <?php endforeach; ?>
                             </div>
-                            <div class="color-label" id="colorLabel"><?= htmlspecialchars($slides[0]['color']) ?></div>
+                            <div class="color-label text-center" id="colorLabel"><?= htmlspecialchars($slides[0]['color']) ?></div>
                         </div>
                     </div>
                     

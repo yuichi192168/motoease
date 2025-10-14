@@ -34,6 +34,22 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 <option value="0" <?php echo isset($status) && $status == 0 ? 'selected' : '' ?>>Inactive</option>
                 </select>
 			</div>
+			<div class="form-group">
+				<label class="control-label">Profile Photo</label>
+				<div class="row">
+					<div class="col-md-6">
+						<div class="custom-file">
+							<input type="file" class="custom-file-input" id="mechanicAvatar" name="img" accept="image/*" onchange="displayMechImg(this,$(this))">
+							<label class="custom-file-label" for="mechanicAvatar">Choose file</label>
+						</div>
+					</div>
+					<div class="col-md-6">
+						<div class="d-flex justify-content-center">
+							<img src="<?php echo validate_image(isset($avatar) ? $avatar : '') ?>" alt="Avatar" id="mech_img_preview" class="img-fluid img-thumbnail" style="height: 120px; width: 120px; object-fit: cover; border-radius: 50%;">
+						</div>
+					</div>
+				</div>
+			</div>
 		</form>
 	</div>
 	<div class="card-footer">
@@ -81,6 +97,20 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 				}
 			})
 		})
+
+		window.displayMechImg = function(input,_this){
+			if (input.files && input.files[0]) {
+				var reader = new FileReader();
+				reader.onload = function (e) {
+					$('#mech_img_preview').attr('src', e.target.result);
+					_this.siblings('.custom-file-label').html(input.files[0].name)
+				}
+				reader.readAsDataURL(input.files[0]);
+			}else{
+				$('#mech_img_preview').attr('src', "<?php echo validate_image(isset($avatar) ? $avatar : '') ?>");
+				_this.siblings('.custom-file-label').html("Choose file")
+			}
+		}
 
         $('.summernote').summernote({
 		        height: 200,

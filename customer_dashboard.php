@@ -139,6 +139,7 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
                     </div>
                 </div>
             </div>
+            <!-- Appointments temporarily disabled
             <div class="col-md-3">
                 <div class="info-box bg-warning">
                     <span class="info-box-icon"><i class="fas fa-calendar"></i></span>
@@ -150,6 +151,7 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
                     </div>
                 </div>
             </div>
+            -->
             <div class="col-md-3">
                 <div class="info-box bg-info">
                     <span class="info-box-icon"><i class="fas fa-bell"></i></span>
@@ -320,54 +322,7 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
 
         <div class="row mt-4">
 
-            <!-- Recent Appointments -->
-            <div class="col-md-6">
-                <div class="card card-outline card-warning shadow rounded-0">
-                    <div class="card-header">
-                        <h4 class="card-title"><b>Recent Appointments</b></h4>
-                        <div class="card-tools">
-                            <a href="./?p=appointments" class="btn btn-sm btn-warning">View All</a>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <?php if($appointments->num_rows > 0): ?>
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Time</th>
-                                        <th>Service</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php while($appointment = $appointments->fetch_assoc()): ?>
-                                    <tr>
-                                        <td><?= date('M d, Y', strtotime($appointment['appointment_date'])) ?></td>
-                                        <td><?= $appointment['appointment_time'] ?></td>
-                                        <td>
-                                            <?php 
-                                            $service = $conn->query("SELECT service FROM service_list WHERE id = '{$appointment['service_type']}'")->fetch_assoc();
-                                            echo $service ? $service['service'] : 'N/A';
-                                            ?>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-<?= $appointment['status'] == 'confirmed' ? 'success' : ($appointment['status'] == 'pending' ? 'warning' : 'secondary') ?>">
-                                                <?= ucfirst($appointment['status']) ?>
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <?php endwhile; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                        <?php else: ?>
-                        <p class="text-muted text-center">No appointments found.</p>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
+            <!-- Recent Appointments temporarily disabled -->
         </div>
 
         <!-- Quick Actions -->

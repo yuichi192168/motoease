@@ -118,9 +118,9 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                         </div>
                         
                         <!-- Payment Status Alert -->
-                        <div class="alert alert-success mt-3" role="alert">
+                <div class="alert alert-success mt-3" role="alert">
                             <i class="fas fa-check-circle me-2"></i>
-                            <strong>Payment Status:</strong> Your motorcycle payments are up-to-date. Next payment due: <strong>March 15, 2025</strong>
+                    <strong>Order Status:</strong> Status values reflect live order updates (Pending, Ready for Pickup, For Delivery, On the Way, Delivered).
                         </div>
                         
                         <!-- Payment History Table -->
@@ -185,7 +185,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                                     ?>
                                     <tr>
                                         <td>
-                                            <a href="./?p=view_order&id=<?= $order['ref_code'] ?>" class="text-primary">
+                                            <a href="./?p=view_order&id=<?= $order['id'] ?? '' ?>" class="text-primary">
                                                 <?= $order['ref_code'] ?>
                                             </a>
                                         </td>

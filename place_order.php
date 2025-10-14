@@ -201,7 +201,7 @@
                             
                             <div class="form-group text-right">
                                 <button class="btn btn-flat btn-primary" type="submit" id="place_order_btn">
-                                    <i class="fa fa-shopping-cart"></i> Place Order
+                                    <i class="fa fa-shopping-cart"></i> Advance Order
                                 </button>
                             </div>
                         </form>
@@ -407,12 +407,12 @@
                     console.log(err);
                     alert_toast("An error occurred",'error');
                     end_loader();
-                    $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Place Order');
+                    $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Advance Order');
                 },
                 success:function(resp){
                     // Always clear loader first
                     end_loader();
-                    $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Place Order');
+                    $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Advance Order');
                     
                     if(typeof resp =='object' && resp.status == 'success'){
                         // Show success message with order details

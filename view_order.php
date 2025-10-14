@@ -6,7 +6,20 @@ if(!isset($_GET['id']) || empty($_GET['id'])){
     exit;
 }
 
-$order_id = $_GET['id'];
+$raw_id = $_GET['id'];
+// Support both numeric order id and reference code
+if(ctype_digit((string)$raw_id)){
+    $order_id = $raw_id;
+} else {
+    $ref = $conn->real_escape_string($raw_id);
+    $oid_rs = $conn->query("SELECT id FROM order_list WHERE ref_code = '{$ref}'");
+    if($oid_rs && $oid_rs->num_rows){
+        $order_id = $oid_rs->fetch_assoc()['id'];
+    } else {
+        echo "<script>alert('Order not found'); window.close();</script>";
+        exit;
+    }
+}
 
 // Get order details
 $order = $conn->query("SELECT o.*, c.firstname, c.lastname, c.middlename, c.email, c.contact, c.address
@@ -20,7 +33,11 @@ if(!$order){
 }
 
 // Get order items
-$items = $conn->query("SELECT oi.*, p.name as product_name, p.description as product_description, p.image_path
+$items = $conn->query("SELECT oi.*, 
+                              p.name as product_name, 
+                              p.description as product_description, 
+                              p.image_path,
+                              COALESCE(oi.price, p.price, 0) as unit_price
                       FROM order_items oi 
                       INNER JOIN product_list p ON oi.product_id = p.id 
                       WHERE oi.order_id = '{$order_id}'");
@@ -30,9 +47,9 @@ function getStatusText($status) {
     switch($status) {
         case 0: return 'Pending';
         case 1: return 'Ready for pickup';
-        case 2: return 'For Delivery';
-        case 3: return 'On the Way';
-        case 4: return 'Delivered';
+        case 2: return 'Processing';
+        case 3: return 'Ready for Pickup';
+        case 4: return 'Completed';
         case 5: return 'Cancelled';
         case 6: return 'Claimed';
         default: return 'Unknown';
@@ -146,10 +163,10 @@ function getStatusClass($status) {
                                             <strong><?= $item['product_name'] ?></strong>
                                         </div>
                                     </td>
-                                    <td><?= $item['product_description'] ?: '-' ?></td>
+                                    <td><?= !empty($item['product_description']) ? html_entity_decode($item['product_description']) : '-' ?></td>
                                     <td class="text-center"><?= $item['quantity'] ?></td>
-                                    <td class="text-right">₱<?= number_format($item['price'], 2) ?></td>
-                                    <td class="text-right"><strong>₱<?= number_format($item['quantity'] * $item['price'], 2) ?></strong></td>
+                                    <td class="text-right">₱<?= number_format($item['unit_price'], 2) ?></td>
+                                    <td class="text-right"><strong>₱<?= number_format($item['quantity'] * $item['unit_price'], 2) ?></strong></td>
                                 </tr>
                                 <?php endwhile; ?>
                             </tbody>

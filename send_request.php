@@ -133,6 +133,26 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                           placeholder="Please describe the service you need or the problem you're experiencing"></textarea>
                 <div class="error-msg" id="service_description_error"></div>
             </div>
+            <!-- Preferences -->
+            <div class="form-group col-md-4">
+                <label for="preferred_mechanic" class="control-label">Preferred Mechanic</label>
+                <select id="preferred_mechanic" name="preferred_mechanic" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>">
+                    <option value="">No preference</option>
+                    <?php 
+                    $pref_mechs = $conn->query("SELECT id, name FROM mechanics_list WHERE status = 1 ORDER BY name ASC");
+                    while($pm = $pref_mechs->fetch_assoc()): ?>
+                        <option value="<?= $pm['id'] ?>"><?= htmlspecialchars($pm['name']) ?></option>
+                    <?php endwhile; ?>
+                </select>
+            </div>
+            <div class="form-group col-md-4">
+                <label for="preferred_date" class="control-label">Preferred Date</label>
+                <input type="date" id="preferred_date" name="preferred_date" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>">
+            </div>
+            <div class="form-group col-md-4">
+                <label for="preferred_time" class="control-label">Preferred Time</label>
+                <input type="time" id="preferred_time" name="preferred_time" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>">
+            </div>
             
         </div>
         
@@ -146,6 +166,7 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
         <?php else: ?>
         <div class="text-right">
             <button type="submit" class="btn btn-primary">Submit Request</button>
+            <button type="button" class="btn btn-info" id="send_service_appointment">Send Service Appointment</button>
             <a href="./" class="btn btn-secondary">Cancel</a>
         </div>
         <?php endif; ?>
@@ -396,6 +417,47 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                     } else {
                         alert_toast(resp.msg || 'An error occurred', 'error');
                     }
+                }
+            });
+        });
+
+        // Send Service Appointment button
+        $('#send_service_appointment').click(function(){
+            // Collect preferred schedule data
+            var preferredMechanic = $('#preferred_mechanic').val() || '';
+            var preferredDate = $('#preferred_date').val() || '';
+            var preferredTime = $('#preferred_time').val() || '';
+
+            if(!preferredDate || !preferredTime){
+                alert_toast('Please select preferred date and time.','warning');
+                return;
+            }
+
+            start_loader();
+            $.ajax({
+                url: _base_url_ + 'classes/Master.php?f=save_appointment',
+                method: 'POST',
+                data: {
+                    client_id: '<?= $_settings->userdata('id') ?>',
+                    service_type: ($('#service_id').val()||[])[0] || '',
+                    mechanic_id: preferredMechanic,
+                    appointment_date: preferredDate,
+                    appointment_time: preferredTime,
+                    vehicle_info: $('#vehicle_info').val()||'',
+                    notes: $('#service_description').val()||''
+                },
+                dataType: 'json',
+                success: function(resp){
+                    end_loader();
+                    if(resp.status == 'success'){
+                        alert_toast('Service appointment sent successfully!','success');
+                    } else {
+                        alert_toast(resp.msg || 'Failed to send appointment.','error');
+                    }
+                },
+                error: function(){
+                    end_loader();
+                    alert_toast('An error occurred.','error');
                 }
             });
         });

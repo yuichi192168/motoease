@@ -13,10 +13,10 @@
         
         <!-- Desktop navigation -->
         <div class="d-none d-lg-flex navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
-            <a class="nav-link <?= isset($page) && $page == 'home'? "active" : '' ?>" href="./">Home</a>
-            <a class="nav-link <?= isset($page) && $page == 'products'? "active" : '' ?>" href="./?p=products">Products</a>
-            <a class="nav-link <?= isset($page) && $page == 'services'? "active" : '' ?>" href="./?p=services">Services</a>
-            <a class="nav-link <?= isset($page) && $page == 'about'? "active" : '' ?>" href="./?p=about">About Us</a>
+            <a class="nav-link fw-bold" style="font-size:1.05rem;" <?= isset($page) && $page == 'home'? "class='nav-link fw-bold active'" : '' ?> href="./">Home</a>
+            <a class="nav-link fw-bold" style="font-size:1.05rem;" <?= isset($page) && $page == 'products'? "class='nav-link fw-bold active'" : '' ?> href="./?p=products">Products</a>
+            <a class="nav-link fw-bold" style="font-size:1.05rem;" <?= isset($page) && $page == 'services'? "class='nav-link fw-bold active'" : '' ?> href="./?p=services">Services</a>
+            <a class="nav-link fw-bold" style="font-size:1.05rem;" <?= isset($page) && $page == 'about'? "class='nav-link fw-bold active'" : '' ?> href="./?p=about">About Us</a>
         </div>
         
         <!-- Right side menu - Only show on desktop -->
