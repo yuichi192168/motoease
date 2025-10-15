@@ -592,6 +592,137 @@ Class Master extends DBConnection {
 		$resp['count'] = $count;
 		return json_encode($resp);
 	}
+
+	// Admin notification functions
+	function get_admin_notifications_count(){
+		$role = $this->settings->userdata('role_type');
+		$allowed = array('admin','branch_supervisor','service_admin');
+		if(!in_array($role, $allowed)){
+			$resp = ['status' => 'failed','msg'=>'Access denied.'];
+			return json_encode($resp);
+		}
+		$count = $this->conn->query("SELECT COUNT(*) as cnt FROM notifications WHERE is_read = 0")->fetch_assoc()['cnt'];
+		return json_encode(['status'=>'success','count'=>(int)$count]);
+	}
+
+	function get_admin_notifications(){
+		$role = $this->settings->userdata('role_type');
+		$allowed = array('admin','branch_supervisor','service_admin');
+		if(!in_array($role, $allowed)){
+			return json_encode(['status' => 'failed','msg'=>'Access denied.']);
+		}
+		$limit = isset($_POST['limit']) ? (int)$_POST['limit'] : 20;
+		$offset = isset($_POST['offset']) ? (int)$_POST['offset'] : 0;
+		$data = [];
+		// 1) Fetch explicit notifications (global/admin notifications stored in notifications table)
+		$qn = $this->conn->query("SELECT * FROM notifications ORDER BY date_created DESC LIMIT {$offset},{$limit}");
+		while($row = $qn->fetch_assoc()){
+			// normalize
+			$data[] = [
+				'id' => 'n_'.$row['id'],
+				'type' => $row['type'],
+				'title' => $row['title'],
+				'message' => $row['message'],
+				'data' => $row['data'],
+				'date_created' => $row['date_created'],
+				'is_read' => isset($row['is_read']) ? (int)$row['is_read'] : 0,
+				'target' => null
+			];
+		}
+		// 2) Also include recent system events (orders, service_requests, appointments)
+		// we fetch recent pending items and append if not enough results
+		$remaining = $limit - count($data);
+		if($remaining > 0){
+			// orders pending
+			$qo = $this->conn->query("SELECT id, ref_code, client_id, date_created FROM order_list WHERE status = 0 ORDER BY date_created DESC LIMIT {$remaining}");
+			while($r = $qo->fetch_assoc()){
+				$data[] = [
+					'id' => 'order_'.$r['id'],
+					'type' => 'order',
+					'title' => 'New Order #'.($r['ref_code']?:$r['id']),
+					'message' => 'Pending order received',
+					'data' => json_encode(['order_id'=>$r['id'],'client_id'=>$r['client_id']]),
+					'date_created' => $r['date_created'],
+					'is_read' => 0,
+					'target' => './?page=orders/view_order&id='.$r['id']
+				];
+			}
+		}
+		// services
+		$remaining = $limit - count($data);
+		if($remaining > 0){
+			$qs = $this->conn->query("SELECT id, client_id, date_created FROM service_requests WHERE status = 0 ORDER BY date_created DESC LIMIT {$remaining}");
+			while($r = $qs->fetch_assoc()){
+				$data[] = [
+					'id' => 'service_'.$r['id'],
+					'type' => 'service',
+					'title' => 'New Service Request #'.$r['id'],
+					'message' => 'Pending service request',
+					'data' => json_encode(['request_id'=>$r['id'],'client_id'=>$r['client_id']]),
+					'date_created' => $r['date_created'],
+					'is_read' => 0,
+					'target' => './?page=service_requests/view_request&id='.$r['id']
+				];
+			}
+		}
+		// appointments
+		$remaining = $limit - count($data);
+		if($remaining > 0){
+			$qa = $this->conn->query("SELECT id, client_id, appointment_date as date_created FROM appointments WHERE status IN ('pending',0) ORDER BY appointment_date DESC LIMIT {$remaining}");
+			while($r = $qa->fetch_assoc()){
+				$data[] = [
+					'id' => 'appointment_'.$r['id'],
+					'type' => 'appointment',
+					'title' => 'New Appointment #'.$r['id'],
+					'message' => 'Pending appointment',
+					'data' => json_encode(['appointment_id'=>$r['id'],'client_id'=>$r['client_id']]),
+					'date_created' => $r['date_created'],
+					'is_read' => 0,
+					'target' => './?page=appointments&view_id='.$r['id']
+				];
+			}
+		}
+		// Sort combined by date_created desc
+		usort($data, function($a,$b){
+			$ta = strtotime($a['date_created']);
+			$tb = strtotime($b['date_created']);
+			return $tb <=> $ta;
+		});
+		return json_encode(['status'=>'success','data'=>$data]);
+	}
+
+	function mark_admin_notification_read(){
+		extract($_POST);
+		$role = $this->settings->userdata('role_type');
+		$allowed = array('admin','branch_supervisor','service_admin');
+		if(!in_array($role, $allowed)){
+			return json_encode(['status'=>'failed','msg'=>'Access denied.']);
+		}
+		$id = $this->conn->real_escape_string($id);
+		$upd = $this->conn->query("UPDATE notifications SET is_read = 1 WHERE id = '{$id}'");
+		if($upd) return json_encode(['status'=>'success']);
+		return json_encode(['status'=>'failed','msg'=>$this->conn->error]);
+	}
+
+	function mark_all_admin_notifications_read(){
+		$role = $this->settings->userdata('role_type');
+		$allowed = array('admin','branch_supervisor','service_admin');
+		if(!in_array($role, $allowed)) return json_encode(['status'=>'failed','msg'=>'Access denied.']);
+		$upd = $this->conn->query("UPDATE notifications SET is_read = 1 WHERE is_read = 0");
+		if($upd) return json_encode(['status'=>'success']);
+		return json_encode(['status'=>'failed','msg'=>$this->conn->error]);
+	}
+
+	function delete_admin_notification(){
+		extract($_POST);
+		$role = $this->settings->userdata('role_type');
+		$allowed = array('admin','branch_supervisor','service_admin');
+		if(!in_array($role, $allowed)) return json_encode(['status'=>'failed','msg'=>'Access denied.']);
+		$id = $this->conn->real_escape_string($id);
+		$del = $this->conn->query("DELETE FROM notifications WHERE id = '{$id}'");
+		if($del) return json_encode(['status'=>'success']);
+		return json_encode(['status'=>'failed','msg'=>$this->conn->error]);
+	}
 	
 	// Product functions
 	function save_product(){
@@ -1083,10 +1214,34 @@ Class Master extends DBConnection {
 		}
 		
 		$invoice = $check->fetch_assoc();
-		if($invoice['payment_status'] == 'paid'){
-			$resp['status'] = 'failed';
-			$resp['msg'] = "Cannot delete paid invoice.";
-			return json_encode($resp);
+		// If invoice is marked paid, do not allow deletion unless forced by admin
+		$force = isset($_POST['force']) && intval($_POST['force']) === 1;
+		if(isset($invoice['payment_status']) && strtolower($invoice['payment_status']) == 'paid'){
+			if(!$force || $this->settings->userdata('login_type') != 1){
+				$resp['status'] = 'failed';
+				$resp['msg'] = "Cannot delete invoice: invoice is already paid.";
+				error_log("Attempt to delete paid invoice without force/admin: {$id}");
+				return json_encode($resp);
+			}
+			// admin is forcing deletion, proceed but log it
+			error_log("Admin force-deleting paid invoice: {$id} by user {$this->settings->userdata('id')}");
+		}
+
+		// If there are any receipts/payments recorded for this invoice, prevent deletion
+		$rec_check = $this->conn->query("SELECT COUNT(*) as cnt, COALESCE(SUM(amount_paid),0) as total_paid FROM `receipts` WHERE invoice_id = '{$id}'");
+		if($rec_check){
+			$rec_data = $rec_check->fetch_assoc();
+			if($rec_data['cnt'] > 0){
+				// If not forced by admin, prevent deletion
+				if(!$force || $this->settings->userdata('login_type') != 1){
+					$resp['status'] = 'failed';
+					$resp['msg'] = 'Cannot delete invoice: payments/receipts have been recorded ('.$rec_data['cnt'].' receipt(s)). Please reverse the payments first.';
+					error_log("Attempt to delete invoice with receipts: {$id}, receipts_count: {$rec_data['cnt']}, total_paid: {$rec_data['total_paid']}");
+					return json_encode($resp);
+				}
+				// admin is forcing deletion, log it
+				error_log("Admin force-deleting invoice with receipts: {$id}, receipts_count: {$rec_data['cnt']}, total_paid: {$rec_data['total_paid']} by user {$this->settings->userdata('id')}");
+			}
 		}
 		
 		// Start transaction
@@ -1179,6 +1334,80 @@ Class Master extends DBConnection {
 		}
 		
 		return json_encode($resp);
+	}
+
+	/**
+	 * Return counts for pending items shown on admin sidebar badges
+	 * - orders: order_list with status = 0 (pending)
+	 * - services: service_requests with status = 0 (pending)
+	 * - appointments: appointments with status = 'pending'
+	 */
+	function get_admin_sidebar_counts(){
+		$resp = ['status'=>'failed'];
+		// Allow admin-like roles (role_type values)
+		$role_type = $this->settings->userdata('role_type');
+		$allowed = array('admin','branch_supervisor','service_admin');
+		if(!in_array($role_type, $allowed)){
+			$resp['msg'] = 'Access denied.';
+			return json_encode($resp);
+		}
+		// Ensure admin_section_views table exists
+		$this->conn->query("CREATE TABLE IF NOT EXISTS admin_section_views (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			admin_id INT NOT NULL,
+			section VARCHAR(50) NOT NULL,
+			last_viewed DATETIME NOT NULL,
+			UNIQUE KEY admin_section (admin_id, section)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+		$admin_id = $this->settings->userdata('id');
+		// Fetch last viewed timestamps
+		$views = [];
+		$vr = $this->conn->query("SELECT section, last_viewed FROM admin_section_views WHERE admin_id = '{$admin_id}'");
+		while($row = $vr->fetch_assoc()) $views[$row['section']] = $row['last_viewed'];
+		$counts = ['orders'=>0,'services'=>0,'appointments'=>0,'clients'=>0];
+		// Orders pending created after last_viewed (or all if no last_viewed)
+		$where_orders = isset($views['orders']) ? "AND date_created > '{$views['orders']}'" : '';
+		$orders_q = $this->conn->query("SELECT COUNT(*) as cnt FROM order_list WHERE status = 0 {$where_orders}");
+		if($orders_q) $counts['orders'] = (int)$orders_q->fetch_assoc()['cnt'];
+		// Services
+		$where_services = isset($views['services']) ? "AND date_created > '{$views['services']}'" : '';
+		$svc_q = $this->conn->query("SELECT COUNT(*) as cnt FROM service_requests WHERE status = 0 {$where_services}");
+		if($svc_q) $counts['services'] = (int)$svc_q->fetch_assoc()['cnt'];
+		// Appointments
+		$where_appt = isset($views['appointments']) ? "AND appointment_date > '{$views['appointments']}'" : '';
+		$appt_q = $this->conn->query("SELECT COUNT(*) as cnt FROM appointments WHERE status IN ('pending',0) {$where_appt}");
+		if($appt_q) $counts['appointments'] = (int)$appt_q->fetch_assoc()['cnt'];
+		// New clients / users (optional)
+		$where_clients = isset($views['clients']) ? "AND date_created > '{$views['clients']}'" : '';
+		$cli_q = $this->conn->query("SELECT COUNT(*) as cnt FROM client_list WHERE delete_flag = 0 {$where_clients}");
+		if($cli_q) $counts['clients'] = (int)$cli_q->fetch_assoc()['cnt'];
+		$resp['status'] = 'success';
+		$resp['counts'] = $counts;
+		return json_encode($resp);
+	}
+
+	function clear_admin_section_view(){
+		extract($_POST);
+		$section = $this->conn->real_escape_string($section);
+		$admin_id = $this->settings->userdata('id');
+		if(empty($admin_id)) return json_encode(['status'=>'failed','msg'=>'Not logged in']);
+		// ensure table
+		$this->conn->query("CREATE TABLE IF NOT EXISTS admin_section_views (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			admin_id INT NOT NULL,
+			section VARCHAR(50) NOT NULL,
+			last_viewed DATETIME NOT NULL,
+			UNIQUE KEY admin_section (admin_id, section)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+		$now = date('Y-m-d H:i:s');
+		// upsert
+		$exists = $this->conn->query("SELECT id FROM admin_section_views WHERE admin_id = '{$admin_id}' AND section = '{$section}'")->num_rows;
+		if($exists){
+			$upd = $this->conn->query("UPDATE admin_section_views SET last_viewed = '{$now}' WHERE admin_id = '{$admin_id}' AND section = '{$section}'");
+		}else{
+			$ins = $this->conn->query("INSERT INTO admin_section_views (admin_id, section, last_viewed) VALUES ('{$admin_id}','{$section}','{$now}')");
+		}
+		return json_encode(['status'=>'success']);
 	}
 	
 	// Order status update
@@ -1669,7 +1898,7 @@ Class Master extends DBConnection {
 				try {
 					$was_zero = ($current_stock <= 0);
 					$now_positive = ($new_stock > 0);
-					if($was_zero && now_positive){
+					if($was_zero && $now_positive){
 						// Fire product availability notifications via Notification class if present
 						if(file_exists(base_app.'classes/Notification.php')){
 							require_once(base_app.'classes/Notification.php');

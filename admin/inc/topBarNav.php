@@ -165,6 +165,12 @@
           var $badge = $('#admin-notifications-count');
           $badge.text(c);
           if(c > 0){ $badge.show(); } else { $badge.hide(); }
+          // Toggle sidebar red dot if present
+          if(c > 0){
+            $('#sidebar-notif-dot').show();
+          }else{
+            $('#sidebar-notif-dot').hide();
+          }
         }
       }
     });
@@ -244,3 +250,51 @@
   });
 })();
 </script>
+
+  <script>
+  // Poll admin sidebar counts (orders, services, appointments)
+  (function(){
+    function refreshAdminSidebarBadges(){
+      $.ajax({
+        url: _base_url_ + 'classes/Master.php?f=get_admin_sidebar_counts',
+        method: 'POST',
+        dataType: 'json',
+        success: function(resp){
+          if(resp && resp.status === 'success' && resp.counts){
+            var c = resp.counts;
+            if(c.orders && parseInt(c.orders) > 0) $('#dot-orders').show(); else $('#dot-orders').hide();
+            if(c.services && parseInt(c.services) > 0) $('#dot-services').show(); else $('#dot-services').hide();
+            if(c.appointments && parseInt(c.appointments) > 0) $('#dot-appointments').show(); else $('#dot-appointments').hide();
+          }
+        }
+      });
+    }
+    $(function(){
+      refreshAdminSidebarBadges();
+      setInterval(refreshAdminSidebarBadges, 10000);
+      // Attach click handlers to badge links (if present)
+      $(document).on('click', '#link-orders', function(e){
+        e.preventDefault();
+        var href = $(this).attr('data-href') || $(this).attr('href');
+        // mark orders section as viewed
+        $.post(_base_url_ + 'classes/Master.php?f=clear_admin_section_view', {section: 'orders'}).always(function(){
+          if(href) window.location.href = href;
+        });
+      });
+      $(document).on('click', '#link-services', function(e){
+        e.preventDefault();
+        var href = $(this).attr('data-href') || $(this).attr('href');
+        $.post(_base_url_ + 'classes/Master.php?f=clear_admin_section_view', {section: 'services'}).always(function(){
+          if(href) window.location.href = href;
+        });
+      });
+      $(document).on('click', '#link-appointments', function(e){
+        e.preventDefault();
+        var href = $(this).attr('data-href') || $(this).attr('href');
+        $.post(_base_url_ + 'classes/Master.php?f=clear_admin_section_view', {section: 'appointments'}).always(function(){
+          if(href) window.location.href = href;
+        });
+      });
+    });
+  })();
+  </script>

@@ -61,6 +61,16 @@
                                 </div>
                                 <div class="card-footer bg-light text-right">
                                     <small class="text-muted">Service ID: <?= $row['id'] ?></small>
+                                    <div class="mt-2">
+                                        <button class="btn btn-sm btn-primary view_request" data-id="<?= $row['id'] ?>">
+                                            <i class="fa fa-eye"></i> View Details
+                                        </button>
+                                        <?php if($row['status'] == 0): ?>
+                                            <button class="btn btn-sm btn-outline-danger cancel_request" data-id="<?= $row['id'] ?>">
+                                                <i class="fa fa-times"></i> Cancel
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -80,6 +90,17 @@
         if($('.table').length > 0){
             $('.table').dataTable();
         }
+        // Handle view request button clicks
+        $('.view_request').click(function(){
+            var req_id = $(this).data('id');
+            uni_modal("Service Request Details","view_request.php?id="+req_id,'modal-lg');
+        });
+
+        // Handle cancel request button clicks
+        $('.cancel_request').click(function(){
+            var req_id = $(this).data('id');
+            _conf("Are you sure you want to cancel this service request?","cancel_service",[req_id]);
+        });
     });
 </script>
 

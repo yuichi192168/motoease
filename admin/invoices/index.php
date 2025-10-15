@@ -427,10 +427,10 @@ $(document).ready(function(){
 						html += '<td>' + new Date(invoice.generated_at).toLocaleDateString() + '</td>';
 						html += '<td>' + (invoice.receipt_number ? '<span class="badge badge-success">' + invoice.receipt_number + '</span>' : '-') + '</td>';
 						html += '<td>';
-						html += '<button class="btn btn-sm btn-primary view_invoice" data-id="' + invoice.id + '">View</button> ';
+						html += '<button class="btn btn-sm btn-primary view_invoice" data-id="' + invoice.id + '"><i class="fa fa-eye"></i> View Details</button> ';
 						if(invoice.payment_status != 'paid'){
-							html += '<button class="btn btn-sm btn-success create_receipt" data-id="' + invoice.id + '" data-amount="' + invoice.total_amount + '">Receipt</button> ';
-							html += '<button class="btn btn-sm btn-danger delete_invoice" data-id="' + invoice.id + '">Delete</button>';
+							html += '<button class="btn btn-sm btn-success create_receipt" data-id="' + invoice.id + '" data-amount="' + invoice.total_amount + '"><i class="fa fa-receipt"></i> Receipt</button> ';
+							html += '<button class="btn btn-sm btn-danger delete_invoice" data-id="' + invoice.id + '"><i class="fa fa-trash"></i> Delete</button>';
 						}
 						html += '</td>';
 						html += '</tr>';
@@ -449,6 +449,20 @@ $(document).ready(function(){
 					});
 					$('#invoices_table tbody').html(html);
 					$('#print_invoices_table').html(printHtml);
+					// Ensure DataTable is initialized/reinitialized after content load
+					if($.fn.DataTable){
+						if($.fn.DataTable.isDataTable('#invoices_table')){
+							$('#invoices_table').DataTable().clear().destroy();
+						}
+						$('#invoices_table').DataTable({
+							responsive: true,
+							pageLength: 25,
+							columnDefs: [
+								{ orderable: false, targets: -1 },
+								{ className: 'text-right', targets: [4] },
+							],
+						});
+					}
 				}
 			}
 		});
@@ -529,7 +543,7 @@ $(document).ready(function(){
 		});
 	}
 
-	function delete_invoice(invoice_id){
+	window.delete_invoice = function(invoice_id){
 		start_loader();
 		console.log('Deleting invoice with ID:', invoice_id);
 		$.ajax({
@@ -549,7 +563,34 @@ $(document).ready(function(){
 					loadInvoices();
 					loadStats();
 				} else {
-					alert_toast(resp.msg || "An error occurred while deleting invoice.", 'error');
+					// If server indicates receipts/payments or paid invoice, offer admin force-delete
+					var msg = resp.msg || "An error occurred while deleting invoice.";
+					if(msg.toLowerCase().includes('payments/receipts') || msg.toLowerCase().includes('already paid')){
+						if(confirm(msg + "\n\nDo you want to force delete this invoice? (Admin only)")){
+							// call delete with force=1
+							$.ajax({
+								url: _base_url_ + "classes/Master.php?f=delete_invoice",
+								method: "POST",
+								data: {id: invoice_id, force:1},
+								dataType: 'json',
+								success: function(resp2){
+									if(resp2.status == 'success'){
+										alert_toast('Invoice force-deleted successfully.', 'success');
+										loadInvoices();
+										loadStats();
+									} else {
+										alert_toast(resp2.msg || 'Failed to force delete invoice.', 'error');
+									}
+									end_loader();
+								},
+								error: err => { console.error(err); alert_toast('An error occurred while attempting force delete.', 'error'); end_loader(); }
+							});
+						} else {
+							alert_toast(msg, 'error');
+						}
+					} else {
+						alert_toast(msg, 'error');
+					}
 				}
 				end_loader();
 			}

@@ -48,6 +48,11 @@ if(isset($_GET['id'])){
 </style>
 <div class="card card-outline card-dark shadow rounded-0">
     <div class="card-body">
+        <div class="d-flex justify-content-end mb-2">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="$('#uni_modal').modal('hide')">
+                <i class="fa fa-arrow-left"></i> Close
+            </button>
+        </div>
         <div class="container-fluid">
             <div class="row">
                 <div class="col-md-6">

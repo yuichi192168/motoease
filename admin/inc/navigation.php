@@ -1,7 +1,20 @@
-<?php 
+$<?php 
 $usertype = $_settings->userdata('type');
 $role_type = $_settings->userdata('role_type') ?: 'admin';
 ?>
+<style>
+    /* Small red notification dot for sidebar */
+    .sidebar-dot{
+        display:inline-block;
+        width:10px;
+        height:10px;
+        background:#dc3545; /* bootstrap danger */
+        border-radius:50%;
+        margin-left:6px;
+        vertical-align:middle;
+        box-shadow: 0 0 0 2px rgba(220,53,69,0.08);
+    }
+</style>
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <!-- Brand Logo -->
     <a href="./" class="brand-link bg-primary">
@@ -29,6 +42,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                         <p>Dashboard</p>
                     </a>
                 </li>
+                <!-- Notifications removed: using per-section indicators instead -->
                 
                 <!-- Role-based Menu Items -->
                 <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'admin_assistant'])): ?>
@@ -105,15 +119,15 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                     </a>
                     <ul class="nav nav-treeview">
                         <li class="nav-item">
-                            <a href="./?page=service_requests" class="nav-link <?php echo $page == 'service_requests' ? 'active' : '' ?>">
+                            <a href="./?page=service_requests" data-href="./?page=service_requests&status=pending" id="link-services" class="nav-link <?php echo $page == 'service_requests' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p>Service Requests</p>
+                                <p>Service Requests <span id="dot-services" class="sidebar-dot" style="display:none;"></span></p>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="./?page=appointments" class="nav-link <?php echo $page == 'appointments' ? 'active' : '' ?>">
+                            <a href="./?page=appointments" data-href="./?page=appointments&status=pending" id="link-appointments" class="nav-link <?php echo $page == 'appointments' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p>Appointments</p>
+                                <p>Appointments <span id="dot-appointments" class="sidebar-dot" style="display:none;"></span></p>
                             </a>
                         </li>
                         <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'service_admin'])): ?>
@@ -131,9 +145,9 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 <!-- Order Management -->
                 <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'admin_assistant', 'service_admin'])): ?>
                 <li class="nav-item">
-                    <a href="./?page=orders" class="nav-link <?php echo $page == 'orders' ? 'active' : '' ?>">
+                    <a href="./?page=orders" data-href="./?page=orders&status=pending" id="link-orders" class="nav-link <?php echo $page == 'orders' ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-shopping-cart"></i>
-                        <p>Orders</p>
+                        <p>Orders <span id="dot-orders" class="sidebar-dot" style="display:none;"></span></p>
                     </a>
                 </li>
                 <?php endif; ?>
