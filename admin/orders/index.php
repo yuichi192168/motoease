@@ -4,6 +4,32 @@
     </div>
     <div class="card-body">
         <div class="container-fluid">
+            <?php
+            // Pending orders summary (show latest 5 pending orders)
+            $pending_qry = $conn->query("SELECT o.id,o.ref_code,o.total_amount,o.date_created, concat(c.lastname,', ', c.firstname,' ',c.middlename) as fullname
+                                    FROM `order_list` o
+                                    inner join client_list c on o.client_id = c.id
+                                    WHERE o.status = 0
+                                    ORDER BY unix_timestamp(o.date_created) DESC LIMIT 5");
+            if($pending_qry && $pending_qry->num_rows > 0):
+            ?>
+            <div class="mb-3">
+                <h5 class="mb-2"><i class="fa fa-exclamation-circle text-warning"></i> Pending Orders</h5>
+                <div class="list-group">
+                    <?php while($po = $pending_qry->fetch_assoc()): ?>
+                        <a href="./?page=orders/view_order&id=<?= $po['id'] ?>" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div>
+                                <div><strong><?= htmlspecialchars($po['ref_code']) ?></strong></div>
+                                <small class="text-muted"><?= htmlspecialchars($po['fullname']) ?> &middot; <?= date("Y-m-d H:i", strtotime($po['date_created'])) ?></small>
+                            </div>
+                            <div class="text-right">
+                                <span class="badge badge-warning">₱<?= number_format($po['total_amount'],2) ?></span>
+                            </div>
+                        </a>
+                    <?php endwhile; ?>
+                </div>
+            </div>
+            <?php endif; ?>
             <table class="table table-striped table-bordered">
                 <colgroup>
                     <col width="5%">
@@ -40,7 +66,7 @@
                                            order by o.status asc, unix_timestamp(o.date_created) desc ");
                     while($row = $orders->fetch_assoc()):
                     ?>
-                        <tr>
+                        <tr id="order-row-<?= $row['id'] ?>">
                             <td class="text-center"><?= $i++ ?></td>
                             <td><?= date("Y-m-d H:i", strtotime($row['date_created'])) ?></td>
                             <td><?= $row['ref_code'] ?></td>
@@ -68,9 +94,19 @@
                                     <span class="badge badge-danger px-3 rounded-pill">Cancelled</span>
                                 <?php endif; ?>
                             </td>
-                            <td class="text-center">
-                                <a class="btn btn-flat btn-sm btn-default border view_data" href="./?page=orders/view_order&id=<?= $row['id'] ?>" data-id="<?= $row['id'] ?>"><i class="fa fa-eye"></i> View</a>
-                            </td>
+                                                        <td align="center">
+                                                                 <button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">
+                                                                    Action
+                                                                    <span class="sr-only">Toggle Dropdown</span>
+                                                                </button>
+                                                                <div class="dropdown-menu" role="menu">
+                                                                    <a class="dropdown-item view_data" href="javascript:void(0)" data-id="<?= $row['id'] ?>"><span class="fa fa-eye text-primary"></span> View</a>
+                                                                    <div class="dropdown-divider"></div>
+                                                                    <a class="dropdown-item edit_data" href="javascript:void(0)" data-id="<?= $row['id'] ?>"><span class="fa fa-edit text-primary"></span> Update Status</a>
+                                                                    <div class="dropdown-divider"></div>
+                                                                    <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?= $row['id'] ?>"><span class="fa fa-trash text-danger"></span> Delete</a>
+                                                                </div>
+                                                        </td>
                         </tr>
                     <?php endwhile; ?>
                 </tbody>
@@ -88,4 +124,41 @@
 			location.reload();
 		}, 30000);
     })
+</script>
+<script>
+    $(document).ready(function(){
+        $('.view_data').click(function(){
+            var id = $(this).attr('data-id');
+            uni_modal("Order Details","orders/view_order.php?id="+id,'large')
+        })
+        $('.edit_data').click(function(){
+            var id = $(this).attr('data-id');
+            uni_modal("Update Order Status","orders/update_status.php?id="+id,'medium')
+        })
+        $('.delete_data').click(function(){
+            _conf("Are you sure to delete this order permanently?","delete_order",[$(this).attr('data-id')])
+        })
+    })
+    function delete_order(id){
+        start_loader();
+        $.ajax({
+            url:_base_url_+'classes/Master.php?f=delete_order',
+            method:'POST',
+            data:{id:id},
+            dataType:'json',
+            error:err=>{
+                console.error('Delete order error:', err);
+                alert_toast('An error occurred.','error');
+                end_loader();
+            },
+            success:function(resp){
+                if(resp.status == 'success'){
+                    location.reload();
+                }else{
+                    alert_toast(resp.msg || 'An error occurred.','error');
+                    end_loader();
+                }
+            }
+        })
+    }
 </script>

@@ -140,14 +140,36 @@ if(isset($_GET['id'])){
     function delete_order(){
         start_loader();
         $.ajax({
-            url:_base_url_+'classes/master.php?f=delete_order',
+            url:_base_url_+'classes/Master.php?f=delete_order',
             data:{id : "<?= isset($id) ? $id : '' ?>"},
             method:'POST',
             dataType:'json',
             error:err=>{
-                console.error(err)
-                alert_toast('An error occurred.','error')
-                end_loader()
+                console.error('Delete order AJAX error:', err);
+                // attempt to parse responseText in case server returned JSON with extra output
+                try{
+                    if(err && err.responseText){
+                        var parsed = null;
+                        try{ parsed = JSON.parse(err.responseText); }catch(e){ parsed = null; }
+                        if(!parsed){
+                            var txt = err.responseText;
+                            var s = txt.indexOf('{');
+                            var e = txt.lastIndexOf('}');
+                            if(s !== -1 && e !== -1 && e > s){
+                                var sub = txt.substring(s, e+1);
+                                try{ parsed = JSON.parse(sub); }catch(e2){ parsed = null; }
+                            }
+                        }
+                        if(parsed && parsed.status == 'success'){
+                            location.replace('./?page=orders');
+                            return;
+                        }else if(parsed && parsed.msg){
+                            alert_toast(parsed.msg,'error');
+                        }
+                    }
+                }catch(parseErr){ console.log('Response parse failed', parseErr); }
+                alert_toast('An error occurred while deleting the order.','error');
+                end_loader();
             },
             success:function(resp){
                 if(resp.status == 'success'){

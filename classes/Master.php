@@ -64,6 +64,50 @@ Class Master extends DBConnection {
 		}
 		return json_encode($resp);
 	}
+
+	function delete_order(){
+		extract($_POST);
+		$resp = array();
+		// Only allow admin-like roles to delete orders
+		$role = $this->settings->userdata('role_type');
+		$allowed = array('admin','branch_supervisor');
+		if(!in_array($role, $allowed)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Access denied.';
+			return json_encode($resp);
+		}
+		$id = isset($id) ? intval($id) : 0;
+		if($id <= 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Invalid order id.';
+			return json_encode($resp);
+		}
+		$check = $this->conn->query("SELECT id FROM `order_list` WHERE id = '{$id}'");
+		if(!$check || $check->num_rows == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Order not found.';
+			return json_encode($resp);
+		}
+		// Start transaction
+		$this->conn->begin_transaction();
+		try{
+			// Delete order items first
+			$del_items = $this->conn->query("DELETE FROM `order_items` WHERE order_id = '{$id}'");
+			if($del_items === false) throw new Exception('Failed to delete order items: '.$this->conn->error);
+			// Delete the order
+			$del = $this->conn->query("DELETE FROM `order_list` WHERE id = '{$id}'");
+			if($del === false) throw new Exception('Failed to delete order: '.$this->conn->error);
+			$this->conn->commit();
+			$resp['status'] = 'success';
+			$resp['msg'] = 'Order successfully deleted.';
+			$this->settings->set_flashdata('success',$resp['msg']);
+		}catch(Exception $e){
+			$this->conn->rollback();
+			$resp['status'] = 'failed';
+			$resp['msg'] = $e->getMessage();
+		}
+		return json_encode($resp);
+	}
 	
 	function delete_category(){
 		extract($_POST);
@@ -336,11 +380,12 @@ Class Master extends DBConnection {
 			
 			// Create order - only use columns that exist in the database
 			$addons_data = isset($_POST['addons']) ? $this->conn->real_escape_string($_POST['addons']) : '';
-            $order_data = "client_id = '{$client_id}', 
-                           ref_code = '{$ref_code}', 
-                           total_amount = '{$total_amount}', 
-                           delivery_address = '', 
-                           status = 0";
+			$order_data = "client_id = '{$client_id}', 
+						   ref_code = '{$ref_code}', 
+						   total_amount = '{$total_amount}', 
+						   delivery_address = '', 
+						   status = 0,
+						   date_created = NOW()";
 			
 			$create_order = $this->conn->query("INSERT INTO order_list SET {$order_data}");
 			

@@ -214,7 +214,6 @@
                                     <?php else: ?>
                                         <span class="badge badge-secondary">No color options</span>
                                     <?php endif; ?>
-                                    
                                     <?php if(!empty($row['color'])): ?>
                                         <small class="text-success ml-2">
                                             <i class="fa fa-check-circle"></i> Selected: <strong><?= htmlspecialchars($row['color']) ?></strong>
@@ -309,7 +308,7 @@
                                                 <button class="btn btn-sm btn-outline-secondary btn-plus" data-id='<?= $row['id'] ?>' <?= $available <= $row['quantity'] ? 'disabled' : '' ?>><i class="fa fa-plus"></i></button>
                                             </div>
                                         </div>
-                                        <span class="ml-2">X ₱<?= number_format($row['price'],2) ?></span>
+                                        <span class="ml-2 unit-price">X ₱<?= number_format($row['price'],2) ?></span>
                                     </div>
                                     <div class="d-flex align-items-center">
                                         <h5 class="mb-0 text-primary"><b>₱<?= number_format($row['quantity'] * $row['price'],2) ?></b></h5>
@@ -335,7 +334,7 @@
                             <h4 class="text-center text-dark">SUBTOTAL</h4>
                     </div>
                     <div class="col-auto text-right">
-                        <h4 class="text-dark"><b>₱<?= number_format($total,2) ?></b></h4>
+                        <h4 class="text-dark"><b id="subtotal_display">₱<?= number_format($total,2) ?></b></h4>
                     </div>
                 </div>
                 <div class="d-flex align-items-center w-100 border">
@@ -490,20 +489,31 @@
         })
         
         function proceedToCheckout(){
-            // Get add-ons data from localStorage
-            var selectedAddons = localStorage.getItem('selected_addons') || '';
-            var selectedAddonDetails = localStorage.getItem('selected_addon_details') || '[]';
-            var addonsTotal = localStorage.getItem('addons_total') || '0';
-            
-            // Pass add-ons data to checkout page
-            var url = './?p=place_order';
-            if(selectedAddons) {
-                url += '&addons=' + encodeURIComponent(selectedAddons);
-                url += '&addon_details=' + encodeURIComponent(selectedAddonDetails);
-                url += '&addons_total=' + encodeURIComponent(addonsTotal);
-            }
-            
-            location.href = url;
+                try{
+                    // Get add-ons data from localStorage
+                    var selectedAddons = localStorage.getItem('selected_addons') || '';
+                    var selectedAddonDetails = localStorage.getItem('selected_addon_details') || '[]';
+                    var addonsTotal = localStorage.getItem('addons_total') || '0';
+
+                    // Pass add-ons data to checkout page
+                    var url = _base_url_ + '?p=place_order';
+                    if(selectedAddons) {
+                        url += '&addons=' + encodeURIComponent(selectedAddons);
+                        url += '&addon_details=' + encodeURIComponent(selectedAddonDetails);
+                        url += '&addons_total=' + encodeURIComponent(addonsTotal);
+                    }
+
+                    // final validation: ensure there's at least one cart item
+                    if($('#cart-list .cart-item').length === 0){
+                        alert_toast('Shopping cart is empty.','error');
+                        return;
+                    }
+
+                    window.location.href = url;
+                }catch(e){
+                    console.error('Checkout error', e);
+                    alert_toast('An error occurred while proceeding to checkout.','error');
+                }
         }
     })
     function remove_from_cart($id){

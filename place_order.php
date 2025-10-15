@@ -416,6 +416,38 @@ require_once('./inc/sess_auth.php');
                 dataType: 'json',
                 error:err=>{
                     console.log(err);
+                    // Try to parse responseText in case server returned JSON but parsing failed due to extra output
+                    try{
+                        if(err && err.responseText){
+                            var parsed = null;
+                            try{ parsed = JSON.parse(err.responseText); }catch(e){ parsed = null; }
+                            if(!parsed){
+                                var txt = err.responseText;
+                                var s = txt.indexOf('{');
+                                var e = txt.lastIndexOf('}');
+                                if(s !== -1 && e !== -1 && e > s){
+                                    var sub = txt.substring(s, e+1);
+                                    try{ parsed = JSON.parse(sub); }catch(e2){ parsed = null; }
+                                }
+                            }
+                            if(parsed){
+                                // Call the success handler path by simulating resp
+                                end_loader();
+                                $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Advance Order');
+                                if(parsed.status == 'success'){
+                                    window.location.replace('./?p=my_orders');
+                                    return;
+                                } else if(parsed.status == 'failed' && parsed.msg){
+                                    var el = $('<div>');
+                                    el.addClass("alert alert-danger err-msg").text(parsed.msg);
+                                    _this.prepend(el);
+                                    el.show('slow');
+                                    $("html, body").animate({ scrollTop: _this.closest('.card').offset().top }, "fast");
+                                    return;
+                                }
+                            }
+                        }
+                    }catch(parseErr){ console.log('Response parse failed', parseErr); }
                     alert_toast("An error occurred",'error');
                     end_loader();
                     $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Advance Order');
