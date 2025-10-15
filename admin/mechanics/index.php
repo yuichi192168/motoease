@@ -16,15 +16,17 @@
 			<table class="table table-bordered table-stripped">
 				<colgroup>
 					<col width="5%">
+					<col width="10%">
 					<col width="15%">
-					<col width="30%">
 					<col width="25%">
+					<col width="20%">
 					<col width="10%">
 					<col width="15%">
 				</colgroup>
 				<thead>
 					<tr>
 						<th>#</th>
+						<th>Avatar</th>
 						<th>Date Created</th>
 						<th>Name</th>
 						<th>Contact</th>
@@ -43,6 +45,9 @@
 					?>
 						<tr>
 							<td class="text-center"><?php echo $i++; ?></td>
+							<td class="text-center">
+								<img src="<?php echo validate_image(isset($row['avatar']) ? $row['avatar'] : '') ?>" alt="Avatar" class="img-fluid img-thumbnail" style="height: 50px; width: 50px; object-fit: cover; border-radius: 50%;">
+							</td>
 							<td><?php echo date("Y-m-d H:i",strtotime($row['date_created'])) ?></td>
 							<td><?php echo ucwords($row['name']) ?></td>
 							<td>

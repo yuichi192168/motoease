@@ -37,7 +37,7 @@ $items = $conn->query("SELECT oi.*,
                               p.name as product_name, 
                               p.description as product_description, 
                               p.image_path,
-                              COALESCE(oi.price, p.price, 0) as unit_price
+                              p.price as unit_price
                       FROM order_items oi 
                       INNER JOIN product_list p ON oi.product_id = p.id 
                       WHERE oi.order_id = '{$order_id}'");

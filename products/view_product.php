@@ -284,24 +284,18 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                     $slides[] = ['color'=> isset($name) ? $name : 'Default', 'img'=> (isset($image_path) ? $image_path : '')];
                                 }
                             ?>
-                            <div class="color-carousel" id="colorCarousel" data-index="0">
-                                <div class="color-track" id="colorTrack">
-                                    <?php foreach($slides as $s): ?>
-                                        <div class="color-slide" data-color="<?= htmlspecialchars($s['color']) ?>">
-                                            <img src="<?= validate_image($s['img']) ?>" loading="lazy" alt="<?= htmlspecialchars($s['color']) ?> - <?= isset($name) ? htmlspecialchars($name) : '' ?>" onclick="openImageModal('<?= validate_image($s['img']) ?>', '<?= htmlspecialchars($s['color']) ?> - <?= isset($name) ? htmlspecialchars($name) : '' ?>')">
-                                        </div>
-                                    <?php endforeach; ?>
+                            <div class="available-colors">
+                                <h6 class="mb-2">Available Colors:</h6>
+                                <div class="color-list">
+                                    <?php if(!empty($colors)): ?>
+                                        <?php foreach($colors as $color): ?>
+                                            <span class="badge badge-primary mr-2 mb-2" style="font-size: 0.9rem; padding: 8px 12px;"><?= htmlspecialchars($color) ?></span>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <span class="text-muted">No specific colors available</span>
+                                    <?php endif; ?>
                                 </div>
-                                <button type="button" class="nav-btn nav-prev" id="ccPrev" aria-label="Previous">‹</button>
-                                <button type="button" class="nav-btn nav-next" id="ccNext" aria-label="Next">›</button>
                             </div>
-                            <div class="mt-2 text-center">
-                                <small class="text-muted">Available Colors:</small>
-                                <?php foreach($slides as $idx=>$s): ?>
-                                    <span class="badge badge-secondary mx-1 mb-1"><?= htmlspecialchars($s['color']) ?></span>
-                                <?php endforeach; ?>
-                            </div>
-                            <div class="color-label text-center" id="colorLabel"><?= htmlspecialchars($slides[0]['color']) ?></div>
                         </div>
                     </div>
                     

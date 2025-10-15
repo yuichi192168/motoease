@@ -14,12 +14,12 @@
       }
       $('#viewer_modal .modal-content video,#viewer_modal .modal-content img').remove()
       $('#viewer_modal .modal-content').append(view)
-      $('#viewer_modal').modal({
-              show:true,
-              backdrop:'static',
-              keyboard:false,
-              focus:true
-            })
+      // Use Bootstrap 5 modal API
+      var viewerModal = new bootstrap.Modal(document.getElementById('viewer_modal'), {
+              backdrop: 'static',
+              keyboard: false
+      });
+      viewerModal.show();
             end_loader()  
 
   }
@@ -40,12 +40,12 @@
                     }else{
                         $('#uni_modal .modal-dialog').removeAttr("class").addClass("modal-dialog modal-md modal-dialog-centered")
                     }
-                    $('#uni_modal').modal({
-                      show:true,
-                      backdrop:'static',
-                      keyboard:false,
-                      focus:true
-                    })
+                    // Use Bootstrap 5 modal API
+                    var uniModal = new bootstrap.Modal(document.getElementById('uni_modal'), {
+                        backdrop: 'static',
+                        keyboard: false
+                    });
+                    uniModal.show();
                     end_loader()
                 }
             }
@@ -54,7 +54,13 @@
     window._conf = function($msg='',$func='',$params = []){
        $('#confirm_modal #confirm').attr('onclick',$func+"("+$params.join(',')+")")
        $('#confirm_modal .modal-body').html($msg)
-       $('#confirm_modal').modal('show')
+       
+       // Use Bootstrap 5 modal API
+       var confirmModal = new bootstrap.Modal(document.getElementById('confirm_modal'), {
+           backdrop: 'static',
+           keyboard: false
+       });
+       confirmModal.show();
     }
   })
 </script>

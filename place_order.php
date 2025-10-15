@@ -1,3 +1,6 @@
+<?php 
+require_once('./inc/sess_auth.php');
+?>
 <div class="content py-5 mt-3">
     <div class="container">
         <div class="row">
@@ -11,6 +14,13 @@
                         <?php 
                         // Check if order contains motorcycle items and application status
                         $customer_id = $_settings->userdata('id');
+                        
+                        // Check if user is logged in
+                        if(empty($customer_id) || $customer_id <= 0) {
+                            echo '<div class="alert alert-danger">Please log in to proceed with checkout.</div>';
+                            return;
+                        }
+                        
                         $motorcycle_items = $conn->query("SELECT COUNT(*) as count FROM cart_list c 
                                                         INNER JOIN product_list p ON c.product_id = p.id 
                                                         INNER JOIN categories cat ON p.category_id = cat.id 
@@ -39,8 +49,10 @@
                         <?php endif; ?>
                         <?php 
                         $total = 0;
-                        $cart = $conn->query("SELECT c.*,p.name, p.price, p.image_path,b.name as brand, cc.category FROM `cart_list` c inner join product_list p on c.product_id = p.id inner join brand_list b on p.brand_id = b.id inner join categories cc on p.category_id = cc.id where c.client_id = '{$_settings->userdata('id')}' order by p.name asc");
-                        while($row = $cart->fetch_assoc()):
+                        $cart = $conn->query("SELECT c.*,p.name, p.price, p.image_path,b.name as brand, cc.category FROM `cart_list` c inner join product_list p on c.product_id = p.id inner join brand_list b on p.brand_id = b.id inner join categories cc on p.category_id = cc.id where c.client_id = '{$customer_id}' order by p.name asc");
+                        
+                        if($cart && $cart->num_rows > 0) {
+                            while($row = $cart->fetch_assoc()):
                             $total += ($row['quantity'] * $row['price']);
                         ?>
                         <div class="d-flex align-items-center w-100 border-bottom py-2">
@@ -60,12 +72,11 @@
                             </div>
                         </div>
                         <?php endwhile; ?>
-                        
-                        <?php if($cart->num_rows <= 0): ?>
+                        <?php } else { ?>
                         <div class="text-center py-3">
                             <small class="text-muted">No items in cart</small>
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
                         
                         <?php 
                         // Get add-ons data from URL parameters

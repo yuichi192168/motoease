@@ -141,7 +141,7 @@ Class Master extends DBConnection {
 				return json_encode($resp);
 			}
 			
-            $sql = "INSERT INTO `cart_list` (client_id, product_id, color, quantity) VALUES ('{$client_id}', '{$product_id}', {$color_sql}, '{$quantity}')";
+            $sql = "INSERT INTO `cart_list` (client_id, product_id, color, quantity, date_added) VALUES ('{$client_id}', '{$product_id}', {$color_sql}, '{$quantity}', NOW())";
 		}
 		
 		$save = $this->conn->query($sql);
@@ -160,73 +160,74 @@ Class Master extends DBConnection {
 	function update_cart_quantity(){
 		extract($_POST);
 		$client_id = $this->settings->userdata('id');
+		$resp = array();
+		
+		// Debug logging
+		error_log("Update cart quantity called - cart_id: " . $cart_id . ", quantity: " . $quantity . ", client_id: " . $client_id);
 		
 		// Validate inputs
-		if(empty($cart_id) || empty($quantity)){
+		if(empty($cart_id) || $cart_id == 0 || $cart_id == '0'){
 			$resp['status'] = 'failed';
-			$resp['msg'] = "Invalid input parameters.";
+			$resp['msg'] = "Invalid cart item ID.";
+			error_log("Invalid cart_id: " . $cart_id);
+			return json_encode($resp);
+		}
+		
+		if(empty($quantity)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Quantity parameter is required.";
+			error_log("Empty quantity parameter");
 			return json_encode($resp);
 		}
 		
 		// Sanitize inputs
-		$cart_id = $this->conn->real_escape_string($cart_id);
-		$quantity = $this->conn->real_escape_string($quantity);
+		$cart_id = intval($cart_id);
+		$quantity = trim($quantity);
 		
 		// Get current cart item
 		$cart_item = $this->conn->query("SELECT c.*, p.name FROM cart_list c 
 										INNER JOIN product_list p ON c.product_id = p.id 
 										WHERE c.id = '{$cart_id}' AND c.client_id = '{$client_id}'");
 		
-		if($cart_item->num_rows == 0){
+		if(!$cart_item || $cart_item->num_rows == 0){
 			$resp['status'] = 'failed';
-			$resp['msg'] = "Cart item not found.";
+			$resp['msg'] = "Cart item not found or already removed.";
+			error_log("Cart item not found - cart_id: " . $cart_id . ", client_id: " . $client_id);
 			return json_encode($resp);
 		}
 		
 		$item = $cart_item->fetch_assoc();
-		$current_qty = $item['quantity'];
+		$current_qty = floatval($item['quantity']);
 		
 		// Parse quantity change
+		$new_qty = $current_qty;
 		if(strpos($quantity, '+') !== false){
-			$new_qty = $current_qty + (int)str_replace('+', '', $quantity);
+			$change = intval(str_replace(['+', ' '], '', $quantity));
+			$new_qty = $current_qty + $change;
 		} elseif(strpos($quantity, '-') !== false){
-			$new_qty = $current_qty - (int)str_replace('-', '', $quantity);
+			$change = intval(str_replace(['-', ' '], '', $quantity));
+			$new_qty = $current_qty - $change;
 		} else {
-			$new_qty = (int)$quantity;
+			$new_qty = intval($quantity);
 		}
 		
-		// Validate new quantity
-		if($new_qty <= 0){
-			// Remove item from cart
-			$sql = "DELETE FROM cart_list WHERE id = '{$cart_id}'";
-		} else {
-			// Check stock availability
-			$stocks = $this->conn->query("SELECT SUM(quantity) as total_stock FROM stock_list WHERE product_id = '{$item['product_id']}' AND type = 1")->fetch_assoc()['total_stock'];
-			$out = $this->conn->query("SELECT SUM(oi.quantity) as total_out FROM order_items oi 
-									  INNER JOIN order_list ol ON oi.order_id = ol.id 
-									  WHERE oi.product_id = '{$item['product_id']}' AND ol.status != 5")->fetch_assoc()['total_out'];
-			
-			$stocks = $stocks > 0 ? $stocks : 0;
-			$out = $out > 0 ? $out : 0;
-			$available = $stocks - $out;
-			
-			if($new_qty > $available){
-				$resp['status'] = 'failed';
-				$resp['msg'] = "Cannot update quantity. Only {$available} units available in stock.";
-				return json_encode($resp);
-			}
-			
-			$sql = "UPDATE cart_list SET quantity = '{$new_qty}' WHERE id = '{$cart_id}'";
-		}
+		// Ensure minimum quantity of 1
+		$new_qty = max(1, $new_qty);
 		
+		// Update quantity
+		$sql = "UPDATE cart_list SET quantity = '{$new_qty}' WHERE id = '{$cart_id}' AND client_id = '{$client_id}'";
 		$update = $this->conn->query($sql);
+		
 		if($update){
 			$resp['status'] = 'success';
 			$resp['msg'] = "Cart updated successfully.";
+			$resp['new_quantity'] = $new_qty;
+			error_log("Cart updated successfully - new_qty: " . $new_qty);
 		}else{
 			$resp['status'] = 'failed';
 			$resp['msg'] = "Failed to update cart.";
 			$resp['error'] = $this->conn->error;
+			error_log("Failed to update cart: " . $this->conn->error);
 		}
 		return json_encode($resp);
 	}
@@ -234,16 +235,21 @@ Class Master extends DBConnection {
 	function remove_from_cart(){
 		extract($_POST);
 		$client_id = $this->settings->userdata('id');
+		$resp = array();
+		
+		// Debug logging
+		error_log("Remove from cart called - cart_id: " . $cart_id . ", client_id: " . $client_id);
 		
 		// Validate inputs
-		if(empty($cart_id)){
+		if(empty($cart_id) || $cart_id == 0 || $cart_id == '0'){
 			$resp['status'] = 'failed';
-			$resp['msg'] = "Invalid cart item.";
+			$resp['msg'] = "Invalid cart item ID.";
+			error_log("Invalid cart_id for removal: " . $cart_id);
 			return json_encode($resp);
 		}
 		
 		// Sanitize inputs
-		$cart_id = $this->conn->real_escape_string($cart_id);
+		$cart_id = intval($cart_id);
 		
 		// Verify ownership first
 		$exists = $this->conn->query("SELECT id FROM cart_list WHERE id = '{$cart_id}' AND client_id = '{$client_id}'");
@@ -251,6 +257,7 @@ Class Master extends DBConnection {
 			// Idempotent success: item already gone or not owned by user
 			$resp['status'] = 'success';
 			$resp['msg'] = "Item removed from cart successfully.";
+			error_log("Cart item not found for removal - cart_id: " . $cart_id . ", client_id: " . $client_id);
 			return json_encode($resp);
 		}
 		
@@ -260,10 +267,12 @@ Class Master extends DBConnection {
 		if($delete){
 			$resp['status'] = 'success';
 			$resp['msg'] = "Item removed from cart successfully.";
+			error_log("Cart item removed successfully - cart_id: " . $cart_id);
 		}else{
 			$resp['status'] = 'failed';
 			$resp['msg'] = "Failed to remove item from cart.";
 			$resp['error'] = $this->conn->error;
+			error_log("Failed to remove cart item: " . $this->conn->error);
 		}
 		return json_encode($resp);
 	}
@@ -1054,6 +1063,121 @@ Class Master extends DBConnection {
 		}
 		if($resp['status'] == 'success')
 		$this->settings->set_flashdata('success',$resp['status']);
+		return json_encode($resp);
+	}
+	
+	function delete_invoice(){
+		extract($_POST);
+		$resp = array();
+		
+		// Debug logging
+		error_log("Delete invoice called with ID: " . $id);
+		
+		// Check if invoice exists and is not paid
+		$check = $this->conn->query("SELECT id, payment_status FROM `invoices` WHERE id = '{$id}'");
+		if($check->num_rows == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Invoice not found.";
+			error_log("Invoice not found: " . $id);
+			return json_encode($resp);
+		}
+		
+		$invoice = $check->fetch_assoc();
+		if($invoice['payment_status'] == 'paid'){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Cannot delete paid invoice.";
+			return json_encode($resp);
+		}
+		
+		// Start transaction
+		$this->conn->query("START TRANSACTION");
+		
+		try {
+			// Delete invoice items first
+			$del_items = $this->conn->query("DELETE FROM `invoice_items` WHERE invoice_id = '{$id}'");
+			if(!$del_items){
+				throw new Exception("Failed to delete invoice items: " . $this->conn->error);
+			}
+			
+			// Delete any receipts for this invoice
+			$del_receipts = $this->conn->query("DELETE FROM `receipts` WHERE invoice_id = '{$id}'");
+			if(!$del_receipts){
+				throw new Exception("Failed to delete receipts: " . $this->conn->error);
+			}
+			
+			// Delete the invoice
+			$del_invoice = $this->conn->query("DELETE FROM `invoices` WHERE id = '{$id}'");
+			if(!$del_invoice){
+				throw new Exception("Failed to delete invoice: " . $this->conn->error);
+			}
+			
+			// Commit transaction
+			$this->conn->query("COMMIT");
+			
+			$resp['status'] = 'success';
+			$resp['msg'] = "Invoice successfully deleted.";
+			$this->settings->set_flashdata('success', $resp['msg']);
+			
+		} catch (Exception $e) {
+			// Rollback transaction
+			$this->conn->query("ROLLBACK");
+			$resp['status'] = 'failed';
+			$resp['msg'] = $e->getMessage();
+			error_log("Delete invoice error: " . $e->getMessage());
+		}
+		
+		error_log("Delete invoice response: " . json_encode($resp));
+		return json_encode($resp);
+	}
+	
+	function cancel_order(){
+		extract($_POST);
+		$resp = array();
+		
+		// Check if order exists and can be cancelled
+		$check = $this->conn->query("SELECT id, status, client_id FROM `order_list` WHERE id = '{$id}'");
+		if($check->num_rows == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Order not found.";
+			return json_encode($resp);
+		}
+		
+		$order = $check->fetch_assoc();
+		
+		// Check if user owns this order
+		if($order['client_id'] != $this->settings->userdata('id')){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "You can only cancel your own orders.";
+			return json_encode($resp);
+		}
+		
+		// Check if order can be cancelled (only pending orders)
+		if($order['status'] != 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Only pending orders can be cancelled.";
+			return json_encode($resp);
+		}
+		
+		// Update order status to cancelled (status = 5)
+		$update = $this->conn->query("UPDATE `order_list` SET status = 5 WHERE id = '{$id}'");
+		if($update){
+			$resp['status'] = 'success';
+			$resp['msg'] = "Order cancelled successfully.";
+			
+			// Send notification
+			try {
+				if(file_exists(base_app.'classes/Notification.php')){
+					require_once base_app.'classes/Notification.php';
+					$notif = new Notification();
+					$notif->createNotification($order['client_id'], 'order', 'Order Cancelled', 'Your order has been cancelled successfully.', [ 'order_id' => $id ]);
+				}
+			} catch (Exception $e) { /* non-fatal */ }
+		} else {
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to cancel order.";
+			$resp['error'] = $this->conn->error;
+		}
+		
 		return json_encode($resp);
 	}
 	
@@ -2577,6 +2701,93 @@ Class Master extends DBConnection {
         
         return json_encode($resp);
     }
+
+    function cleanup_invalid_cart_items(){
+        $resp = array();
+        
+        try {
+            // Start transaction
+            $this->conn->query("START TRANSACTION");
+            
+            // 1. Remove cart items with ID 0 or invalid product_id
+            $this->conn->query("DELETE FROM cart_list WHERE id = 0 OR product_id = 0 OR product_id IS NULL");
+            
+            // 2. Remove cart items that reference non-existent products
+            $this->conn->query("DELETE c FROM cart_list c 
+                              LEFT JOIN product_list p ON c.product_id = p.id 
+                              WHERE p.id IS NULL");
+            
+            // 3. Remove cart items with invalid client_id
+            $this->conn->query("DELETE c FROM cart_list c 
+                              LEFT JOIN client_list cl ON c.client_id = cl.id 
+                              WHERE cl.id IS NULL");
+            
+            // 4. Update any cart items with quantity 0 or negative
+            $this->conn->query("UPDATE cart_list SET quantity = 1 WHERE quantity <= 0");
+            
+            // 5. Set proper default values for any NULL quantities
+            $this->conn->query("UPDATE cart_list SET quantity = 1 WHERE quantity IS NULL");
+            
+            // 6. Ensure date_added is set for any items without it
+            $this->conn->query("UPDATE cart_list SET date_added = NOW() WHERE date_added IS NULL");
+            
+            // 7. Remove duplicate cart items (keep the most recent one)
+            $this->conn->query("DELETE c1 FROM cart_list c1
+                              INNER JOIN cart_list c2 
+                              WHERE c1.id < c2.id 
+                              AND c1.client_id = c2.client_id 
+                              AND c1.product_id = c2.product_id 
+                              AND (c1.color = c2.color OR (c1.color IS NULL AND c2.color IS NULL))");
+            
+            // Commit transaction
+            $this->conn->query("COMMIT");
+            
+            $resp['status'] = 'success';
+            $resp['msg'] = "Cart cleanup completed successfully.";
+            
+        } catch (Exception $e) {
+            // Rollback transaction
+            $this->conn->query("ROLLBACK");
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to cleanup cart items: " . $e->getMessage();
+        }
+        
+        return json_encode($resp);
+    }
+
+    function manual_cart_cleanup(){
+        $resp = array();
+        
+        try {
+            // Start transaction
+            $this->conn->query("START TRANSACTION");
+            
+            // Get count of items to be cleaned
+            $count_query = $this->conn->query("SELECT COUNT(*) as count FROM cart_list WHERE id = 0 OR product_id = 0 OR product_id IS NULL");
+            $count = $count_query->fetch_assoc()['count'];
+            
+            // Perform cleanup
+            $this->conn->query("DELETE FROM cart_list WHERE id = 0 OR product_id = 0 OR product_id IS NULL");
+            $this->conn->query("DELETE c FROM cart_list c LEFT JOIN product_list p ON c.product_id = p.id WHERE p.id IS NULL");
+            $this->conn->query("DELETE c FROM cart_list c LEFT JOIN client_list cl ON c.client_id = cl.id WHERE cl.id IS NULL");
+            $this->conn->query("UPDATE cart_list SET quantity = 1 WHERE quantity <= 0 OR quantity IS NULL");
+            $this->conn->query("UPDATE cart_list SET date_added = NOW() WHERE date_added IS NULL");
+            
+            // Commit transaction
+            $this->conn->query("COMMIT");
+            
+            $resp['status'] = 'success';
+            $resp['msg'] = "Cart cleanup completed successfully. Removed {$count} invalid items.";
+            
+        } catch (Exception $e) {
+            // Rollback transaction
+            $this->conn->query("ROLLBACK");
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Failed to cleanup cart items: " . $e->getMessage();
+        }
+        
+        return json_encode($resp);
+    }
 }
 
 $Master = new Master();
@@ -2745,6 +2956,12 @@ $sysset = new SystemSettings();
 	case 'delete_customer':
 		echo $Master->delete_customer();
 	break;
+	case 'delete_invoice':
+		echo $Master->delete_invoice();
+	break;
+	case 'cancel_order':
+		echo $Master->cancel_order();
+	break;
 	case 'update_promo':
 		echo $Master->update_promo();
 	break;
@@ -2759,6 +2976,12 @@ $sysset = new SystemSettings();
 	break;
 	case 'add_document':
 		echo $Master->add_document();
+	break;
+	case 'cleanup_invalid_cart_items':
+		echo $Master->cleanup_invalid_cart_items();
+	break;
+	case 'manual_cart_cleanup':
+		echo $Master->manual_cart_cleanup();
 	break;
 	default:
 		break;

@@ -304,6 +304,12 @@ $(document).ready(function(){
 		$('#createReceiptModal').modal('show');
 	});
 
+	// Delete invoice
+	$(document).on('click', '.delete_invoice', function(){
+		var invoice_id = $(this).data('id');
+		_conf("Are you sure to delete this invoice permanently?","delete_invoice",[invoice_id]);
+	});
+
 	// Receipt form submission
 	$('#receipt_form').submit(function(e){
 		e.preventDefault();
@@ -423,7 +429,8 @@ $(document).ready(function(){
 						html += '<td>';
 						html += '<button class="btn btn-sm btn-primary view_invoice" data-id="' + invoice.id + '">View</button> ';
 						if(invoice.payment_status != 'paid'){
-							html += '<button class="btn btn-sm btn-success create_receipt" data-id="' + invoice.id + '" data-amount="' + invoice.total_amount + '">Receipt</button>';
+							html += '<button class="btn btn-sm btn-success create_receipt" data-id="' + invoice.id + '" data-amount="' + invoice.total_amount + '">Receipt</button> ';
+							html += '<button class="btn btn-sm btn-danger delete_invoice" data-id="' + invoice.id + '">Delete</button>';
 						}
 						html += '</td>';
 						html += '</tr>';
@@ -518,6 +525,33 @@ $(document).ready(function(){
 				} else {
 					alert_toast(resp.msg, 'error');
 				}
+			}
+		});
+	}
+
+	function delete_invoice(invoice_id){
+		start_loader();
+		console.log('Deleting invoice with ID:', invoice_id);
+		$.ajax({
+			url: _base_url_ + "classes/Master.php?f=delete_invoice",
+			method: "POST",
+			data: {id: invoice_id},
+			dataType: "json",
+			error: err => {
+				console.error('AJAX Error:', err);
+				alert_toast("An error occurred while deleting invoice.", 'error');
+				end_loader();
+			},
+			success: function(resp){
+				console.log('Delete response:', resp);
+				if(typeof resp == 'object' && resp.status == 'success'){
+					alert_toast("Invoice deleted successfully.", 'success');
+					loadInvoices();
+					loadStats();
+				} else {
+					alert_toast(resp.msg || "An error occurred while deleting invoice.", 'error');
+				}
+				end_loader();
 			}
 		});
 	}

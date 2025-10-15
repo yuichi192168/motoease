@@ -13,10 +13,10 @@
         
         <!-- Desktop navigation -->
         <div class="d-none d-lg-flex navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
-            <a class="nav-link fw-bold" style="font-size:1.05rem;" <?= isset($page) && $page == 'home'? "class='nav-link fw-bold active'" : '' ?> href="./">Home</a>
-            <a class="nav-link fw-bold" style="font-size:1.05rem;" <?= isset($page) && $page == 'products'? "class='nav-link fw-bold active'" : '' ?> href="./?p=products">Products</a>
-            <a class="nav-link fw-bold" style="font-size:1.05rem;" <?= isset($page) && $page == 'services'? "class='nav-link fw-bold active'" : '' ?> href="./?p=services">Services</a>
-            <a class="nav-link fw-bold" style="font-size:1.05rem;" <?= isset($page) && $page == 'about'? "class='nav-link fw-bold active'" : '' ?> href="./?p=about">About Us</a>
+            <a class="nav-link fw-bold text-center" style="font-size:1.2rem; font-weight: 700;" <?= isset($page) && $page == 'home'? "class='nav-link fw-bold active text-center'" : '' ?> href="./">Home</a>
+            <a class="nav-link fw-bold text-center" style="font-size:1.2rem; font-weight: 700;" <?= isset($page) && $page == 'products'? "class='nav-link fw-bold active text-center'" : '' ?> href="./?p=products">Products</a>
+            <a class="nav-link fw-bold text-center" style="font-size:1.2rem; font-weight: 700;" <?= isset($page) && $page == 'services'? "class='nav-link fw-bold active text-center'" : '' ?> href="./?p=services">Services</a>
+            <a class="nav-link fw-bold text-center" style="font-size:1.2rem; font-weight: 700;" <?= isset($page) && $page == 'about'? "class='nav-link fw-bold active text-center'" : '' ?> href="./?p=about">About Us</a>
         </div>
         
         <!-- Right side menu - Only show on desktop -->
@@ -131,25 +131,25 @@
         <nav class="sidebar-nav">
             <ul class="nav flex-column">
                 <li class="nav-item">
-                    <a class="nav-link <?= isset($page) && $page == 'home'? "active" : '' ?>" href="./">
+                    <a class="nav-link fw-bold <?= isset($page) && $page == 'home'? "active" : '' ?>" href="./" style="font-size:1.1rem; font-weight: 700;">
                         <i class="fas fa-home"></i>
                         <span>Home</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <?= isset($page) && $page == 'products'? "active" : '' ?>" href="./?p=products">
+                    <a class="nav-link fw-bold <?= isset($page) && $page == 'products'? "active" : '' ?>" href="./?p=products" style="font-size:1.1rem; font-weight: 700;">
                         <i class="fas fa-motorcycle"></i>
                         <span>Products</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <?= isset($page) && $page == 'services'? "active" : '' ?>" href="./?p=services">
+                    <a class="nav-link fw-bold <?= isset($page) && $page == 'services'? "active" : '' ?>" href="./?p=services" style="font-size:1.1rem; font-weight: 700;">
                         <i class="fas fa-tools"></i>
                         <span>Services</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <?= isset($page) && $page == 'about'? "active" : '' ?>" href="./?p=about">
+                    <a class="nav-link fw-bold <?= isset($page) && $page == 'about'? "active" : '' ?>" href="./?p=about" style="font-size:1.1rem; font-weight: 700;">
                         <i class="fas fa-info-circle"></i>
                         <span>About Us</span>
                     </a>

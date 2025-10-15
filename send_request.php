@@ -83,7 +83,6 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                     <option value="">Select Vehicle Type</option>
                     <option value="Motorcycle">Motorcycle</option>
                     <option value="Scooter">Scooter</option>
-                    <option value="ATV">ATV</option>
                     <option value="Other">Other</option>
                 </select>
                 <div class="error-msg" id="vehicle_type_error"></div>
@@ -91,7 +90,7 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
             <div class="form-group col-md-6">
                 <label for="vehicle_name" class="control-label">Vehicle Name *</label>
                 <input type="text" name="vehicle_name" id="vehicle_name" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" required 
-                       placeholder="e.g., Honda Click, Yamaha NMAX" maxlength="50">
+                       placeholder="Honda Click 160, Honda Click 125i" maxlength="50">
                 <div class="error-msg" id="vehicle_name_error"></div>
             </div>
             <div class="form-group col-md-6">
@@ -106,7 +105,7 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                 <label for="vehicle_model" class="control-label">Vehicle Model *</label>
                 <input type="text" name="vehicle_model" id="vehicle_model" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" required 
                        pattern="[A-Za-z0-9\s\-\.]+" minlength="2" maxlength="50"
-                       placeholder="e.g., Honda Click 160, Yamaha NMAX 155">
+                       placeholder="Honda Click 160, Honda Click 125i">
                 <div class="error-msg" id="vehicle_model_error"></div>
             </div>
             <div class="form-group col-md-12">
@@ -165,7 +164,6 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
         </div>
         <?php else: ?>
         <div class="text-right">
-            <button type="submit" class="btn btn-primary">Submit Request</button>
             <button type="button" class="btn btn-info" id="send_service_appointment">Send Service Appointment</button>
             <a href="./" class="btn btn-secondary">Cancel</a>
         </div>
@@ -233,6 +231,13 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                                             <div class="text-muted small">Status</div>
                                             <div><?= $status_badge ?></div>
                                         </div>
+                                        <?php if($row['status'] == 0): ?>
+                                        <div class="text-center">
+                                            <button class="btn btn-sm btn-outline-danger cancel_service_request" data-id="<?= $row['id'] ?>">
+                                                <i class="fa fa-times"></i> Cancel Request
+                                            </button>
+                                        </div>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -461,8 +466,42 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                 }
             });
         });
+        
+        // Handle cancel service request button clicks
+        $('.cancel_service_request').click(function(){
+            var request_id = $(this).data('id');
+            cancelServiceRequest(request_id);
+        });
 
     });
+    
+    function cancelServiceRequest(request_id){
+        _conf("Are you sure you want to cancel this service request?","cancel_service_request",[request_id]);
+    }
+    
+    function cancel_service_request(request_id){
+        start_loader();
+        $.ajax({
+            url: _base_url_ + "classes/Master.php?f=cancel_service",
+            method: "POST",
+            data: {id: request_id},
+            dataType: "json",
+            error: err => {
+                console.log(err);
+                alert_toast("An error occurred.", 'error');
+                end_loader();
+            },
+            success: function(resp){
+                if(typeof resp == 'object' && resp.status == 'success'){
+                    alert_toast("Service request cancelled successfully.", 'success');
+                    location.reload();
+                } else {
+                    alert_toast(resp.msg || "An error occurred.", 'error');
+                }
+                end_loader();
+            }
+        });
+    }
 </script>
 
 <?php if ($is_standalone): ?>

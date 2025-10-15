@@ -93,6 +93,9 @@
             echo number_format($pending_orders);
           ?>
         </span>
+        <?php if($pending_orders > 0): ?>
+          <span class="badge badge-warning badge-pill">New</span>
+        <?php endif; ?>
       </div>
     </div>
   </div>
@@ -129,16 +132,70 @@
     </div>
   </div>
 
+  <!-- New Service Requests -->
+  <div class="col-12 col-sm-6 col-md-3">
+    <div class="shadow info-box mb-3">
+      <span class="info-box-icon bg-info elevation-1"><i class="fas fa-tools"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">New Service Requests</span>
+        <span class="info-box-number">
+          <?php 
+            $new_requests = $conn->query("SELECT COUNT(id) as total FROM service_requests WHERE status = 0")->fetch_assoc()['total'];
+            echo number_format($new_requests);
+          ?>
+        </span>
+        <?php if($new_requests > 0): ?>
+          <span class="badge badge-info badge-pill">New</span>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+
   <!-- Finished Requests -->
   <div class="col-12 col-sm-6 col-md-3">
     <div class="shadow info-box mb-3">
-      <span class="info-box-icon bg-yellow elevation-1"><i class="fas fa-file-invoice"></i></span>
+      <span class="info-box-icon bg-success elevation-1"><i class="fas fa-check-circle"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">Finished Requests</span>
         <span class="info-box-number">
           <?php 
             $finished_requests = $conn->query("SELECT COUNT(id) as total FROM service_requests WHERE status = 3")->fetch_assoc()['total'];
             echo number_format($finished_requests);
+          ?>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Appointments -->
+  <div class="col-12 col-sm-6 col-md-3">
+    <div class="shadow info-box mb-3">
+      <span class="info-box-icon bg-warning elevation-1"><i class="fas fa-calendar-plus"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">New Appointments</span>
+        <span class="info-box-number">
+          <?php 
+            $new_appointments = $conn->query("SELECT COUNT(id) as total FROM appointments WHERE status = 'pending'")->fetch_assoc()['total'];
+            echo number_format($new_appointments);
+          ?>
+        </span>
+        <?php if($new_appointments > 0): ?>
+          <span class="badge badge-warning badge-pill">New</span>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmed Appointments -->
+  <div class="col-12 col-sm-6 col-md-3">
+    <div class="shadow info-box mb-3">
+      <span class="info-box-icon bg-info elevation-1"><i class="fas fa-calendar-check"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Confirmed Appointments</span>
+        <span class="info-box-number">
+          <?php 
+            $confirmed_appointments = $conn->query("SELECT COUNT(id) as total FROM appointments WHERE status = 'confirmed'")->fetch_assoc()['total'];
+            echo number_format($confirmed_appointments);
           ?>
         </span>
       </div>
@@ -172,10 +229,10 @@
             </a>
           </div>
           <div class="col-md-4 col-sm-6 mb-3">
-            <a href="?page=service_requests" class="btn btn-success btn-block btn-lg">
-              <i class="fas fa-tools"></i><br>
-              <strong>Manage Service Request</strong><br>
-              <small>Handle service requests</small>
+            <a href="?page=service_management" class="btn btn-success btn-block btn-lg">
+              <i class="fas fa-cogs"></i><br>
+              <strong>Service Management</strong><br>
+              <small>Manage requests & appointments</small>
             </a>
           </div>
         </div>

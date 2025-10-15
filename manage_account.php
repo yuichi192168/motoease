@@ -185,7 +185,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                                     ?>
                                     <tr>
                                         <td>
-                                            <a href="./?p=view_order&id=<?= $order['id'] ?? '' ?>" class="text-primary">
+                                            <a href="javascript:void(0)" class="text-primary view_order" data-id="<?= $order['id'] ?? '' ?>">
                                                 <?= $order['ref_code'] ?>
                                             </a>
                                         </td>
@@ -680,5 +680,15 @@ function displayImg(input,_this) {
     
     function showORCRUpload() {
         $('#orcrUploadModal').modal('show');
+    }
+    
+    // Handle view order clicks
+    $('.view_order').click(function(){
+        var order_id = $(this).data('id');
+        viewOrder(order_id);
+    });
+    
+    function viewOrder(order_id){
+        uni_modal("Order Details", "view_order.php?id=" + order_id, "modal-lg");
     }
 </script>

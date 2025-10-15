@@ -136,10 +136,16 @@ while($row = $meta->fetch_assoc()){
         $('#request_form').submit(function(e){
             e.preventDefault()
             start_loader();
+            
+            var formData = new FormData($(this)[0]);
+            
             $.ajax({
                 url:_base_url_+'classes/Master.php?f=save_request',
                 method:'POST',
-                data:$(this).serialize(),
+                data: formData,
+                cache: false,
+                contentType: false,
+                processData: false,
                 dataType:'json',
                 error:err=>{
                     console.log(err)
@@ -157,7 +163,7 @@ while($row = $meta->fetch_assoc()){
                             })
                         }, 200);
                     }else{
-                        alert_toast("An error occured",'error');
+                        alert_toast(resp.msg || "An error occured",'error');
                     }
                 }
             })

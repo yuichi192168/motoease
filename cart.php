@@ -146,7 +146,7 @@
             <div class="w-100" id="cart-list">
                 <?php 
                 $total = 0;
-                $cart = $conn->query("SELECT c.*,p.name, p.price, p.image_path,b.name as brand, cc.category FROM `cart_list` c inner join product_list p on c.product_id = p.id inner join brand_list b on p.brand_id = b.id inner join categories cc on p.category_id = cc.id where c.client_id = '{$_settings->userdata('id')}' order by p.name asc");
+                $cart = $conn->query("SELECT c.*,p.name, p.price, p.image_path,b.name as brand, cc.category FROM `cart_list` c inner join product_list p on c.product_id = p.id inner join brand_list b on p.brand_id = b.id inner join categories cc on p.category_id = cc.id where c.client_id = '{$_settings->userdata('id')}' AND c.product_id > 0 AND p.id > 0 order by p.name asc");
                 while($row = $cart->fetch_assoc()):
                     // Calculate available stock
                     $stocks = $conn->query("SELECT SUM(quantity) as total_stock FROM stock_list WHERE product_id = '{$row['product_id']}' AND type = 1")->fetch_assoc()['total_stock'];
@@ -374,29 +374,67 @@
 <script>
     window.update_quantity = function($cart_id = 0, $quantity = ""){
         start_loader();
+        console.log('Updating quantity for cart ID:', $cart_id, 'with quantity:', $quantity);
+        
+        // Validate cart ID
+        if(!$cart_id || $cart_id == 0 || $cart_id == '0') {
+            alert_toast('Invalid cart item ID.','error');
+            end_loader();
+            return;
+        }
+        
         $.ajax({
             url:_base_url_+'classes/Master.php?f=update_cart_quantity',
             data:{cart_id : $cart_id, quantity : $quantity},
             method:'POST',
             dataType:'json',
             error:err=>{
-                console.error(err)
-                alert_toast('An error occurred.','error')
+                console.error('AJAX Error:', err);
+                alert_toast('An error occurred while updating quantity.','error')
                 end_loader()
             },
             success:function(resp){
+                console.log('Update quantity response:', resp);
                 if(resp.status == 'success'){
-                    location.reload()
+                    // Update the quantity in the DOM
+                    var cartItem = $('.cart-item[data-id="' + $cart_id + '"]');
+                    var input = cartItem.find('input[type="text"]');
+                    var newQty = resp.new_quantity || parseInt(input.val()) || 1;
+                    
+                    input.val(newQty);
+                    
+                    // Update the total price for this item
+                    var priceText = cartItem.find('.text-primary b').text();
+                    var price = parseFloat(priceText.replace('₱', '').replace(/,/g, '')) || 0;
+                    var totalPrice = newQty * price;
+                    cartItem.find('.text-primary b').text('₱' + totalPrice.toLocaleString());
+                    
+                    // Update cart totals
+                    updateCartTotals();
+                    
+                    alert_toast('Quantity updated successfully.','success');
                 }else if(!!resp.msg){
                     alert_toast(resp.msg,'error')
                 }else{
-                    alert_toast('An error occurred.','error')
+                    alert_toast('An error occurred while updating quantity.','error')
                 }
                 end_loader();
             }
         })
     }
     $(function(){
+        // Cleanup invalid cart items on page load
+        $.ajax({
+            url: _base_url_ + 'classes/Master.php?f=cleanup_invalid_cart_items',
+            method: 'POST',
+            dataType: 'json',
+            success: function(resp) {
+                if(resp.status == 'success') {
+                    console.log('Cart cleanup completed');
+                }
+            }
+        });
+        
         $('.btn-minus').click(function(){
             var cart_id = $(this).attr('data-id');
             var current_qty = parseInt($(this).closest('.input-group').find('input').val());
@@ -470,27 +508,68 @@
     })
     function remove_from_cart($id){
         start_loader();
+        console.log('Removing cart item with ID:', $id);
+        
+        // Validate cart ID
+        if(!$id || $id == 0 || $id == '0') {
+            alert_toast('Invalid cart item ID.','error');
+            end_loader();
+            return;
+        }
+        
         $.ajax({
             url:_base_url_+'classes/Master.php?f=remove_from_cart',
             data:{cart_id : $id},
             method:'POST',
             dataType:'json',
             error:err=>{
-                console.error(err)
-                alert_toast('An error occurred.','error')
+                console.error('AJAX Error:', err);
+                alert_toast('An error occurred while removing item.','error')
                 end_loader()
             },
             success:function(resp){
+                console.log('Remove response:', resp);
                 if(resp.status == 'success'){
-                    location.reload()
+                    // Close the confirmation modal
+                    var confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirm_modal'));
+                    if(confirmModal) {
+                        confirmModal.hide();
+                    }
+                    
+                    // Remove the cart item from DOM immediately
+                    $('.cart-item[data-id="' + $id + '"]').fadeOut(300, function(){
+                        $(this).remove();
+                        // Check if cart is empty
+                        if($('#cart-list .cart-item').length === 0){
+                            $('#cart-list').html('<div class="d-flex align-items-center w-100 border justify-content-center"><div class="col-12 flex-grow-1 flex-shrink-1 px-1 py-1"><small class="text-muted">No Data</small></div></div>');
+                        }
+                        // Update totals
+                        updateCartTotals();
+                    });
+                    alert_toast('Item removed from cart successfully.','success');
                 }else if(!!resp.msg){
                     alert_toast(resp.msg,'error')
                 }else{
-                    alert_toast('An error occurred.','error')
+                    alert_toast('An error occurred while removing item.','error')
                 }
                 end_loader();
             }
         })
+    }
+    
+    function updateCartTotals(){
+        var subtotal = 0;
+        $('#cart-list .cart-item').each(function(){
+            var quantity = parseInt($(this).find('input[type="text"]').val()) || 0;
+            var price = parseFloat($(this).find('.text-primary b').text().replace('₱', '').replace(/,/g, '')) || 0;
+            subtotal += (quantity * price);
+        });
+        
+        $('#subtotal').text('₱' + subtotal.toLocaleString());
+        var vat = subtotal * 0.12;
+        $('#vat').text('₱' + vat.toLocaleString());
+        var total = subtotal + vat;
+        $('#total').text('₱' + total.toLocaleString());
     }
     
     // Add-ons functionality

@@ -95,8 +95,8 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 
                 <!-- Service Management -->
                 <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'service_admin', 'mechanic'])): ?>
-                <li class="nav-item <?php echo in_array($page, ['service_requests','mechanics']) ? 'menu-open' : '' ?>">
-                    <a href="#" class="nav-link <?php echo in_array($page, ['service_requests','mechanics']) ? 'active' : '' ?>">
+                <li class="nav-item <?php echo in_array($page, ['service_management','service_requests','appointments','mechanics']) ? 'menu-open' : '' ?>">
+                    <a href="#" class="nav-link <?php echo in_array($page, ['service_management','service_requests','appointments','mechanics']) ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-tools"></i>
                         <p>
                             Services
@@ -105,9 +105,21 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                     </a>
                     <ul class="nav nav-treeview">
                         <li class="nav-item">
+                            <a href="./?page=service_management" class="nav-link <?php echo $page == 'service_management' ? 'active' : '' ?>">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Service Management</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a href="./?page=service_requests" class="nav-link <?php echo $page == 'service_requests' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Service Requests</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="./?page=appointments" class="nav-link <?php echo $page == 'appointments' ? 'active' : '' ?>">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Appointments</p>
                             </a>
                         </li>
                         <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'service_admin'])): ?>

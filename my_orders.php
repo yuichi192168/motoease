@@ -36,7 +36,7 @@
                                     <tr>
                                         <td class="text-center"><?= $i++ ?></td>
                                         <td><?= date("Y-m-d H:i", strtotime($row['date_created'])) ?></td>
-                                        <td><?= $row['ref_code'] ?></td>
+                                        <td><span class="text-muted"><?= $row['ref_code'] ?></span></td>
                                         <td class="text-right">₱<?= number_format($row['total_amount'],2) ?></td>
                                         <td class="text-center">
                                             <?php if($row['status'] == 0): ?>
@@ -56,9 +56,13 @@
                                             <?php endif; ?>
                                         </td>
                                         <td class="text-center align-middle">
-                                            <a class="btn btn-sm btn-outline-primary view_data" href="view_order.php?id=<?= $row['id'] ?>">
-                                                <i class="fa fa-eye"></i> View
-                                            </a>
+                                            <?php if($row['status'] == 0): ?>
+                                                <button class="btn btn-sm btn-outline-danger cancel_order" data-id="<?= $row['id'] ?>">
+                                                    <i class="fa fa-times"></i> Cancel
+                                                </button>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>
@@ -86,7 +90,7 @@
                         <div class="row">
                             <div class="col-6">
                                 <small class="text-muted">Ref. Code:</small><br>
-                                <strong><?= $row['ref_code'] ?></strong>
+                                <span class="text-muted"><?= $row['ref_code'] ?></span>
                             </div>
                             <div class="col-6">
                                 <small class="text-muted">Total Amount:</small><br>
@@ -142,15 +146,41 @@
 		$('.table').dataTable();
 		$('.table').dataTable();
 		
-		// Handle view order button clicks
-		$('.view_data').click(function(){
+		
+		// Handle cancel order button clicks
+		$('.cancel_order').click(function(){
 			var order_id = $(this).data('id');
-			viewOrder(order_id);
+			cancelOrder(order_id);
 		});
     })
     
-    function viewOrder(order_id){
-		uni_modal("Order Details", "view_order.php?id=" + order_id, "modal-lg");
+	
+	function cancelOrder(order_id){
+		_conf("Are you sure you want to cancel this order?","cancel_order",[order_id]);
+	}
+	
+	function cancel_order(order_id){
+		start_loader();
+		$.ajax({
+			url: _base_url_ + "classes/Master.php?f=cancel_order",
+			method: "POST",
+			data: {id: order_id},
+			dataType: "json",
+			error: err => {
+				console.log(err);
+				alert_toast("An error occurred.", 'error');
+				end_loader();
+			},
+			success: function(resp){
+				if(typeof resp == 'object' && resp.status == 'success'){
+					alert_toast("Order cancelled successfully.", 'success');
+					location.reload();
+				} else {
+					alert_toast(resp.msg || "An error occurred.", 'error');
+				}
+				end_loader();
+			}
+		});
 	}
 </script>
 
