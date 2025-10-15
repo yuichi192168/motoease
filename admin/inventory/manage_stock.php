@@ -1,7 +1,10 @@
 <?php
 require_once('./../../config.php');
+// Accept either 'pid' or 'product_id' for compatibility
 if(isset($_GET['pid']) && !empty($_GET['pid']))
-$product_id = $_GET['pid'];
+	$product_id = $_GET['pid'];
+if(isset($_GET['product_id']) && !empty($_GET['product_id']))
+	$product_id = $_GET['product_id'];
 if(isset($_GET['id']) && $_GET['id'] > 0){
     $qry = $conn->query("SELECT * from `stock_list` where id = '{$_GET['id']}' ");
     if($qry->num_rows > 0){
@@ -25,7 +28,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 				$product = $conn->query("SELECT p.*,b.name as brand from `product_list` p inner join brand_list b on p.brand_id = b.id where p.delete_flag = 0 ".(isset($product_id) ? " or p.id = '{$product_id}'" : "")." order by (p.`name`) asc ");
 				while($row= $product->fetch_assoc()):
 				?>
-				<option value="<?= $row['id'] ?>" <?= isset($product_id) && $product_id == 1 ? "selected" : "" ?>><?= $row['brand'].' - '.$row['name'] ?> <?= $row['status'] == 0 ? "<small>(Inactive)</small>" : "" ?> <?= $row['delete_flag'] == 1 ? "<small>(Deleted)</small>" : "" ?></option>
+				<option value="<?= $row['id'] ?>" <?= isset($product_id) && $product_id == $row['id'] ? "selected" : "" ?>><?= $row['brand'].' - '.$row['name'] ?> <?= $row['status'] == 0 ? "<small>(Inactive)</small>" : "" ?> <?= $row['delete_flag'] == 1 ? "<small>(Deleted)</small>" : "" ?></option>
 				<?php endwhile; ?>
 			</select>
 		</div>
@@ -76,6 +79,39 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 dataType: 'json',
 				error:err=>{
 					console.log(err)
+					// Try to parse server response in case extra whitespace or warnings broke the JSON parse
+					try{
+						if(err && err.responseText){
+							// Try direct parse first
+							try{ var parsed = JSON.parse(err.responseText); } catch(e) { parsed = null; }
+							// If direct parse failed, attempt to extract first JSON object from responseText
+							if(!parsed){
+								var txt = err.responseText;
+								var start = txt.indexOf('{');
+								var end = txt.lastIndexOf('}');
+								if(start !== -1 && end !== -1 && end > start){
+									var substr = txt.substring(start, end+1);
+									try{ parsed = JSON.parse(substr); } catch(e2){ parsed = null; }
+								}
+							}
+							if(parsed && parsed.status == 'success'){
+								// treat as success
+								location.reload();
+								return;
+							} else if(parsed && parsed.status == 'failed' && parsed.msg){
+								$('.err-msg').remove();
+								var el = $('<div>')
+								el.addClass("alert alert-danger err-msg").text(parsed.msg)
+								_this.prepend(el)
+								el.show('slow')
+								$("html, body").animate({ scrollTop: _this.closest('.card').offset().top }, "fast");
+								end_loader();
+								return;
+							}
+						}
+					}catch(e){
+						console.log('Response parse failed', e)
+					}
 					alert_toast("An error occured",'error');
 					end_loader();
 				},

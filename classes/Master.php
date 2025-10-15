@@ -3021,6 +3021,10 @@ Class Master extends DBConnection {
 
 $Master = new Master();
 $action = !isset($_GET['f']) ? 'none' : strtolower($_GET['f']);
+// If an AJAX action is requested, ensure responses are sent as JSON where possible
+if(isset($_GET['f'])){
+	header('Content-Type: application/json; charset=utf-8');
+}
 $sysset = new SystemSettings();
 	switch ($action) {
 	case 'save_category':
