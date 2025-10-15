@@ -1,6 +1,6 @@
 <?php 
 require_once('./../../config.php');
-$qry = $conn->query("SELECT a.*, CONCAT(c.lastname,', ', c.firstname,' ',c.middlename) as fullname, c.email, c.contact, c.address FROM `appointments` a INNER JOIN client_list c ON a.client_id = c.id WHERE a.id = '{$_GET['id']}' ");
+$qry = $conn->query("SELECT a.*, CONCAT(c.lastname,', ', c.firstname,' ',c.middlename) as fullname, c.email, c.contact FROM `appointments` a INNER JOIN client_list c ON a.client_id = c.id WHERE a.id = '{$_GET['id']}' ");
 foreach($qry->fetch_array() as $k => $v){
     $$k = $v;
 }
@@ -22,8 +22,7 @@ $mechanic = !empty($mechanic_id) ? $conn->query("SELECT name FROM mechanics_list
                 <dd class="pl-2"><?php echo $contact ?></dd>
                 <dt><b>Email</b></dt>
                 <dd class="pl-2"><?php echo $email ?></dd>
-                <dt><b>Address</b></dt>
-                <dd class="pl-2"><?php echo $address ?></dd>
+                
                 <dt><b>Service</b></dt>
                 <dd class="pl-2"><?php echo isset($service['service']) ? $service['service'] : 'N/A' ?></dd>
             </dl>

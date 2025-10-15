@@ -1,7 +1,7 @@
 <?php 
 require_once('./../../config.php');
 if(isset($_GET['id'])){
-$qry = $conn->query("SELECT s.*,concat(c.lastname,', ', c.firstname,' ',c.middlename) as fullname,c.email,c.contact, c.address FROM `service_requests` s inner join client_list c on s.client_id = c.id where s.id = '{$_GET['id']}' ");
+$qry = $conn->query("SELECT s.*,concat(c.lastname,', ', c.firstname,' ',c.middlename) as fullname,c.email,c.contact FROM `service_requests` s inner join client_list c on s.client_id = c.id where s.id = '{$_GET['id']}' ");
 $request_data = $qry->fetch_assoc();
 if($request_data) {
     foreach($request_data as $k => $v){
@@ -51,10 +51,7 @@ while($row = $meta->fetch_assoc()){
                     <label for="email" class="control-label">Owner Email</label>
                     <input type="email" name="" id="email" class="form-control form-control-sm rounded-0" value="<?php echo isset($email) ? $email : "" ?>" disabled>
                 </div>
-                <div class="form-group">
-                    <label for="address" class="control-label">Address</label>
-                    <textarea rows="3" name="" id="address" class="form-control form-control-sm rounded-0" style="resize:none" disabled><?php echo isset($address) ? $address : "" ?></textarea>
-                </div>
+                
             </div>
             <div class="col-md-6">
                 <div class="form-group">
@@ -149,6 +146,37 @@ while($row = $meta->fetch_assoc()){
                 dataType:'json',
                 error:err=>{
                     console.log(err)
+                    // Try to extract JSON from non-JSON response
+                    try{
+                        if(err && err.responseText){
+                            var parsed = null;
+                            try{ parsed = JSON.parse(err.responseText); }catch(e){ parsed = null; }
+                            if(!parsed){
+                                var txt = err.responseText;
+                                var s = txt.indexOf('{');
+                                var e = txt.lastIndexOf('}');
+                                if(s !== -1 && e !== -1 && e > s){
+                                    var sub = txt.substring(s, e+1);
+                                    try{ parsed = JSON.parse(sub); }catch(e2){ parsed = null; }
+                                }
+                            }
+                            if(parsed && parsed.status == 'success'){
+                                end_loader();
+                                alert_toast("Data successfully saved",'success');
+                                setTimeout(() => {
+                                    uni_modal("Service Request Details","service_requests/view_request.php?id="+parsed.id,'large')
+                                    $('#uni_modal').on('hidden.bs.modal',function(){
+                                        location.reload()
+                                    })
+                                }, 200);
+                                return;
+                            } else if(parsed && parsed.msg){
+                                end_loader();
+                                alert_toast(parsed.msg,'error');
+                                return;
+                            }
+                        }
+                    }catch(parseErr){ console.log('Response parse failed', parseErr); }
                     alert_toast("An error occured",'error');
                     end_loader()
                 },
