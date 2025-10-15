@@ -1,4 +1,5 @@
 <?php 
+require_once(dirname(__DIR__, 2) . '/config.php');
 if(isset($_GET['id'])){
     $qry = $conn->query("SELECT * FROM `order_list` where id = '{$_GET['id']}'");
     if($qry->num_rows > 0){
@@ -22,7 +23,6 @@ if(isset($_GET['id'])){
         <h3 class="card-title"><b>Order Details</b></h3>
         <div class="card-tools">
             <button class="btn btn-primary btn-flat btn-sm" type="button" id="update_status"><i class="fa fa-edit"></i> Update Status</button>
-            <button class="btn btn-danger btn-flat btn-sm" type="button" id="delete_order"><i class="fa fa-trash"></i> Delete</button>
             <a class="btn btn-default btn-flat border btn-sm" href="./?page=orders"><i class="fa fa-angle-left"></i> Back to List</a>
         </div>
     </div>
@@ -130,6 +130,17 @@ if(isset($_GET['id'])){
         $('#update_status').click(function(){
             uni_modal("Update Order Status","orders/update_status.php?id=<?= isset($id) ? $id :'' ?>")
         })
+        // Add quick report access from view page
+        $('<button class="btn btn-default btn-flat btn-sm ml-1" type="button" id="view_report"><i class="fa fa-table"></i></button>')
+            .insertBefore('#delete_order');
+        $('#view_report').click(function(){
+            var today = new Date();
+            var end = today.toISOString().slice(0,10);
+            var startDate = new Date();
+            startDate.setDate(today.getDate()-7);
+            var start = startDate.toISOString().slice(0,10);
+            uni_modal("Orders Report","../report/orders.php?date_start="+start+"&date_end="+end,'large')
+        })
         $('#btn-cancel').click(function(){
             _conf("Are you sure to cancel this order?","cancel_order",[])
         })
@@ -146,7 +157,6 @@ if(isset($_GET['id'])){
             dataType:'json',
             error:err=>{
                 console.error('Delete order AJAX error:', err);
-                // attempt to parse responseText in case server returned JSON with extra output
                 try{
                     if(err && err.responseText){
                         var parsed = null;
@@ -165,6 +175,8 @@ if(isset($_GET['id'])){
                             return;
                         }else if(parsed && parsed.msg){
                             alert_toast(parsed.msg,'error');
+                            end_loader();
+                            return;
                         }
                     }
                 }catch(parseErr){ console.log('Response parse failed', parseErr); }

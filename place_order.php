@@ -150,7 +150,6 @@ require_once('./inc/sess_auth.php');
                                     <option value="">-- Select Payment Type --</option>
                                     <option value="cash">Cash</option>
                                     <option value="card">Credit/Debit Card</option>
-                                    <option value="bank_transfer">Bank Transfer</option>
                                 </select>
                                 <div class="invalid-feedback" id="payment_type_error"></div>
                             </div>
@@ -186,13 +185,12 @@ require_once('./inc/sess_auth.php');
                             <div class="form-group">
                                 <label class="form-label"><strong>Customer Information</strong></label>
                                 <?php 
-                                $cust = $conn->query("SELECT CONCAT(lastname, ', ', firstname, ' ', middlename) AS fullname, contact, address FROM client_list WHERE id = '{$_settings->userdata('id')}'");
-                                $cinfo = $cust && $cust->num_rows ? $cust->fetch_assoc() : ['fullname'=>'','contact'=>'','address'=>''];
+                                $cust = $conn->query("SELECT CONCAT(lastname, ', ', firstname, ' ', middlename) AS fullname, contact FROM client_list WHERE id = '{$_settings->userdata('id')}'");
+                                $cinfo = $cust && $cust->num_rows ? $cust->fetch_assoc() : ['fullname'=>'','contact'=>''];
                                 ?>
                                 <div class="border rounded p-2 bg-light">
                                     <div><small class="text-muted">Name</small><br><strong><?= htmlspecialchars($cinfo['fullname']) ?></strong></div>
                                     <div class="mt-2"><small class="text-muted">Contact</small><br><strong><?= htmlspecialchars($cinfo['contact']) ?></strong></div>
-                                    <div class="mt-2"><small class="text-muted">Address</small><br><strong><?= htmlspecialchars($cinfo['address']) ?></strong></div>
                                 </div>
                                 <small class="text-muted">Pickup-based orders: Please verify your contact details.</small>
                             </div>
@@ -458,28 +456,13 @@ require_once('./inc/sess_auth.php');
                     $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Advance Order');
                     
                     if(typeof resp =='object' && resp.status == 'success'){
-                        // Show success message with order details
-                        Swal.fire({
-                            title: 'Order Placed Successfully!',
-                            html: `
-                                <div class="text-center">
-                                    <i class="fa fa-check-circle text-success" style="font-size: 4rem;"></i>
-                                    <h4 class="mt-3">Reference Code: <strong>${resp.ref_code}</strong></h4>
-                                    <p class="text-muted">Please save this reference code for tracking your order.</p>
-                                    <p class="text-muted">Your motorcycle parts and accessories will be included in your order.</p>
-                                </div>
-                            `,
-                            icon: 'success',
-                            confirmButtonText: 'View My Orders',
-                            showCancelButton: true,
-                            cancelButtonText: 'Continue Shopping'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                location.replace('./?p=my_orders');
-                            } else {
-                                location.replace('./?p=products');
-                            }
-                        });
+                        // Use existing uni_modal success template for consistency
+                        uni_modal('Order Placed Successfully','success_msg.php');
+                        // Also show ref code via toast for quick copy
+                        if(resp.ref_code){
+                            alert_toast('Reference Code: '+resp.ref_code,'success');
+                        }
+                        setTimeout(function(){ location.replace('./?p=my_orders'); }, 1200);
                     }else if(resp.status == 'failed' && !!resp.msg){
                         if(resp.application_required){
                             // Show application form modal

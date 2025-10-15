@@ -123,8 +123,8 @@
         <div class="card card-outline card-primary shadow rounded-0">
             <div class="w-100 p-3">
                 <?php 
-                $cust = $conn->query("SELECT CONCAT(lastname, ', ', firstname, ' ', middlename) AS fullname, contact, address FROM client_list WHERE id = '{$_settings->userdata('id')}'");
-                $cinfo = $cust && $cust->num_rows ? $cust->fetch_assoc() : ['fullname'=>'','contact'=>'','address'=>''];
+                $cust = $conn->query("SELECT CONCAT(lastname, ', ', firstname, ' ', middlename) AS fullname, contact FROM client_list WHERE id = '{$_settings->userdata('id')}'");
+                $cinfo = $cust && $cust->num_rows ? $cust->fetch_assoc() : ['fullname'=>'','contact'=>''];
                 ?>
                 <div class="border rounded p-3 mb-2 bg-light">
                     <div class="d-flex flex-wrap justify-content-between">
@@ -136,10 +136,7 @@
                             <small class="text-muted">Contact</small><br>
                             <strong><?= htmlspecialchars($cinfo['contact']) ?></strong>
                         </div>
-                        <div class="mb-2">
-                            <small class="text-muted">Address</small><br>
-                            <strong><?= htmlspecialchars($cinfo['address']) ?></strong>
-                        </div>
+                        
                     </div>
                 </div>
             </div>

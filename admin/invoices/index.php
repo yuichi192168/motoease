@@ -254,8 +254,6 @@
 						<select class="form-control" name="payment_method" id="payment_method" required>
 							<option value="cash">Cash</option>
 							<option value="card">Card</option>
-							<option value="bank_transfer">Bank Transfer</option>
-							<option value="check">Check</option>
 						</select>
 					</div>
 					<div class="form-group">

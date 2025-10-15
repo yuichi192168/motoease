@@ -37,7 +37,7 @@
                                         <td class="text-center"><?= $i++ ?></td>
                                         <td><?= date("Y-m-d H:i", strtotime($row['date_created'])) ?></td>
                                         <td><span class="text-muted"><?= $row['ref_code'] ?></span></td>
-                                        <td class="text-right">₱<?= number_format($row['total_amount'],2) ?></td>
+                                        <td class="text-right">₱<?= number_format((float)($row['total_amount'] ?? 0),2) ?></td>
                                         <td class="text-center">
                                             <?php if($row['status'] == 0): ?>
                                                 <span class="badge badge-secondary px-3 rounded-pill">Pending</span>
@@ -95,7 +95,7 @@
                             </div>
                             <div class="col-6">
                                 <small class="text-muted">Total Amount:</small><br>
-                                <strong class="text-primary">₱<?= number_format($row['total_amount'],2) ?></strong>
+                                <strong class="text-primary">₱<?= number_format((float)($row['total_amount'] ?? 0),2) ?></strong>
                             </div>
                         </div>
                         
@@ -188,6 +188,31 @@
 			dataType: "json",
 			error: err => {
 				console.log(err);
+				// Try to recover from non-JSON responses that still contain JSON
+				try{
+					if(err && err.responseText){
+						var parsed = null;
+						try{ parsed = JSON.parse(err.responseText); }catch(e){ parsed = null; }
+						if(!parsed){
+							var txt = err.responseText;
+							var s = txt.indexOf('{');
+							var e = txt.lastIndexOf('}');
+							if(s !== -1 && e !== -1 && e > s){
+								var sub = txt.substring(s, e+1);
+								try{ parsed = JSON.parse(sub); }catch(e2){ parsed = null; }
+							}
+						}
+						if(parsed && parsed.status == 'success'){
+							alert_toast("Order cancelled successfully.", 'success');
+							location.reload();
+							return;
+						}else if(parsed && parsed.msg){
+							alert_toast(parsed.msg,'error');
+							end_loader();
+							return;
+						}
+					}
+				}catch(parseErr){ console.log('Response parse failed', parseErr); }
 				alert_toast("An error occurred.", 'error');
 				end_loader();
 			},

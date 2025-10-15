@@ -324,13 +324,6 @@ Class Master extends DBConnection {
 	function place_order(){
 		$client_id = $this->settings->userdata('id');
 		
-        // Delivery address UI removed; use saved address if available
-        $customer = $this->conn->query("SELECT address FROM client_list WHERE id = '{$client_id}'");
-        $saved_address = '';
-        if($customer && $customer->num_rows > 0){
-            $saved_address = $customer->fetch_assoc()['address'];
-        }
-		
 		// Check if cart has items
 		$cart_items = $this->conn->query("SELECT COUNT(*) as count FROM cart_list WHERE client_id = '{$client_id}'");
 		if($cart_items->fetch_assoc()['count'] == 0){
@@ -378,12 +371,11 @@ Class Master extends DBConnection {
 			$addons_total = isset($_POST['addons_total']) ? floatval($_POST['addons_total']) : 0;
 			$total_amount += $addons_total;
 			
-			// Create order - only use columns that exist in the database
+			// Create order - only use columns required in the database
 			$addons_data = isset($_POST['addons']) ? $this->conn->real_escape_string($_POST['addons']) : '';
 			$order_data = "client_id = '{$client_id}', 
 						   ref_code = '{$ref_code}', 
 						   total_amount = '{$total_amount}', 
-						   delivery_address = '', 
 						   status = 0,
 						   date_created = NOW()";
 			
@@ -1333,38 +1325,42 @@ Class Master extends DBConnection {
 	function cancel_order(){
 		extract($_POST);
 		$resp = array();
-		
-		// Check if order exists and can be cancelled
-		$check = $this->conn->query("SELECT id, status, client_id FROM `order_list` WHERE id = '{$id}'");
-		if($check->num_rows == 0){
-			$resp['status'] = 'failed';
-			$resp['msg'] = "Order not found.";
-			return json_encode($resp);
+		$id = isset($id) ? intval($id) : 0;
+		if($id <= 0){
+			return json_encode(['status'=>'failed','msg'=>'Invalid order id.']);
 		}
 		
+		$check = $this->conn->query("SELECT id, status, client_id FROM `order_list` WHERE id = '{$id}'");
+		if(!$check || $check->num_rows == 0){
+			return json_encode(['status'=>'failed','msg'=>'Order not found.']);
+		}
 		$order = $check->fetch_assoc();
 		
-		// Check if user owns this order
-		if($order['client_id'] != $this->settings->userdata('id')){
-			$resp['status'] = 'failed';
-			$resp['msg'] = "You can only cancel your own orders.";
-			return json_encode($resp);
+		$role_type = $this->settings->userdata('role_type');
+		$is_admin_like = in_array($role_type, ['admin','branch_supervisor','service_admin']);
+		$user_id = $this->settings->userdata('id');
+		
+		// Clients can only cancel their own orders; Admins can cancel broader set
+		if(!$is_admin_like && $order['client_id'] != $user_id){
+			return json_encode(['status'=>'failed','msg'=>'You can only cancel your own orders.']);
 		}
 		
-		// Check if order can be cancelled (only pending orders)
-		if($order['status'] != 0){
-			$resp['status'] = 'failed';
-			$resp['msg'] = "Only pending orders can be cancelled.";
-			return json_encode($resp);
+		// Block final states; allow others. Clients only: allow Pending(0), Processing(2), Ready(3)
+		$final_statuses = [4,5,6]; // Completed, Cancelled, Claimed
+		if(in_array((int)$order['status'], $final_statuses)){
+			return json_encode(['status'=>'failed','msg'=>'This order can no longer be cancelled.']);
+		}
+		if(!$is_admin_like){
+			$client_cancellable = [0,2,3];
+			if(!in_array((int)$order['status'], $client_cancellable)){
+				return json_encode(['status'=>'failed','msg'=>'Only pending or in-progress orders can be cancelled.']);
+			}
 		}
 		
-		// Update order status to cancelled (status = 5)
 		$update = $this->conn->query("UPDATE `order_list` SET status = 5 WHERE id = '{$id}'");
 		if($update){
 			$resp['status'] = 'success';
-			$resp['msg'] = "Order cancelled successfully.";
-			
-			// Send notification
+			$resp['msg'] = 'Order cancelled successfully.';
 			try {
 				if(file_exists(base_app.'classes/Notification.php')){
 					require_once base_app.'classes/Notification.php';
@@ -1372,12 +1368,9 @@ Class Master extends DBConnection {
 					$notif->createNotification($order['client_id'], 'order', 'Order Cancelled', 'Your order has been cancelled successfully.', [ 'order_id' => $id ]);
 				}
 			} catch (Exception $e) { /* non-fatal */ }
-		} else {
-			$resp['status'] = 'failed';
-			$resp['msg'] = "Failed to cancel order.";
-			$resp['error'] = $this->conn->error;
+		}else{
+			$resp = ['status'=>'failed','msg'=>'Failed to cancel order.','error'=>$this->conn->error];
 		}
-		
 		return json_encode($resp);
 	}
 
@@ -3236,6 +3229,9 @@ $sysset = new SystemSettings();
 	break;
 	case 'delete_invoice':
 		echo $Master->delete_invoice();
+	break;
+	case 'delete_order':
+		echo $Master->delete_order();
 	break;
 	case 'cancel_order':
 		echo $Master->cancel_order();
