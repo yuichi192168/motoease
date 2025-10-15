@@ -97,13 +97,13 @@ $(document).ready(function(){
 		_conf("Are you sure to delete this appointment permanently?","delete_appointment",[$(this).attr('data-id')])
 	})
 	$('.view_appt').click(function(){
-		uni_modal("Appointment Details","../service_requests/view_appointment.php?id="+$(this).attr('data-id'),'large')
+		uni_modal("Appointment Details","appointments/view_appointment.php?id="+$(this).attr('data-id'),'large')
 	})
 	$('#create_appointment').click(function(){
-		uni_modal("Appointment Details","../service_requests/manage_appointment.php",'large')
+		uni_modal("Appointment Details","appointments/manage_appointment.php",'large')
 	})
 	$('.edit_appt').click(function(){
-		uni_modal("Appointment Details","../service_requests/manage_appointment.php?id="+$(this).attr('data-id'),'large')
+		uni_modal("Appointment Details","appointments/manage_appointment.php?id="+$(this).attr('data-id'),'large')
 	})
 })
 

@@ -105,12 +105,6 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                     </a>
                     <ul class="nav nav-treeview">
                         <li class="nav-item">
-                            <a href="./?page=service_management" class="nav-link <?php echo $page == 'service_management' ? 'active' : '' ?>">
-                                <i class="far fa-circle nav-icon"></i>
-                                <p>Service Management</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
                             <a href="./?page=service_requests" class="nav-link <?php echo $page == 'service_requests' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Service Requests</p>

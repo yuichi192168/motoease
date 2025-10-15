@@ -524,6 +524,8 @@
             dataType:'json',
             error:err=>{
                 console.error('AJAX Error:', err);
+                // Close the confirmation modal on error
+                $('#confirm_modal').modal('hide');
                 alert_toast('An error occurred while removing item.','error')
                 end_loader()
             },
@@ -531,10 +533,7 @@
                 console.log('Remove response:', resp);
                 if(resp.status == 'success'){
                     // Close the confirmation modal
-                    var confirmModal = bootstrap.Modal.getInstance(document.getElementById('confirm_modal'));
-                    if(confirmModal) {
-                        confirmModal.hide();
-                    }
+                    $('#confirm_modal').modal('hide');
                     
                     // Remove the cart item from DOM immediately
                     $('.cart-item[data-id="' + $id + '"]').fadeOut(300, function(){
@@ -548,8 +547,12 @@
                     });
                     alert_toast('Item removed from cart successfully.','success');
                 }else if(!!resp.msg){
+                    // Close the confirmation modal even on error
+                    $('#confirm_modal').modal('hide');
                     alert_toast(resp.msg,'error')
                 }else{
+                    // Close the confirmation modal even on error
+                    $('#confirm_modal').modal('hide');
                     alert_toast('An error occurred while removing item.','error')
                 }
                 end_loader();

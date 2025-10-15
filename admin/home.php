@@ -170,7 +170,7 @@
   <!-- New Appointments -->
   <div class="col-12 col-sm-6 col-md-3">
     <div class="shadow info-box mb-3">
-      <span class="info-box-icon bg-warning elevation-1"><i class="fas fa-calendar-plus"></i></span>
+      <span class="info-box-icon bg-warning elevation-1"><i class="fas fa-calendar-alt"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">New Appointments</span>
         <span class="info-box-number">
@@ -189,7 +189,7 @@
   <!-- Confirmed Appointments -->
   <div class="col-12 col-sm-6 col-md-3">
     <div class="shadow info-box mb-3">
-      <span class="info-box-icon bg-info elevation-1"><i class="fas fa-calendar-check"></i></span>
+      <span class="info-box-icon bg-primary elevation-1"><i class="fas fa-calendar-alt"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">Confirmed Appointments</span>
         <span class="info-box-number">

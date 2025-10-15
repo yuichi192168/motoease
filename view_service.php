@@ -1,5 +1,5 @@
 <?php 
-require_once('config.php');
+require_once('./config.php');
 $qry = $conn->query("SELECT * FROM `service_list` where id = '{$_GET['id']}'");
 foreach($qry->fetch_array() as $k => $v){
     $$k = $v;
