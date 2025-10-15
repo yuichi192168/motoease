@@ -139,7 +139,7 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
                     </div>
                 </div>
             </div>
-            <!-- Appointments temporarily disabled
+            <!-- Appointments temporarily disabled -->
             <div class="col-md-3">
                 <div class="info-box bg-warning">
                     <span class="info-box-icon"><i class="fas fa-calendar"></i></span>
@@ -151,7 +151,7 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
                     </div>
                 </div>
             </div>
-            -->
+           
             <div class="col-md-3">
                 <div class="info-box bg-info">
                     <span class="info-box-icon"><i class="fas fa-bell"></i></span>

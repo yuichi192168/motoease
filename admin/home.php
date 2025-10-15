@@ -18,7 +18,7 @@
   </div> -->
 
   <!-- Total Category -->
-  <div class="col-12 col-sm-6 col-md-3">
+  <!-- <div class="col-12 col-sm-6 col-md-3">
     <div class="info-box">
       <span class="info-box-icon bg-light elevation-1"><i class="fas fa-th-list"></i></span>
       <div class="info-box-content">
@@ -31,7 +31,7 @@
         </span>
       </div>
     </div>
-  </div>
+  </div> -->
 
   <!-- Mechanics -->
   <div class="col-12 col-sm-6 col-md-3">

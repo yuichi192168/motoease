@@ -299,6 +299,32 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                         </div>
                     </div>
                     
+                    <!-- Product Image Carousel -->
+                    <div class="color-carousel">
+                        <button class="nav-btn nav-prev" id="ccPrev">‹</button>
+                        <button class="nav-btn nav-next" id="ccNext">›</button>
+                        <div class="color-track" id="colorTrack">
+                            <?php foreach($slides as $index => $slide): ?>
+                                <div class="color-slide" data-color="<?= htmlspecialchars($slide['color']) ?>">
+                                    <img src="<?= validate_image($slide['img']) ?>" alt="<?= htmlspecialchars($slide['color']) ?>" class="product-img">
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="text-center mt-2">
+                            <span id="colorLabel" class="badge badge-info"><?= !empty($slides) ? htmlspecialchars($slides[0]['color']) : 'Default' ?></span>
+                        </div>
+                        <?php if(count($slides) > 1): ?>
+                        <div class="color-dots">
+                            <?php foreach($slides as $index => $slide): ?>
+                                <div class="color-dot <?= $index == 0 ? 'active' : '' ?>" data-idx="<?= $index ?>">
+                                    <img src="<?= validate_image($slide['img']) ?>" alt="<?= htmlspecialchars($slide['color']) ?>">
+                                    <div class="color-label"><?= htmlspecialchars($slide['color']) ?></div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    
                     <!-- Image Zoom Modal -->
                     <div id="zoomModal" class="zoom-modal">
                         <span class="zoom-close">&times;</span>

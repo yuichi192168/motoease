@@ -18,7 +18,7 @@
                                 <col width="15%">
                             </colgroup>
                             <thead>
-                                <tr class="bg-gradient-dark text-light">
+                                <tr class="bg-gradient-light text-light">
                                     <th class="text-center">#</th>
                                     <th class="text-center">Date Ordered</th>
                                     <th class="text-center">Ref. Code</th>
@@ -56,12 +56,13 @@
                                             <?php endif; ?>
                                         </td>
                                         <td class="text-center align-middle">
+                                            <button class="btn btn-sm btn-primary view_order" data-id="<?= $row['id'] ?>">
+                                                <i class="fa fa-eye"></i> View Details
+                                            </button>
                                             <?php if($row['status'] == 0): ?>
                                                 <button class="btn btn-sm btn-outline-danger cancel_order" data-id="<?= $row['id'] ?>">
                                                     <i class="fa fa-times"></i> Cancel
                                                 </button>
-                                            <?php else: ?>
-                                                <span class="text-muted">-</span>
                                             <?php endif; ?>
                                         </td>
                                     </tr>
@@ -122,6 +123,16 @@
                                 <small class="text-muted">Order ID: <?= $row['id'] ?></small>
                                 <small class="text-muted"><?= date("M d, Y H:i", strtotime($row['date_created'])) ?></small>
                             </div>
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-primary view_order" data-id="<?= $row['id'] ?>">
+                                    <i class="fa fa-eye"></i> View Details
+                                </button>
+                                <?php if($row['status'] == 0): ?>
+                                    <button class="btn btn-sm btn-outline-danger cancel_order" data-id="<?= $row['id'] ?>">
+                                        <i class="fa fa-times"></i> Cancel
+                                    </button>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -144,8 +155,13 @@
     $(function(){
         $('.table th, .table td').addClass("align-middle px-2 py-1")
 		$('.table').dataTable();
-		$('.table').dataTable();
 		
+		
+		// Handle view order button clicks
+		$('.view_order').click(function(){
+			var order_id = $(this).data('id');
+			viewOrder(order_id);
+		});
 		
 		// Handle cancel order button clicks
 		$('.cancel_order').click(function(){
@@ -154,6 +170,10 @@
 		});
     })
     
+	
+	function viewOrder(order_id){
+		uni_modal("Order Details","view_order.php?id="+order_id,'modal-lg');
+	}
 	
 	function cancelOrder(order_id){
 		_conf("Are you sure you want to cancel this order?","cancel_order",[order_id]);
