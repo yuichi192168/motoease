@@ -132,7 +132,77 @@
     min-width: 800px;
     min-height: 600px;
 }
-</style>
+
+<style>
+/* ABC Analysis Color Indicators */
+.abc-category-a {
+    background-color: #E76F51 !important;
+    color: white !important;
+}
+
+.abc-category-b {
+    background-color: #E9C56A !important;
+    color: #333 !important;
+}
+
+.abc-category-c {
+    background-color: #F4A261 !important;
+    color: white !important;
+}
+
+/* Stock Status Color Indicators */
+.stock-overstock {
+    background-color: #E76F51 !important;
+    color: white !important;
+}
+
+.stock-low {
+    background-color: #E9C56A !important;
+    color: #333 !important;
+}
+
+.stock-out {
+    background-color: #F4A261 !important;
+    color: white !important;
+}
+
+.stock-normal {
+    background-color: #28a745 !important;
+    color: white !important;
+}
+
+/* Info Box Color Updates */
+.info-box.bg-danger {
+    background-color: #E76F51 !important;
+}
+
+.info-box.bg-warning {
+    background-color: #E9C56A !important;
+}
+
+.info-box.bg-info {
+    background-color: #F4A261 !important;
+}
+
+/* Alert Color Updates */
+.alert-danger {
+    background-color: #E76F51 !important;
+    border-color: #E76F51 !important;
+    color: white !important;
+}
+
+.alert-warning {
+    background-color: #E9C56A !important;
+    border-color: #E9C56A !important;
+    color: #333 !important;
+}
+
+.alert-info {
+    background-color: #F4A261 !important;
+    border-color: #F4A261 !important;
+    color: white !important;
+}
+</style></style>
 
 <script>
 $(document).ready(function(){

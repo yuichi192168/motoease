@@ -48,11 +48,11 @@ if(isset($_GET['id'])){
                             <?php elseif($status == 1): ?>
                                 <span class="badge badge-primary px-3 rounded-pill">Ready for pickup</span>
                             <?php elseif($status == 2): ?>
-                                <span class="badge badge-info px-3 rounded-pill">Processing</span>
+                                <span class="badge badge-success px-3 rounded-pill">For Delivery</span>
                             <?php elseif($status == 3): ?>
-                                <span class="badge badge-warning px-3 rounded-pill">Ready for Pickup</span>
+                                <span class="badge badge-warning px-3 rounded-pill">On the Way</span>
                             <?php elseif($status == 4): ?>
-                                <span class="badge badge-default bg-gradient-teal px-3 rounded-pill">Completed</span>
+                                <span class="badge badge-default bg-gradient-teal px-3 rounded-pill">Delivered</span>
                             <?php elseif($status == 6): ?>
                                 <span class="badge badge-success px-3 rounded-pill">Claimed</span>
                             <?php else: ?>
@@ -71,9 +71,14 @@ if(isset($_GET['id'])){
                         <?php 
                         $total = 0;
                         if(isset($id)):
-                        $order_item = $conn->query("SELECT o.*,p.name, p.price, p.image_path,b.name as brand, cc.category FROM `order_items` o inner join product_list p on o.product_id = p.id inner join brand_list b on p.brand_id = b.id inner join categories cc on p.category_id = cc.id where o.order_id = '{$id}' order by p.name asc");
+                        $order_item = $conn->query("SELECT o.*, p.name, p.price as unit_price, p.image_path, b.name as brand, cc.category FROM `order_items` o 
+                            LEFT JOIN product_list p on o.product_id = p.id 
+                            LEFT JOIN brand_list b on p.brand_id = b.id 
+                            LEFT JOIN categories cc on p.category_id = cc.id 
+                            WHERE o.order_id = '{$id}' ORDER BY p.name ASC");
                         while($row = $order_item->fetch_assoc()):
-                            $total += ($row['quantity'] * $row['price']);
+                            $unit_price = isset($row['unit_price']) ? $row['unit_price'] : 0;
+                            $total += ($row['quantity'] * $unit_price);
                         ?>
                         <div class="d-flex align-items-center w-100 border cart-item" data-id="<?= $row['id'] ?>">
                             <div class="col-auto flex-grow-1 flex-shrink-1 px-1 py-1">
@@ -89,13 +94,13 @@ if(isset($_GET['id'])){
                                         <small><?= $row['category'] ?></small><br>
                                         <div class="d-flex align-items-center w-100 mb-1">
                                             <span><?= number_format($row['quantity']) ?></span>
-                                            <span class="ml-2">X <?= number_format($row['price'],2) ?></span>
+                                            <span class="ml-2">X ₱<?= number_format($unit_price,2) ?></span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-auto text-right">
-                                <h3><b><?= number_format($row['quantity'] * $row['price'],2) ?></b></h3>
+                                <h3><b>₱<?= number_format($row['quantity'] * $unit_price,2) ?></b></h3>
                             </div>
                         </div>
                         <?php 
@@ -114,7 +119,7 @@ if(isset($_GET['id'])){
                                     <h3 class="text-center">TOTAL</h3>
                             </div>
                             <div class="col-auto text-right">
-                                <h3><b><?= number_format($total,2) ?></b></h3>
+                                <h3><b>₱<?= number_format($total,2) ?></b></h3>
                             </div>
                         </div>
                     </div>

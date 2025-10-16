@@ -214,59 +214,47 @@ Class Master extends DBConnection {
 		return json_encode($resp);
 	}
 	
-	// Validate cart for checkout - ensure only one motorcycle unit at a time
+	// Validate cart for checkout - simplified validation
 	function validate_cart_checkout(){
 		$client_id = $this->settings->userdata('id');
 		$resp = array();
 		
-		// Get cart items with product categories
+		// Validate client ID
+		if(empty($client_id) || $client_id <= 0) {
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Please log in to proceed with checkout.";
+			return json_encode($resp);
+		}
+		
+		// Get cart items with product categories - filter out invalid items
 		$cart_items = $this->conn->query("SELECT c.*, p.name, p.price, cat.category 
 										 FROM cart_list c 
 										 INNER JOIN product_list p ON c.product_id = p.id 
 										 INNER JOIN categories cat ON p.category_id = cat.id 
-										 WHERE c.client_id = '{$client_id}'");
+										 WHERE c.client_id = '{$client_id}' 
+										 AND c.product_id > 0 
+										 AND p.id > 0 
+										 AND p.delete_flag = 0 
+										 AND p.status = 1");
+		
+		// Check for query errors
+		if(!$cart_items) {
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Database error occurred while validating cart.";
+			$resp['error'] = $this->conn->error;
+			return json_encode($resp);
+		}
 		
 		if($cart_items->num_rows == 0){
 			$resp['status'] = 'failed';
-			$resp['msg'] = "Your cart is empty.";
+			$resp['msg'] = "Your cart is empty or contains invalid items.";
 			return json_encode($resp);
 		}
 		
-		$motorcycle_count = 0;
-		$has_parts_only = true;
-		$motorcycle_items = array();
-		
-		while($item = $cart_items->fetch_assoc()){
-			if(strtolower($item['category']) == 'motorcycles'){
-				$motorcycle_count++;
-				$motorcycle_items[] = $item;
-				$has_parts_only = false;
-			}
-		}
-		
-		// Check if more than one motorcycle in cart
-		if($motorcycle_count > 1){
-			$resp['status'] = 'failed';
-			$resp['msg'] = "You can only checkout one motorcycle at a time. Please remove other motorcycles from your cart.";
-			$resp['motorcycle_items'] = $motorcycle_items;
-			return json_encode($resp);
-		}
-		
-		// If cart contains only parts, no credit application needed
-		if($has_parts_only){
-			$resp['status'] = 'success';
-			$resp['requires_credit_application'] = false;
-			$resp['msg'] = "Cart validation passed. Parts-only order can proceed directly.";
-		} else {
-			// Cart contains motorcycle, check if credit application is completed
-			$credit_status = $this->conn->query("SELECT credit_application_completed FROM client_list WHERE id = '{$client_id}'")->fetch_assoc();
-			$application_completed = $credit_status && $credit_status['credit_application_completed'] == 1;
-			
-			$resp['status'] = 'success';
-			$resp['requires_credit_application'] = !$application_completed;
-			$resp['application_completed'] = $application_completed;
-			$resp['msg'] = $application_completed ? "Cart validation passed. Ready for checkout." : "Credit application required for motorcycle purchase.";
-		}
+		// Simple validation - just check if cart has valid items
+		$resp['status'] = 'success';
+		$resp['requires_credit_application'] = false;
+		$resp['msg'] = "Cart validation passed. Ready for checkout.";
 		
 		return json_encode($resp);
 	}
@@ -275,6 +263,9 @@ Class Master extends DBConnection {
 		extract($_POST);
 		$client_id = $this->settings->userdata('id');
 		$resp = array();
+		
+		// Ensure cart_id is properly extracted
+		$cart_id = isset($cart_id) ? $cart_id : '';
 		
 		// Debug logging
 		error_log("Update cart quantity called - cart_id: " . $cart_id . ", quantity: " . $quantity . ", client_id: " . $client_id);
@@ -351,7 +342,8 @@ Class Master extends DBConnection {
 		$client_id = $this->settings->userdata('id');
 		$resp = array();
 		
-		// Debug logging
+		// Debug logging - check if cart_id exists before using it
+		$cart_id = isset($cart_id) ? $cart_id : '';
 		error_log("Remove from cart called - cart_id: " . $cart_id . ", client_id: " . $client_id);
 		
 		// Validate inputs
@@ -393,6 +385,7 @@ Class Master extends DBConnection {
 	
 	function place_order(){
 		$client_id = $this->settings->userdata('id');
+		$resp = array();
 		
 		// Check if cart has items
 		$cart_items = $this->conn->query("SELECT COUNT(*) as count FROM cart_list WHERE client_id = '{$client_id}'");
@@ -2126,6 +2119,7 @@ Class Master extends DBConnection {
 				   COALESCE(o.total_ordered, 0) as total_ordered,
 				   (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) as available_stock,
 				   CASE 
+					   WHEN (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) <= 0 THEN 'OUT_OF_STOCK'
 					   WHEN (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) <= p.reorder_point THEN 'LOW_STOCK'
 					   WHEN (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) >= p.max_stock THEN 'OVERSTOCK'
 					   ELSE 'NORMAL'

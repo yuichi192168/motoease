@@ -28,6 +28,7 @@ $account_balance = $conn->query("SELECT
 
 // Get order details (using status instead of payment_status)
 $installments = $conn->query("SELECT 
+    ol.id,
     ol.ref_code,
     ol.total_amount,
     ol.status,
@@ -39,11 +40,12 @@ $installments = $conn->query("SELECT
         WHEN ol.status = 2 THEN 'For Delivery'
         WHEN ol.status = 3 THEN 'On the Way'
         WHEN ol.status = 4 THEN 'Delivered'
+        WHEN ol.status = 6 THEN 'Claimed'
+        WHEN ol.status = 5 THEN 'Cancelled'
         ELSE 'Unknown'
     END as status_text
     FROM order_list ol
     WHERE ol.client_id = '{$client_id}' 
-    AND ol.status != 5
     ORDER BY ol.date_created DESC");
 
 // Get OR/CR documents

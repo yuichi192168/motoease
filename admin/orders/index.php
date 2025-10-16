@@ -83,11 +83,11 @@
                                 <?php elseif($row['status'] == 1): ?>
                                     <span class="badge badge-primary px-3 rounded-pill">Ready for pickup</span>
                                 <?php elseif($row['status'] == 2): ?>
-                                    <span class="badge badge-info px-3 rounded-pill">Processing</span>
+                                    <span class="badge badge-success px-3 rounded-pill">For Delivery</span>
                                 <?php elseif($row['status'] == 3): ?>
-                                    <span class="badge badge-warning px-3 rounded-pill">Ready for Pickup</span>
+                                    <span class="badge badge-warning px-3 rounded-pill">On the Way</span>
                                 <?php elseif($row['status'] == 4): ?>
-                                    <span class="badge badge-default bg-gradient-teal px-3 rounded-pill">Completed</span>
+                                    <span class="badge badge-default bg-gradient-teal px-3 rounded-pill">Delivered</span>
                                 <?php elseif($row['status'] == 6): ?>
                                     <span class="badge badge-success px-3 rounded-pill">Claimed</span>
                                 <?php else: ?>

@@ -49,7 +49,7 @@ require_once('./inc/sess_auth.php');
                         <?php endif; ?>
                         <?php 
                         $total = 0;
-                        $cart = $conn->query("SELECT c.*,p.name, p.price, p.image_path,b.name as brand, cc.category FROM `cart_list` c inner join product_list p on c.product_id = p.id inner join brand_list b on p.brand_id = b.id inner join categories cc on p.category_id = cc.id where c.client_id = '{$customer_id}' order by p.name asc");
+                        $cart = $conn->query("SELECT c.*,p.name, p.price, p.image_path,b.name as brand, cc.category FROM `cart_list` c inner join product_list p on c.product_id = p.id inner join brand_list b on p.brand_id = b.id inner join categories cc on p.category_id = cc.id where c.client_id = '{$customer_id}' AND c.product_id > 0 AND p.id > 0 AND p.delete_flag = 0 AND p.status = 1 order by p.name asc");
                         
                         if($cart && $cart->num_rows > 0) {
                             while($row = $cart->fetch_assoc()):
