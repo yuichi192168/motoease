@@ -14,24 +14,26 @@
 		<div class="container-fluid">
 			<div class="table-responsive">
 				<table class="table table-bordered table-stripped">
-					<colgroup>
+                    <colgroup>
 						<col width="5%">
 						<col width="20%">
 						<col width="15%">
 						<col width="15%">
 						<col width="15%">
 						<col width="15%">
-						<col width="15%">
+                        <col width="10%">
+                        <col width="15%">
 					</colgroup>
 					<thead>
-						<tr>
+                        <tr>
 							<th>#</th>
 							<th>Customer</th>
 							<th>Total Balance</th>
 							<th>Installment Plan</th>
 							<th>Paid Amount</th>
 							<th>Unpaid Amount</th>
-							<th>Action</th>
+                            <th>Credit App</th>
+                            <th>Action</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -66,9 +68,18 @@
 								<td class="text-right text-success">
 									<strong>₱<?php echo number_format($row['paid_amount'], 2) ?></strong>
 								</td>
-								<td class="text-right text-danger">
+                            <td class="text-right text-danger">
 									<strong>₱<?php echo number_format($row['unpaid_amount'], 2) ?></strong>
 								</td>
+                            <td class="text-center">
+                                <?php if(isset($row['credit_application_completed'])): ?>
+                                    <span class="badge <?php echo $row['credit_application_completed'] ? 'badge-success' : 'badge-warning' ?>">
+                                        <?php echo $row['credit_application_completed'] ? 'Completed' : 'Required' ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="badge badge-secondary">N/A</span>
+                                <?php endif; ?>
+                            </td>
 								<td align="center">
 									<button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">
 										Action

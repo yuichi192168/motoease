@@ -445,12 +445,14 @@ Class Master extends DBConnection {
 		// Only enforce when payment method is installment; allow cash/full payments without the requirement
 		$payment_method = isset($_POST['payment_method']) ? strtolower(trim($_POST['payment_method'])) : '';
 		$motorcycle_cart_items = $this->conn->query("SELECT COUNT(*) as count FROM cart_list c 
-												INNER JOIN product_list p ON c.product_id = p.id 
-												INNER JOIN categories cat ON p.category_id = cat.id 
-												WHERE c.client_id = '{$client_id}' 
-												AND (cat.category LIKE '%motorcycle%' OR cat.category LIKE '%bike%' OR p.name LIKE '%motorcycle%' OR p.name LIKE '%bike%')");
+											INNER JOIN product_list p ON c.product_id = p.id 
+											INNER JOIN categories cat ON p.category_id = cat.id 
+											WHERE c.client_id = '{$client_id}' 
+											AND (cat.category LIKE '%motorcycle%' OR cat.category LIKE '%bike%' OR p.name LIKE '%motorcycle%' OR p.name LIKE '%bike%')");
+		$motorcycle_count_row = $motorcycle_cart_items ? $motorcycle_cart_items->fetch_assoc() : ['count' => 0];
+		$has_motorcycle = isset($motorcycle_count_row['count']) && (int)$motorcycle_count_row['count'] > 0;
 		
-		if($motorcycle_cart_items->fetch_assoc()['count'] > 0 && $payment_method === 'installment'){
+		if($has_motorcycle && $payment_method === 'installment'){
 			// Check if customer has completed the credit application
 			$application_status = $this->conn->query("SELECT credit_application_completed FROM client_list WHERE id = '{$client_id}'")->fetch_assoc();
 			
@@ -482,10 +484,14 @@ Class Master extends DBConnection {
 			
 			// Create order - only use columns required in the database
 			$addons_data = isset($_POST['addons']) ? $this->conn->real_escape_string($_POST['addons']) : '';
+			$agreed_to_terms = $tnc_ok ? 1 : 0;
+			$requires_credit = $has_motorcycle ? 1 : 0;
 			$order_data = "client_id = '{$client_id}', 
 						   ref_code = '{$ref_code}', 
 						   total_amount = '{$total_amount}', 
 						   status = 0,
+						   requires_credit = '{$requires_credit}',
+						   agreed_to_terms = '{$agreed_to_terms}',
 						   date_created = NOW()";
 			
 			$create_order = $this->conn->query("INSERT INTO order_list SET {$order_data}");

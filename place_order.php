@@ -210,7 +210,7 @@ require_once('./inc/sess_auth.php');
                             
                             <div class="form-group text-right">
                                 <button class="btn btn-flat btn-primary" type="submit" id="place_order_btn">
-                                    <i class="fa fa-shopping-cart"></i> Advance Order
+                                    <i class="fa fa-shopping-cart"></i> <?php if(isset($has_motorcycles) && $has_motorcycles): ?><?php echo isset($application_completed) && $application_completed ? 'Continue to Order' : 'Proceed to Credit Application'; ?><?php else: ?>Advance Order<?php endif; ?>
                                 </button>
                             </div>
                         </form>
@@ -386,6 +386,25 @@ require_once('./inc/sess_auth.php');
             return isValid;
         }
         
+        // Terms checkbox changes button label contextually for motorcycle carts
+        var hasMotorcycles = <?php echo isset($has_motorcycles) && $has_motorcycles ? 'true' : 'false'; ?>;
+        var applicationCompleted = <?php echo isset($application_completed) && $application_completed ? 'true' : 'false'; ?>;
+        $('#terms_accepted').on('change', function(){
+            if(hasMotorcycles){
+                if(!applicationCompleted){
+                    if($(this).is(':checked')){
+                        $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Proceed to Credit Application');
+                    } else {
+                        $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Proceed to Credit Application');
+                    }
+                } else {
+                    $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Continue to Order');
+                }
+            } else {
+                $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Advance Order');
+            }
+        }).trigger('change');
+
         // Submit order
         $('#place_order').submit(function(e){
             e.preventDefault();
@@ -448,12 +467,21 @@ require_once('./inc/sess_auth.php');
                     }catch(parseErr){ console.log('Response parse failed', parseErr); }
                     alert_toast("An error occurred",'error');
                     end_loader();
-                    $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Advance Order');
+                    // Reset button text based on context
+                    if(hasMotorcycles){
+                        $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> ' + (applicationCompleted ? 'Continue to Order' : 'Proceed to Credit Application'));
+                    } else {
+                        $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Advance Order');
+                    }
                 },
                 success:function(resp){
                     // Always clear loader first
                     end_loader();
-                    $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Advance Order');
+                    if(hasMotorcycles){
+                        $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> ' + (applicationCompleted ? 'Continue to Order' : 'Proceed to Credit Application'));
+                    } else {
+                        $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Advance Order');
+                    }
                     
                     if(typeof resp =='object' && resp.status == 'success'){
                         // Use existing uni_modal success template for consistency
