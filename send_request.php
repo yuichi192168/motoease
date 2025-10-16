@@ -81,17 +81,10 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                 <label for="vehicle_type" class="control-label">Vehicle Type *</label>
                 <select name="vehicle_type" id="vehicle_type" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" required>
                     <option value="">Select Vehicle Type</option>
-                    <option value="Motorcycle">Motorcycle</option>
-                    <option value="Scooter">Scooter</option>
-                    <option value="Other">Other</option>
+                    <option value="Automatic">Automatic</option>
+                    <option value="Manual">Manual</option>
                 </select>
                 <div class="error-msg" id="vehicle_type_error"></div>
-            </div>
-            <div class="form-group col-md-6">
-                <label for="vehicle_name" class="control-label">Vehicle Name *</label>
-                <input type="text" name="vehicle_name" id="vehicle_name" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" required 
-                       placeholder="Honda Click 160, Honda Click 125i" maxlength="50">
-                <div class="error-msg" id="vehicle_name_error"></div>
             </div>
             <div class="form-group col-md-6">
                 <label for="vehicle_registration_number" class="control-label">Vehicle Registration Number *</label>
@@ -103,9 +96,21 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
             </div>
             <div class="form-group col-md-6">
                 <label for="vehicle_model" class="control-label">Vehicle Model *</label>
-                <input type="text" name="vehicle_model" id="vehicle_model" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" required 
-                       pattern="[A-Za-z0-9\s\-\.]+" minlength="2" maxlength="50"
-                       placeholder="Honda Click 160, Honda Click 125i">
+                <select name="vehicle_model" id="vehicle_model" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" required>
+                    <option value="">Select Vehicle Model</option>
+                    <option value="Honda Click 125i">Honda Click 125i</option>
+                    <option value="Honda Click 160">Honda Click 160</option>
+                    <option value="Honda RS125">Honda RS125</option>
+                    <option value="Honda Scoopy Slant">Honda Scoopy Slant</option>
+                    <option value="Honda PCX160">Honda PCX160</option>
+                    <option value="Honda ADV160">Honda ADV160</option>
+                    <option value="Honda CRF150L">Honda CRF150L</option>
+                    <option value="Honda CRF250L">Honda CRF250L</option>
+                    <option value="Honda Wave 110i">Honda Wave 110i</option>
+                    <option value="Honda Wave 125i">Honda Wave 125i</option>
+                    <option value="Honda XRM 125">Honda XRM 125</option>
+                    <option value="Other">Other (Specify in notes)</option>
+                </select>
                 <div class="error-msg" id="vehicle_model_error"></div>
             </div>
             <div class="form-group col-md-12">
@@ -151,6 +156,48 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
             <div class="form-group col-md-4">
                 <label for="preferred_time" class="control-label">Preferred Time</label>
                 <input type="time" id="preferred_time" name="preferred_time" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>">
+            </div>
+            
+            <!-- Terms and Conditions -->
+            <div class="form-group col-md-12">
+                <div class="card border-info">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0"><i class="fa fa-file-text"></i> Terms and Conditions</h6>
+                    </div>
+                    <div class="card-body" id="terms-content" style="max-height: 200px; overflow-y: auto; background-color: #f8f9fa;">
+                        <h6>Service Terms and Conditions</h6>
+                        <p><strong>1. Service Agreement:</strong> By submitting this service request, you agree to the following terms and conditions.</p>
+                        
+                        <p><strong>2. Service Scope:</strong> Our mechanics will perform the requested services as specified. Additional work may be required and will be discussed with you before proceeding.</p>
+                        
+                        <p><strong>3. Pricing:</strong> Service costs will be provided after inspection. All prices are subject to change based on actual work required.</p>
+                        
+                        <p><strong>4. Payment Terms:</strong> Payment is due upon completion of service. We accept cash, credit cards, and other approved payment methods.</p>
+                        
+                        <p><strong>5. Warranty:</strong> All service work comes with a 30-day warranty on parts and labor, unless otherwise specified.</p>
+                        
+                        <p><strong>6. Liability:</strong> We are not responsible for pre-existing damage or wear and tear that may be discovered during service.</p>
+                        
+                        <p><strong>7. Appointment Scheduling:</strong> Preferred dates and times are subject to availability. We will confirm your appointment within 24 hours.</p>
+                        
+                        <p><strong>8. Cancellation Policy:</strong> Please provide at least 24 hours notice for appointment cancellations.</p>
+                        
+                        <p><strong>9. Vehicle Safety:</strong> We reserve the right to refuse service if the vehicle poses a safety risk to our staff or equipment.</p>
+                        
+                        <p><strong>10. Data Privacy:</strong> Your personal and vehicle information will be kept confidential and used only for service purposes.</p>
+                        
+                        <p><strong>11. Force Majeure:</strong> We are not liable for delays or cancellations due to circumstances beyond our control.</p>
+                        
+                        <p><strong>12. Agreement:</strong> By checking the box below, you acknowledge that you have read, understood, and agree to these terms and conditions.</p>
+                    </div>
+                </div>
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" name="terms_accepted" id="terms_accepted" required disabled>
+                    <label class="form-check-label" for="terms_accepted">
+                        I have read and agree to the Terms and Conditions above *
+                    </label>
+                    <div class="error-msg" id="terms_accepted_error"></div>
+                </div>
             </div>
             
         </div>
@@ -281,22 +328,6 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
             }
         }
 
-        function validateVehicleName() {
-            var vehicleName = $('#vehicle_name').val().trim();
-            if (vehicleName.length < 2) {
-                $('#vehicle_name').addClass('is-invalid');
-                $('#vehicle_name_error').text('Vehicle name must be at least 2 characters long');
-                return false;
-            } else if (vehicleName.length > 50) {
-                $('#vehicle_name').addClass('is-invalid');
-                $('#vehicle_name_error').text('Vehicle name must not exceed 50 characters');
-                return false;
-            } else {
-                $('#vehicle_name').removeClass('is-invalid').addClass('is-valid');
-                $('#vehicle_name_error').text('');
-                return true;
-            }
-        }
 
         function validateRegistrationNumber() {
             var regNumber = $('#vehicle_registration_number').val().trim().toUpperCase();
@@ -360,16 +391,47 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
             }
         }
 
+        function validateTermsAccepted() {
+            var termsAccepted = $('#terms_accepted').is(':checked');
+            if (!termsAccepted) {
+                $('#terms_accepted').addClass('is-invalid');
+                $('#terms_accepted_error').text('You must accept the terms and conditions');
+                return false;
+            } else {
+                $('#terms_accepted').removeClass('is-invalid').addClass('is-valid');
+                $('#terms_accepted_error').text('');
+                return true;
+            }
+        }
+
+        // Terms and conditions scroll validation
+        let hasScrolledToBottom = false;
+        $('#terms-content').on('scroll', function() {
+            const element = $(this);
+            const scrollTop = element.scrollTop();
+            const scrollHeight = element[0].scrollHeight;
+            const clientHeight = element.height();
+            
+            // Check if user has scrolled to bottom (with 10px tolerance)
+            if (scrollTop + clientHeight >= scrollHeight - 10) {
+                if (!hasScrolledToBottom) {
+                    hasScrolledToBottom = true;
+                    $('#terms_accepted').prop('disabled', false);
+                    alert_toast('Terms and conditions checkbox is now enabled. Please read and accept to continue.', 'info');
+                }
+            }
+        });
+
         // Real-time validation
         $('#vehicle_type').change(validateVehicleType);
-        $('#vehicle_name').on('input', validateVehicleName);
         $('#vehicle_registration_number').on('input', function() {
             $(this).val($(this).val().toUpperCase());
             validateRegistrationNumber();
         });
-        $('#vehicle_model').on('input', validateVehicleModel);
+        $('#vehicle_model').change(validateVehicleModel);
         $('#service_id').change(validateServices);
         $('#service_description').on('input', validateServiceDescription);
+        $('#terms_accepted').change(validateTermsAccepted);
 
         // Form submission
         $('#request_form').submit(function(e){
@@ -378,11 +440,11 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
             // Validate all fields
             var isValid = true;
             isValid &= validateVehicleType();
-            isValid &= validateVehicleName();
             isValid &= validateRegistrationNumber();
             isValid &= validateVehicleModel();
             isValid &= validateServices();
             isValid &= validateServiceDescription();
+            isValid &= validateTermsAccepted();
             
             if (!isValid) {
                 alert_toast('Please correct the validation errors before submitting.', 'error');

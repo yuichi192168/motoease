@@ -13,10 +13,29 @@ Class Users extends DBConnection {
 	public function save_users(){
 		extract($_POST);
 		$data = '';
-		$chk = $this->conn->query("SELECT * FROM `users` where username ='{$username}' ".($id>0? " and id!= '{$id}' " : ""))->num_rows;
-		if($chk > 0){
-			return 3;
-			exit;
+		
+		// Validate email format
+		if(!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)){
+			return json_encode(['status' => 'failed', 'msg' => 'Invalid email format.']);
+		}
+		
+		// Validate username format (alphanumeric and underscores only)
+		if(!empty($username) && !preg_match('/^[a-zA-Z0-9_]+$/', $username)){
+			return json_encode(['status' => 'failed', 'msg' => 'Username can only contain letters, numbers, and underscores.']);
+		}
+		
+		// Check if username already exists
+		$chk_username = $this->conn->query("SELECT * FROM `users` where username ='{$username}' ".($id>0? " and id!= '{$id}' " : ""))->num_rows;
+		if($chk_username > 0){
+			return json_encode(['status' => 'failed', 'msg' => 'Username already exists.']);
+		}
+		
+		// Check if email already exists
+		if(!empty($email)){
+			$chk_email = $this->conn->query("SELECT * FROM `users` where email ='{$email}' ".($id>0? " and id!= '{$id}' " : ""))->num_rows;
+			if($chk_email > 0){
+				return json_encode(['status' => 'failed', 'msg' => 'Email already exists.']);
+			}
 		}
 		foreach($_POST as $k => $v){
 			if(!in_array($k,array('id','password'))){
@@ -43,9 +62,9 @@ Class Users extends DBConnection {
 			$qry = $this->conn->query("INSERT INTO users set {$data}");
 			if($qry){
 				$this->settings->set_flashdata('success','User Details successfully saved.');
-				return 1;
+				return json_encode(['status' => 'success', 'msg' => 'User Details successfully saved.']);
 			}else{
-				return 2;
+				return json_encode(['status' => 'failed', 'msg' => 'Failed to save user details.']);
 			}
 
 		}else{
@@ -61,9 +80,9 @@ Class Users extends DBConnection {
 				if(isset($fname) && isset($move))
 				$this->settings->set_userdata('avatar',$fname);
 
-				return 1;
+				return json_encode(['status' => 'success', 'msg' => 'User Details successfully updated.']);
 			}else{
-				return "UPDATE users set $data where id = {$id}";
+				return json_encode(['status' => 'failed', 'msg' => 'Failed to update user details.']);
 			}
 			
 		}

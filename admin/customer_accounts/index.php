@@ -81,6 +81,13 @@
 										</a>
 										<div class="dropdown-divider"></div>
 										<?php endif; ?>
+										<a class="dropdown-item upload_orcr" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
+											<span class="fa fa-upload text-success"></span> Upload OR/CR
+										</a>
+										<a class="dropdown-item view_orcr" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
+											<span class="fa fa-file-pdf text-warning"></span> View OR/CR
+										</a>
+										<div class="dropdown-divider"></div>
 										<a class="dropdown-item view_transactions" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>">
 											<span class="fa fa-list text-info"></span> View Transactions
 										</a>
@@ -147,6 +154,65 @@
 			<div class="modal-footer">
 				<button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
 				<button type="submit" form="adjustBalanceForm" class="btn btn-primary">Save Changes</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Upload OR/CR Modal -->
+<div class="modal fade" id="uploadOrcrModal" tabindex="-1" role="dialog">
+	<div class="modal-dialog modal-md" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h4 class="modal-title">Upload OR/CR Documents</h4>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<form id="uploadOrcrForm" enctype="multipart/form-data">
+					<input type="hidden" name="client_id" id="upload_client_id">
+					<div class="form-group">
+						<label>Customer Name</label>
+						<input type="text" class="form-control" id="upload_customer_name" readonly>
+					</div>
+					<div class="form-group">
+						<label for="or_document">Official Receipt (OR)</label>
+						<input type="file" name="or_document" id="or_document" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+						<small class="form-text text-muted">Upload PDF, JPG, or PNG file</small>
+					</div>
+					<div class="form-group">
+						<label for="cr_document">Certificate of Registration (CR)</label>
+						<input type="file" name="cr_document" id="cr_document" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+						<small class="form-text text-muted">Upload PDF, JPG, or PNG file</small>
+					</div>
+				</form>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+				<button type="submit" form="uploadOrcrForm" class="btn btn-primary">Upload Documents</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- View OR/CR Modal -->
+<div class="modal fade" id="viewOrcrModal" tabindex="-1" role="dialog">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h4 class="modal-title">View OR/CR Documents</h4>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<div id="orcr_documents">
+					<!-- Documents will be loaded here -->
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
 			</div>
 		</div>
 	</div>
@@ -236,6 +302,35 @@
 			});
 		});
 		
+		$('.upload_orcr').click(function(){
+			var id = $(this).attr('data-id');
+			var name = $(this).attr('data-name');
+			
+			$('#upload_client_id').val(id);
+			$('#upload_customer_name').val(name);
+			$('#uploadOrcrModal').modal('show');
+		});
+		
+		$('.view_orcr').click(function(){
+			var id = $(this).attr('data-id');
+			var name = $(this).attr('data-name');
+			
+			$.ajax({
+				url: _base_url_ + "classes/Master.php?f=get_client_orcr",
+				method: "POST",
+				data: {client_id: id},
+				dataType: "json",
+				success: function(resp){
+					if(resp.status == 'success'){
+						$('#orcr_documents').html(resp.html);
+						$('#viewOrcrModal').modal('show');
+					} else {
+						alert_toast(resp.msg, 'error');
+					}
+				}
+			});
+		});
+		
 		$('.view_transactions').click(function(){
 			var id = $(this).attr('data-id');
 			
@@ -268,6 +363,31 @@
 				success: function(resp){
 					if(resp.status == 'success'){
 						$('#adjustBalanceModal').modal('hide');
+						location.reload();
+					} else {
+						alert_toast(resp.msg, 'error');
+					}
+					end_loader();
+				}
+			});
+		});
+		
+		$('#uploadOrcrForm').submit(function(e){
+			e.preventDefault();
+			start_loader();
+			
+			$.ajax({
+				url: _base_url_ + "classes/Master.php?f=upload_client_orcr",
+				method: "POST",
+				data: new FormData($(this)[0]),
+				cache: false,
+				contentType: false,
+				processData: false,
+				dataType: "json",
+				success: function(resp){
+					if(resp.status == 'success'){
+						$('#uploadOrcrModal').modal('hide');
+						alert_toast(resp.msg, 'success');
 						location.reload();
 					} else {
 						alert_toast(resp.msg, 'error');

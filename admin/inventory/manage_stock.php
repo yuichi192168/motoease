@@ -38,6 +38,29 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 			<input name="quantity" id="quantity" type="number" min="1" class="form-control rounded-0 text-right" value="<?php echo isset($quantity) ? $quantity : 1; ?>" required>
 		</div>
 		
+		<?php if(isset($product_id)): ?>
+		<?php 
+		// Get product colors
+		$product_colors = $conn->query("SELECT available_colors FROM product_list WHERE id = '{$product_id}'")->fetch_assoc();
+		$colors = array();
+		if($product_colors && !empty($product_colors['available_colors'])) {
+			$colors = array_map('trim', explode(',', $product_colors['available_colors']));
+		}
+		?>
+		<?php if(!empty($colors)): ?>
+		<div class="form-group">
+			<label for="color_variant" class="control-label">Color Variant</label>
+			<select name="color_variant" id="color_variant" class="custom-select">
+				<option value="">-- Select Color Variant --</option>
+				<?php foreach($colors as $color): ?>
+				<option value="<?= htmlspecialchars($color) ?>" <?= isset($color_variant) && $color_variant == $color ? 'selected' : '' ?>><?= htmlspecialchars($color) ?></option>
+				<?php endforeach; ?>
+			</select>
+			<small class="text-muted">Specify which color variant this stock applies to</small>
+		</div>
+		<?php endif; ?>
+		<?php endif; ?>
+		
 	</form>
 </div>
 <script>

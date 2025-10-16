@@ -6,9 +6,6 @@
 <div class="card card-outline card-primary">
 	<div class="card-header">
 		<h3 class="card-title">List of Service Requests</h3>
-		<div class="card-tools">
-			<a href="javascript:void(0)" id="create_new" class="btn btn-flat btn-primary"><span class="fas fa-plus"></span>  Create New</a>
-		</div>
 	</div>
 	<div class="card-body">
 		<div class="container-fluid">
@@ -116,9 +113,6 @@
 		})
 		$('.view_data').click(function(){
 			uni_modal("Service Request Details","service_requests/view_request.php?id="+$(this).attr('data-id'),'large')
-		})
-		$('#create_new').click(function(){
-			uni_modal("Service Request Details","service_requests/manage_request.php",'large')
 		})
 		$('.edit_data').click(function(){
 			uni_modal("Service Request Details","service_requests/manage_request.php?id="+$(this).attr('data-id'),'large')

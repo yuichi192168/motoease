@@ -8,7 +8,7 @@
 	<div class="card-header">
 		<h3 class="card-title">Invoice Management</h3>
 		<div class="card-tools">
-			<button class="btn btn-flat btn-sm btn-default" type="button" id="print_reports">
+			<button class="btn btn-primary btn-sm" type="button" id="print_reports">
 				<span class="fa fa-print"></span> Print Report
 			</button>
 		</div>
@@ -91,7 +91,7 @@
 									<div class="col-md-3">
 										<div class="form-group">
 											<label>&nbsp;</label>
-											<button type="submit" class="btn btn-primary btn-block">
+											<button type="submit" class="btn btn-primary btn-sm btn-block">
 												<i class="fa fa-filter"></i> Filter
 											</button>
 										</div>
@@ -225,8 +225,8 @@
 				<!-- Invoice details will be loaded here -->
 			</div>
 			<div class="modal-footer">
-				<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-				<button type="button" class="btn btn-primary" id="print_invoice">Print Invoice</button>
+				<button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+				<button type="button" class="btn btn-primary btn-sm" id="print_invoice">Print Invoice</button>
 			</div>
 		</div>
 	</div>
@@ -263,8 +263,8 @@
 				</form>
 			</div>
 			<div class="modal-footer">
-				<button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-				<button type="submit" form="receipt_form" class="btn btn-success">Create Receipt</button>
+				<button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+				<button type="submit" form="receipt_form" class="btn btn-success btn-sm">Create Receipt</button>
 			</div>
 		</div>
 	</div>
@@ -425,7 +425,7 @@ $(document).ready(function(){
 						html += '<td>' + new Date(invoice.generated_at).toLocaleDateString() + '</td>';
 						html += '<td>' + (invoice.receipt_number ? '<span class="badge badge-success">' + invoice.receipt_number + '</span>' : '-') + '</td>';
 						html += '<td>';
-						html += '<button class="btn btn-sm btn-primary view_invoice" data-id="' + invoice.id + '"><i class="fa fa-eye"></i> View Details</button> ';
+						html += '<button class="btn btn-sm btn-primary view_invoice" data-id="' + invoice.id + '"><i class="fa fa-eye"></i> View</button> ';
 						if(invoice.payment_status != 'paid'){
 							html += '<button class="btn btn-sm btn-success create_receipt" data-id="' + invoice.id + '" data-amount="' + invoice.total_amount + '"><i class="fa fa-receipt"></i> Receipt</button> ';
 							html += '<button class="btn btn-sm btn-danger delete_invoice" data-id="' + invoice.id + '"><i class="fa fa-trash"></i> Delete</button>';

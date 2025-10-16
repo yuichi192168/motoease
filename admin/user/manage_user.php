@@ -29,6 +29,12 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 				<div class="form-group col-6">
 					<label for="username">Username</label>
 					<input type="text" name="username" id="username" class="form-control" value="<?php echo isset($meta['username']) ? $meta['username']: '' ?>" required  autocomplete="off">
+					<small class="form-text text-muted">Username must be unique and contain only letters, numbers, and underscores.</small>
+				</div>
+				<div class="form-group col-6">
+					<label for="email">Email</label>
+					<input type="email" name="email" id="email" class="form-control" value="<?php echo isset($meta['email']) ? $meta['email']: '' ?>" required autocomplete="off">
+					<small class="form-text text-muted">Email must be unique and valid format.</small>
 				</div>
 				<div class="form-group col-6">
 					<label for="password">Password</label>
@@ -38,11 +44,14 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                     <?php endif; ?>
 				</div>
 				<div class="form-group col-6">
-					<label for="type">Login Type</label>
-					<select name="type" id="type" class="custom-select">
-						<option value="1" <?php echo isset($meta['type']) && $meta['type'] == 1 ? 'selected' : '' ?>>Administrator</option>
-						<option value="2" <?php echo isset($meta['type']) && $meta['type'] == 2 ? 'selected' : '' ?>>Staff</option>
+					<label for="role_type">Staff Position</label>
+					<select name="role_type" id="role_type" class="custom-select">
+						<option value="admin" <?php echo isset($meta['role_type']) && $meta['role_type'] == 'admin' ? 'selected' : '' ?>>Admin</option>
+						<option value="mechanic" <?php echo isset($meta['role_type']) && $meta['role_type'] == 'mechanic' ? 'selected' : '' ?>>Mechanic</option>
+						<option value="inventory" <?php echo isset($meta['role_type']) && $meta['role_type'] == 'inventory' ? 'selected' : '' ?>>Inventory</option>
+						<option value="service_admin" <?php echo isset($meta['role_type']) && $meta['role_type'] == 'service_admin' ? 'selected' : '' ?>>Service Receptionist</option>
 					</select>
+					<small class="form-text text-muted">Select the staff position for this user.</small>
 				</div>
 				<div class="form-group col-6">
 					<label for="" class="control-label">Avatar</label>
@@ -87,7 +96,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 	}
 	$('#manage-user').submit(function(e){
 		e.preventDefault();
-var _this = $(this)
+		var _this = $(this)
 		start_loader()
 		$.ajax({
 			url:_base_url_+'classes/Users.php?f=save',
@@ -98,13 +107,24 @@ var _this = $(this)
 		    method: 'POST',
 		    type: 'POST',
 			success:function(resp){
-				if(resp ==1){
-					location.href = './?page=user/list';
-				}else{
-					$('#msg').html('<div class="alert alert-danger">Username already exist</div>')
+				try {
+					var response = typeof resp === 'string' ? JSON.parse(resp) : resp;
+					if(response.status === 'success'){
+						location.href = './?page=user/list';
+					}else{
+						$('#msg').html('<div class="alert alert-danger">' + response.msg + '</div>')
+						$("html, body").animate({ scrollTop: 0 }, "fast");
+					}
+				} catch(e) {
+					$('#msg').html('<div class="alert alert-danger">An error occurred while processing the request.</div>')
 					$("html, body").animate({ scrollTop: 0 }, "fast");
 				}
                 end_loader()
+			},
+			error: function(xhr, status, error) {
+				$('#msg').html('<div class="alert alert-danger">An error occurred: ' + error + '</div>')
+				$("html, body").animate({ scrollTop: 0 }, "fast");
+				end_loader()
 			}
 		})
 	})

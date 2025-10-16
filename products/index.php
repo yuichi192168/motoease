@@ -828,13 +828,29 @@ function addToCart(productId) {
         selectedColor = selectedOption.attr('data-color');
     }
     
+    // Check if this is a motorcycle product
+    var category = productCard.find('.text-muted').eq(1).text().toLowerCase();
+    var isMotorcycle = category.includes('motorcycle') || category.includes('bike');
+    
+    if(isMotorcycle) {
+        // Show motorcycle unit selection modal
+        showMotorcycleUnitSelection(productId, selectedColor);
+        return;
+    }
+    
+    // For non-motorcycle products, add directly to cart
+    addToCartDirect(productId, selectedColor, '');
+}
+
+function addToCartDirect(productId, selectedColor, motorcycleUnit) {
     $.ajax({
         url: '<?= base_url ?>classes/Master.php?f=save_to_cart',
         method: 'POST',
         data: {
             product_id: productId,
             quantity: 1,
-            color: selectedColor
+            color: selectedColor,
+            motorcycle_unit: motorcycleUnit
         },
         dataType: 'json',
         beforeSend: function() {
@@ -844,8 +860,10 @@ function addToCart(productId) {
         success: function(resp) {
             if(resp.status === 'success') {
                 alert_toast('Product added to cart successfully!', 'success');
+            } else if(resp.requires_motorcycle_selection) {
+                showMotorcycleUnitSelection(productId, selectedColor);
             } else {
-                alert_toast('Failed to add product to cart', 'error');
+                alert_toast(resp.msg || 'Failed to add product to cart', 'error');
             }
         },
         error: function() {
@@ -853,6 +871,48 @@ function addToCart(productId) {
         },
         complete: function() {
             $('button[onclick="addToCart(' + productId + ')"]').prop('disabled', false).html('<i class="fa fa-cart-plus"></i> Add to Cart');
+        }
+    });
+}
+
+function showMotorcycleUnitSelection(productId, selectedColor) {
+    Swal.fire({
+        title: 'Select Your Motorcycle Unit',
+        html: `
+            <div class="text-left">
+                <p>Please select your motorcycle unit before adding to cart:</p>
+                <div class="form-group">
+                    <label for="motorcycleUnit">Motorcycle Unit:</label>
+                    <select id="motorcycleUnit" class="form-control">
+                        <option value="">-- Select Motorcycle Unit --</option>
+                        <option value="Honda Click 125i">Honda Click 125i</option>
+                        <option value="Honda Click 160">Honda Click 160</option>
+                        <option value="Honda RS125">Honda RS125</option>
+                        <option value="Honda Scoopy Slant">Honda Scoopy Slant</option>
+                        <option value="Honda PCX160">Honda PCX160</option>
+                        <option value="Honda ADV160">Honda ADV160</option>
+                        <option value="Honda CRF150L">Honda CRF150L</option>
+                        <option value="Honda CRF250L">Honda CRF250L</option>
+                        <option value="Other">Other (Specify in notes)</option>
+                    </select>
+                </div>
+            </div>
+        `,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Add to Cart',
+        cancelButtonText: 'Cancel',
+        preConfirm: () => {
+            const unit = document.getElementById('motorcycleUnit').value;
+            if (!unit) {
+                Swal.showValidationMessage('Please select a motorcycle unit');
+                return false;
+            }
+            return unit;
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            addToCartDirect(productId, selectedColor, result.value);
         }
     });
 }

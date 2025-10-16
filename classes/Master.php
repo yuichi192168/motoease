@@ -144,10 +144,23 @@ Class Master extends DBConnection {
         $color_sql = $color !== NULL ? "'".$this->conn->real_escape_string($color)."'" : "NULL";
 		
 		// Check if product exists and is active
-		$product_check = $this->conn->query("SELECT id, name, price FROM `product_list` WHERE id = '{$product_id}' AND delete_flag = 0 AND status = 1");
+		$product_check = $this->conn->query("SELECT p.id, p.name, p.price, c.category FROM `product_list` p 
+											INNER JOIN categories c ON p.category_id = c.id 
+											WHERE p.id = '{$product_id}' AND p.delete_flag = 0 AND p.status = 1");
 		if($product_check->num_rows == 0){
 			$resp['status'] = 'failed';
 			$resp['msg'] = "Product not found or unavailable.";
+			return json_encode($resp);
+		}
+		
+		$product_data = $product_check->fetch_assoc();
+		$is_motorcycle = (strtolower($product_data['category']) == 'motorcycles');
+		
+		// For motorcycles, require motorcycle unit selection
+		if($is_motorcycle && empty($motorcycle_unit)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Please select your motorcycle unit before adding to cart.";
+			$resp['requires_motorcycle_selection'] = true;
 			return json_encode($resp);
 		}
 		
@@ -198,6 +211,63 @@ Class Master extends DBConnection {
 			$resp['msg'] = "Failed to add product to cart.";
 			$resp['error'] = $this->conn->error;
 		}
+		return json_encode($resp);
+	}
+	
+	// Validate cart for checkout - ensure only one motorcycle unit at a time
+	function validate_cart_checkout(){
+		$client_id = $this->settings->userdata('id');
+		$resp = array();
+		
+		// Get cart items with product categories
+		$cart_items = $this->conn->query("SELECT c.*, p.name, p.price, cat.category 
+										 FROM cart_list c 
+										 INNER JOIN product_list p ON c.product_id = p.id 
+										 INNER JOIN categories cat ON p.category_id = cat.id 
+										 WHERE c.client_id = '{$client_id}'");
+		
+		if($cart_items->num_rows == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Your cart is empty.";
+			return json_encode($resp);
+		}
+		
+		$motorcycle_count = 0;
+		$has_parts_only = true;
+		$motorcycle_items = array();
+		
+		while($item = $cart_items->fetch_assoc()){
+			if(strtolower($item['category']) == 'motorcycles'){
+				$motorcycle_count++;
+				$motorcycle_items[] = $item;
+				$has_parts_only = false;
+			}
+		}
+		
+		// Check if more than one motorcycle in cart
+		if($motorcycle_count > 1){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "You can only checkout one motorcycle at a time. Please remove other motorcycles from your cart.";
+			$resp['motorcycle_items'] = $motorcycle_items;
+			return json_encode($resp);
+		}
+		
+		// If cart contains only parts, no credit application needed
+		if($has_parts_only){
+			$resp['status'] = 'success';
+			$resp['requires_credit_application'] = false;
+			$resp['msg'] = "Cart validation passed. Parts-only order can proceed directly.";
+		} else {
+			// Cart contains motorcycle, check if credit application is completed
+			$credit_status = $this->conn->query("SELECT credit_application_completed FROM client_list WHERE id = '{$client_id}'")->fetch_assoc();
+			$application_completed = $credit_status && $credit_status['credit_application_completed'] == 1;
+			
+			$resp['status'] = 'success';
+			$resp['requires_credit_application'] = !$application_completed;
+			$resp['application_completed'] = $application_completed;
+			$resp['msg'] = $application_completed ? "Cart validation passed. Ready for checkout." : "Credit application required for motorcycle purchase.";
+		}
+		
 		return json_encode($resp);
 	}
 	
@@ -3053,6 +3123,145 @@ Class Master extends DBConnection {
             $resp['msg'] = "Failed to cleanup cart items: " . $e->getMessage();
         }
         
+        return json_encode($resp);
+    }
+    
+    // Upload OR/CR documents for client
+    function upload_client_orcr(){
+        extract($_POST);
+        $resp = array();
+        
+        // Validate client exists
+        $client_check = $this->conn->query("SELECT id, CONCAT(lastname, ', ', firstname) as name FROM client_list WHERE id = '{$client_id}' AND delete_flag = 0");
+        if($client_check->num_rows == 0){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Client not found.';
+            return json_encode($resp);
+        }
+        
+        $client_data = $client_check->fetch_assoc();
+        $upload_dir = "uploads/orcr/";
+        
+        // Create directory if it doesn't exist
+        if(!is_dir($upload_dir)){
+            mkdir($upload_dir, 0777, true);
+        }
+        
+        $uploaded_files = array();
+        
+        // Handle OR document upload
+        if(isset($_FILES['or_document']) && $_FILES['or_document']['error'] == 0){
+            $allowed_types = ['pdf', 'jpg', 'jpeg', 'png'];
+            $file_extension = strtolower(pathinfo($_FILES['or_document']['name'], PATHINFO_EXTENSION));
+            
+            if(in_array($file_extension, $allowed_types)){
+                $file_name = 'or_' . $client_id . '_' . time() . '.' . $file_extension;
+                $file_path = $upload_dir . $file_name;
+                
+                if(move_uploaded_file($_FILES['or_document']['tmp_name'], $file_path)){
+                    $uploaded_files['or_document'] = $file_path;
+                }
+            }
+        }
+        
+        // Handle CR document upload
+        if(isset($_FILES['cr_document']) && $_FILES['cr_document']['error'] == 0){
+            $allowed_types = ['pdf', 'jpg', 'jpeg', 'png'];
+            $file_extension = strtolower(pathinfo($_FILES['cr_document']['name'], PATHINFO_EXTENSION));
+            
+            if(in_array($file_extension, $allowed_types)){
+                $file_name = 'cr_' . $client_id . '_' . time() . '.' . $file_extension;
+                $file_path = $upload_dir . $file_name;
+                
+                if(move_uploaded_file($_FILES['cr_document']['tmp_name'], $file_path)){
+                    $uploaded_files['cr_document'] = $file_path;
+                }
+            }
+        }
+        
+        if(empty($uploaded_files)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'No valid documents uploaded.';
+            return json_encode($resp);
+        }
+        
+        // Update client record with document paths
+        $update_data = array();
+        foreach($uploaded_files as $type => $path){
+            $update_data[] = "`{$type}` = '{$path}'";
+        }
+        
+        $sql = "UPDATE client_list SET " . implode(', ', $update_data) . " WHERE id = '{$client_id}'";
+        $update = $this->conn->query($sql);
+        
+        if($update){
+            $resp['status'] = 'success';
+            $resp['msg'] = 'Documents uploaded successfully for ' . $client_data['name'];
+        } else {
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Failed to save document information.';
+        }
+        
+        return json_encode($resp);
+    }
+    
+    // Get client OR/CR documents
+    function get_client_orcr(){
+        extract($_POST);
+        $resp = array();
+        
+        $client_check = $this->conn->query("SELECT id, CONCAT(lastname, ', ', firstname) as name, or_document, cr_document FROM client_list WHERE id = '{$client_id}' AND delete_flag = 0");
+        if($client_check->num_rows == 0){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Client not found.';
+            return json_encode($resp);
+        }
+        
+        $client_data = $client_check->fetch_assoc();
+        $html = '<div class="row">';
+        
+        // OR Document
+        if(!empty($client_data['or_document'])){
+            $html .= '<div class="col-md-6 mb-3">';
+            $html .= '<h6>Official Receipt (OR)</h6>';
+            $file_extension = strtolower(pathinfo($client_data['or_document'], PATHINFO_EXTENSION));
+            if($file_extension == 'pdf'){
+                $html .= '<iframe src="' . $client_data['or_document'] . '" width="100%" height="400" style="border: 1px solid #ddd;"></iframe>';
+            } else {
+                $html .= '<img src="' . $client_data['or_document'] . '" class="img-fluid" style="max-height: 400px; border: 1px solid #ddd;">';
+            }
+            $html .= '<br><a href="' . $client_data['or_document'] . '" target="_blank" class="btn btn-sm btn-primary mt-2">Download OR</a>';
+            $html .= '</div>';
+        } else {
+            $html .= '<div class="col-md-6 mb-3">';
+            $html .= '<h6>Official Receipt (OR)</h6>';
+            $html .= '<p class="text-muted">No OR document uploaded yet.</p>';
+            $html .= '</div>';
+        }
+        
+        // CR Document
+        if(!empty($client_data['cr_document'])){
+            $html .= '<div class="col-md-6 mb-3">';
+            $html .= '<h6>Certificate of Registration (CR)</h6>';
+            $file_extension = strtolower(pathinfo($client_data['cr_document'], PATHINFO_EXTENSION));
+            if($file_extension == 'pdf'){
+                $html .= '<iframe src="' . $client_data['cr_document'] . '" width="100%" height="400" style="border: 1px solid #ddd;"></iframe>';
+            } else {
+                $html .= '<img src="' . $client_data['cr_document'] . '" class="img-fluid" style="max-height: 400px; border: 1px solid #ddd;">';
+            }
+            $html .= '<br><a href="' . $client_data['cr_document'] . '" target="_blank" class="btn btn-sm btn-primary mt-2">Download CR</a>';
+            $html .= '</div>';
+        } else {
+            $html .= '<div class="col-md-6 mb-3">';
+            $html .= '<h6>Certificate of Registration (CR)</h6>';
+            $html .= '<p class="text-muted">No CR document uploaded yet.</p>';
+            $html .= '</div>';
+        }
+        
+        $html .= '</div>';
+        
+        $resp['status'] = 'success';
+        $resp['html'] = $html;
         return json_encode($resp);
     }
 }

@@ -451,35 +451,44 @@
         })
         $('#checkout').click(function(){
             if($('#cart-list .cart-item').length > 0){
-                // Check if cart contains motorcycle items
-                var hasMotorcycles = false;
-                $('#cart-list .cart-item').each(function(){
-                    var itemText = $(this).text().toLowerCase();
-                    if(itemText.includes('motorcycle') || itemText.includes('bike') || itemText.includes('honda')){
-                        hasMotorcycles = true;
-                        return false; // break loop
+                // Validate cart before checkout
+                start_loader();
+                $.ajax({
+                    url: _base_url_ + 'classes/Master.php?f=validate_cart_checkout',
+                    method: 'POST',
+                    dataType: 'json',
+                    success: function(resp) {
+                        end_loader();
+                        if(resp.status === 'success') {
+                            if(resp.requires_credit_application) {
+                                // Show credit application modal
+                                Swal.fire({
+                                    title: 'Credit Application Required',
+                                    html: '<p>For motorcycle orders, a credit application is required.</p>' +
+                                          '<p><a href="https://form.jotform.com/242488642552463" target="_blank">Open Credit Application Form</a></p>' +
+                                          '<small class="text-muted">Complete the form, then proceed to checkout.</small>',
+                                    icon: 'info',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Proceed to Checkout',
+                                    cancelButtonText: 'Cancel'
+                                }).then((result)=>{
+                                    if(result.isConfirmed){
+                                        proceedToCheckout();
+                                    }
+                                });
+                            } else {
+                                // Parts only or application completed, proceed directly
+                                proceedToCheckout();
+                            }
+                        } else {
+                            alert_toast(resp.msg, 'error');
+                        }
+                    },
+                    error: function() {
+                        end_loader();
+                        alert_toast('An error occurred while validating cart', 'error');
                     }
                 });
-
-                if(hasMotorcycles){
-                    // Show link to credit application instead of redirecting
-                    Swal.fire({
-                        title: 'Motorcycle Purchase Notice',
-                        html: '<p>For motorcycle orders, a credit application is required.</p>' +
-                              '<p><a href="https://form.jotform.com/242488642552463" target="_blank">Open Credit Application Form</a></p>' +
-                              '<small class="text-muted">Complete the form, then proceed to checkout.</small>',
-                        icon: 'info',
-                        showCancelButton: true,
-                        confirmButtonText: 'Proceed to Checkout',
-                        cancelButtonText: 'Cancel'
-                    }).then((result)=>{
-                        if(result.isConfirmed){
-                            proceedToCheckout();
-                        }
-                    });
-                } else {
-                    proceedToCheckout();
-                }
             }else{
                 alert_toast('Shopping cart is empty.','error')
             }
@@ -569,17 +578,29 @@
     
     function updateCartTotals(){
         var subtotal = 0;
+        var hasItems = false;
+        
         $('#cart-list .cart-item').each(function(){
             var quantity = parseInt($(this).find('input[type="text"]').val()) || 0;
-            var price = parseFloat($(this).find('.text-primary b').text().replace('₱', '').replace(/,/g, '')) || 0;
-            subtotal += (quantity * price);
+            var priceText = $(this).find('.text-primary b').text();
+            var price = parseFloat(priceText.replace('₱', '').replace(/,/g, '')) || 0;
+            
+            if(quantity > 0 && price > 0) {
+                subtotal += (quantity * price);
+                hasItems = true;
+            }
         });
         
-        $('#subtotal').text('₱' + subtotal.toLocaleString());
-        var vat = subtotal * 0.12;
-        $('#vat').text('₱' + vat.toLocaleString());
-        var total = subtotal + vat;
-        $('#total').text('₱' + total.toLocaleString());
+        // Only update totals if there are valid items
+        if(hasItems) {
+            $('#subtotal_display').text('₱' + subtotal.toLocaleString());
+            var addonsTotal = parseFloat($('#addons_total_display').text().replace('₱', '').replace(/,/g, '')) || 0;
+            var grandTotal = subtotal + addonsTotal;
+            $('#grand_total').text('₱' + grandTotal.toLocaleString());
+        } else {
+            $('#subtotal_display').text('₱0.00');
+            $('#grand_total').text('₱0.00');
+        }
     }
     
     // Add-ons functionality

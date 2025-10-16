@@ -39,20 +39,13 @@ if($bq && $bq->num_rows>0){ $honda_id = $bq->fetch_array()[0]; }
                 <input name="name" id="name" type="text" class="form-control rounded-0" value="<?php echo isset($name) ? $name : ''; ?>" required>
 			</div>
 
-			<div class="form-group">
-				<label for="models" class="control-label">Compatible for: <small>(model)</small></label>
-				<select name="models" id="models" class="custom-select select2" required>
-					<?php 
-					$models_list = [
-						"ADV 160","Airblade 150","Airblade 160","Beat","Click 125i","Click 125i SE","Click 160","CRF150L","DIO","Giorno+","PCX 150","PCX 160 ABS","PCX 160 CBS","RS 125","Supra GTR 150","TMX 125 ALPHA","TMX SUPREMO","Wave RSX(DISC)","Wave RSX(DRUM)","Winner X (Premium)","Winner X (Racing)","XR 150i","XRM 125 Dual Sport Fi","CB150x"
-					];
-					$current_model = isset($models) ? $models : '';
-					foreach($models_list as $m):
-					?>
-						<option value="<?= htmlspecialchars($m) ?>" <?= $current_model == $m ? 'selected' : '' ?>><?= htmlspecialchars($m) ?></option>
-					<?php endforeach; ?>
-				</select>
-			</div>
+            <!-- Dynamic compatibility field based on category -->
+            <div class="form-group" id="compatibility-field">
+                <label for="models" class="control-label" id="compatibility-label">Compatible for: <small>(model)</small></label>
+                <select name="models" id="models" class="custom-select select2" required>
+                    <option value="">-- Select --</option>
+                </select>
+            </div>
 
 			<div class="form-group">
 				<label for="available_colors" class="control-label">Available Colors <small>(comma-separated, e.g., Red, Blue, Black)</small></label>
@@ -99,54 +92,26 @@ if($bq && $bq->num_rows>0){ $honda_id = $bq->fetch_array()[0]; }
 				<input name="price" id="price" type="text" class="form-control form-control-sm text-right" value="<?php echo isset($price) ? $price : ''; ?>" placeholder="000000.00" required>
 			</div>
 
-            <!-- ABC Classification Fields -->
+            <!-- ABC Classification Fields - Auto-assigned -->
             <div class="form-group">
 				<label for="abc_category" class="control-label">ABC Category</label>
-                <select name="abc_category" id="abc_category" class="custom-select select2">
-                    <option value="A" <?php echo isset($abc_category) && $abc_category == 'A' ? 'selected' : '' ?>>Category A - High Value (80% of total value)</option>
-                    <option value="B" <?php echo isset($abc_category) && $abc_category == 'B' ? 'selected' : '' ?>>Category B - Medium Value (15% of total value)</option>
-                    <option value="C" <?php echo isset($abc_category) && $abc_category == 'C' ? 'selected' : '' ?>>Category C - Low Value (5% of total value)</option>
-                </select>
-                <small class="text-muted">ABC classification helps prioritize inventory management</small>
+                <input type="text" name="abc_category" id="abc_category" class="form-control" value="<?php echo isset($abc_category) ? $abc_category : 'C'; ?>" readonly>
+                <small class="text-muted">ABC classification is automatically assigned based on product value and demand</small>
             </div>
 
             <div class="row">
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label for="reorder_point" class="control-label">Reorder Point</label>
-                        <input name="reorder_point" id="reorder_point" type="number" min="0" class="form-control form-control-sm text-right" value="<?php echo isset($reorder_point) ? $reorder_point : '0'; ?>">
-                        <small class="text-muted">Stock level to trigger reorder</small>
-                    </div>
-                </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <div class="form-group">
                         <label for="min_stock" class="control-label">Minimum Stock</label>
                         <input name="min_stock" id="min_stock" type="number" min="0" class="form-control form-control-sm text-right" value="<?php echo isset($min_stock) ? $min_stock : '0'; ?>">
                         <small class="text-muted">Minimum stock level</small>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <div class="form-group">
                         <label for="max_stock" class="control-label">Maximum Stock</label>
                         <input name="max_stock" id="max_stock" type="number" min="0" class="form-control form-control-sm text-right" value="<?php echo isset($max_stock) ? $max_stock : '0'; ?>">
                         <small class="text-muted">Maximum stock level</small>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="unit_cost" class="control-label">Unit Cost</label>
-                        <input name="unit_cost" id="unit_cost" type="number" step="0.01" min="0" class="form-control form-control-sm text-right" value="<?php echo isset($unit_cost) ? $unit_cost : '0.00'; ?>">
-                        <small class="text-muted">Cost per unit for inventory valuation</small>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="lead_time_days" class="control-label">Lead Time (Days)</label>
-                        <input name="lead_time_days" id="lead_time_days" type="number" min="0" class="form-control form-control-sm text-right" value="<?php echo isset($lead_time_days) ? $lead_time_days : '7'; ?>">
-                        <small class="text-muted">Days to receive new stock</small>
                     </div>
                 </div>
             </div>
@@ -204,7 +169,94 @@ $(document).ready(function(){
         placeholder:"Please Select Here"
     });
 
-    // Template autofill removed
+    // Dynamic compatibility field based on category
+    function updateCompatibilityField() {
+        var categoryId = $('#category_id').val();
+        var categoryText = $('#category_id option:selected').text().toLowerCase();
+        var $field = $('#compatibility-field');
+        var $label = $('#compatibility-label');
+        var $select = $('#models');
+        
+        // Clear existing options
+        $select.empty().append('<option value="">-- Select --</option>');
+        
+        if (categoryText.includes('motorcycle')) {
+            // For motorcycles, show compatible oils
+            $label.html('Compatible Oils: <small>(select applicable oils)</small>');
+            $select.attr('name', 'compatible_oils[]').attr('multiple', true);
+            
+            var oils = [
+                "Honda 4T 10W-30", "Honda 4T 10W-40", "Honda 4T 20W-50", 
+                "Honda 4T 5W-30", "Honda 4T 15W-40", "Honda 4T 5W-40",
+                "Honda 2T Oil", "Honda Gear Oil", "Honda Brake Fluid",
+                "Honda Coolant", "Honda Chain Lube", "Honda Carb Cleaner"
+            ];
+            
+            oils.forEach(function(oil) {
+                $select.append('<option value="' + oil + '">' + oil + '</option>');
+            });
+        } else if (categoryText.includes('oil')) {
+            // For oils, show compatible motorcycles
+            $label.html('Compatible Motorcycles: <small>(select applicable models)</small>');
+            $select.attr('name', 'compatible_motorcycles[]').attr('multiple', true);
+            
+            var motorcycles = [
+                "ADV 160", "Airblade 150", "Airblade 160", "Beat", "Click 125i", 
+                "Click 125i SE", "Click 160", "CRF150L", "DIO", "Giorno+", 
+                "PCX 150", "PCX 160 ABS", "PCX 160 CBS", "RS 125", "Supra GTR 150", 
+                "TMX 125 ALPHA", "TMX SUPREMO", "Wave RSX(DISC)", "Wave RSX(DRUM)", 
+                "Winner X (Premium)", "Winner X (Racing)", "XR 150i", "XRM 125 Dual Sport Fi", "CB150x"
+            ];
+            
+            motorcycles.forEach(function(motorcycle) {
+                $select.append('<option value="' + motorcycle + '">' + motorcycle + '</option>');
+            });
+        } else {
+            // For other categories, show regular model compatibility
+            $label.html('Compatible for: <small>(model)</small>');
+            $select.attr('name', 'models').removeAttr('multiple');
+            
+            var models = [
+                "ADV 160", "Airblade 150", "Airblade 160", "Beat", "Click 125i", 
+                "Click 125i SE", "Click 160", "CRF150L", "DIO", "Giorno+", 
+                "PCX 150", "PCX 160 ABS", "PCX 160 CBS", "RS 125", "Supra GTR 150", 
+                "TMX 125 ALPHA", "TMX SUPREMO", "Wave RSX(DISC)", "Wave RSX(DRUM)", 
+                "Winner X (Premium)", "Winner X (Racing)", "XR 150i", "XRM 125 Dual Sport Fi", "CB150x"
+            ];
+            
+            models.forEach(function(model) {
+                $select.append('<option value="' + model + '">' + model + '</option>');
+            });
+        }
+        
+        // Reinitialize select2
+        $select.select2({
+            width: '100%',
+            placeholder: "Please Select Here"
+        });
+    }
+    
+    // Auto-assign ABC category based on price
+    function autoAssignABCCategory() {
+        var price = parseFloat($('#price').val().replace(/,/g, '')) || 0;
+        var category = 'C'; // Default
+        
+        if (price >= 50000) {
+            category = 'A'; // High value
+        } else if (price >= 10000) {
+            category = 'B'; // Medium value
+        }
+        
+        $('#abc_category').val(category);
+    }
+    
+    // Event handlers
+    $('#category_id').on('change', updateCompatibilityField);
+    $('#price').on('blur', autoAssignABCCategory);
+    
+    // Initialize on page load
+    updateCompatibilityField();
+    autoAssignABCCategory();
 
     // Dynamic color image inputs based on available_colors
     function renderColorImageInputs(){
@@ -285,7 +337,18 @@ $(document).ready(function(){
         if(!catVal) markInvalid('#category_id','Please select a category.');
 
         var modelVal = ($('#models').val()||'');
-        if(!modelVal) markInvalid('#models','Please select a compatible model.');
+        var categoryText = $('#category_id option:selected').text().toLowerCase();
+        
+        if(categoryText.includes('motorcycle') || categoryText.includes('oil')) {
+            // For motorcycles and oils, compatibility is optional but recommended
+            if(!modelVal || modelVal.length === 0) {
+                // Just show a warning, don't mark as invalid
+                console.log('Compatibility not selected - this is optional but recommended');
+            }
+        } else {
+            // For other categories, compatibility is required
+            if(!modelVal) markInvalid('#models','Please select a compatible model.');
+        }
 
         var priceVal = ($('#price').val()||'').replace(/,/g,'');
         if(!priceVal || isNaN(priceVal) || parseFloat(priceVal) <= 0){ markInvalid('#price','Enter a valid price greater than 0.'); }

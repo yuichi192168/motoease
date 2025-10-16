@@ -53,7 +53,15 @@
 		<div class="container-fluid">
 			<!-- Filter Section -->
 			<div class="row mb-3">
-				<div class="col-md-3">
+				<div class="col-md-2">
+					<label for="user_type_filter">User Type:</label>
+					<select id="user_type_filter" class="form-control form-control-sm">
+						<option value="">All Users</option>
+						<option value="staff">Staff</option>
+						<option value="customer">Customer</option>
+					</select>
+				</div>
+				<div class="col-md-2">
 					<label for="user_filter">Filter by User:</label>
 					<select id="user_filter" class="form-control form-control-sm">
 						<option value="">All Users</option>
@@ -61,28 +69,39 @@
 						$users = $conn->query("SELECT id, CONCAT(firstname, ' ', lastname) as fullname FROM client_list WHERE delete_flag = 0 ORDER BY firstname, lastname");
 						while($user = $users->fetch_assoc()):
 						?>
-						<option value="<?= $user['id'] ?>"><?= $user['fullname'] ?></option>
+						<option value="<?= $user['id'] ?>" data-type="customer"><?= $user['fullname'] ?></option>
+						<?php endwhile; ?>
+						<?php 
+						$staff = $conn->query("SELECT id, CONCAT(firstname, ' ', lastname) as fullname FROM users ORDER BY firstname, lastname");
+						while($staff_member = $staff->fetch_assoc()):
+						?>
+						<option value="<?= $staff_member['id'] ?>" data-type="staff"><?= $staff_member['fullname'] ?> (Staff)</option>
 						<?php endwhile; ?>
 					</select>
 				</div>
-				<div class="col-md-3">
+				<div class="col-md-2">
 					<label for="activity_filter">Filter by Activity:</label>
 					<select id="activity_filter" class="form-control form-control-sm">
 						<option value="">All Activities</option>
 						<option value="service">Service Requests</option>
-						<!-- <option value="transaction">Transactions</option> -->
-						<option value="login">Login Activity</option>
-                        <option value="order">Orders</option>
-                        <option value="login">Staff Logins</option>
+						<option value="order">Orders</option>
+						<option value="login">Staff Logins</option>
+						<option value="transaction">Transactions</option>
 					</select>
 				</div>
-				<div class="col-md-3">
+				<div class="col-md-2">
 					<label for="date_from">Date From:</label>
 					<input type="date" id="date_from" class="form-control form-control-sm" value="<?= date('Y-m-d', strtotime('-7 days')) ?>">
 				</div>
-				<div class="col-md-3">
+				<div class="col-md-2">
 					<label for="date_to">Date To:</label>
 					<input type="date" id="date_to" class="form-control form-control-sm" value="<?= date('Y-m-d') ?>">
+				</div>
+				<div class="col-md-2">
+					<label>&nbsp;</label>
+					<button type="button" class="btn btn-primary btn-sm btn-block" id="apply_filters">
+						<i class="fa fa-filter"></i> Apply
+					</button>
 				</div>
 			</div>
 			
@@ -201,12 +220,18 @@
 				
 				// Display activities
 				foreach($activities as $activity):
+					$user_type = ($activity['type'] == 'login') ? 'staff' : 'customer';
 				?>
-				<div class="log-entry <?= $activity['type'] ?>" data-user="<?= $activity['user_id'] ?>" data-type="<?= $activity['type'] ?>" data-date="<?= $activity['date'] ?>">
+				<div class="log-entry <?= $activity['type'] ?>" data-user="<?= $activity['user_id'] ?>" data-type="<?= $activity['type'] ?>" data-date="<?= $activity['date'] ?>" data-user-type="<?= $user_type ?>">
 					<div class="d-flex justify-content-between align-items-start">
 						<div>
 							<span class="log-user"><?= $activity['user_name'] ?></span>
 							<span class="log-action"><?= $activity['action'] ?></span>
+							<?php if($user_type == 'staff'): ?>
+								<span class="badge badge-info badge-sm">Staff</span>
+							<?php else: ?>
+								<span class="badge badge-success badge-sm">Customer</span>
+							<?php endif; ?>
 						</div>
 						<span class="log-timestamp"><?= date('M d, Y H:i', strtotime($activity['date'])) ?></span>
 					</div>
@@ -229,6 +254,7 @@
 $(document).ready(function(){
 	// Filter functionality
 	function filterLogs() {
+		var userTypeFilter = $('#user_type_filter').val();
 		var userFilter = $('#user_filter').val();
 		var activityFilter = $('#activity_filter').val();
 		var dateFrom = $('#date_from').val();
@@ -239,6 +265,11 @@ $(document).ready(function(){
 		$('.log-entry').each(function() {
 			var entry = $(this);
 			var show = true;
+			
+			// User type filter - check if user type filter is set and matches
+			if(userTypeFilter && userTypeFilter !== '' && entry.data('user-type') != userTypeFilter) {
+				show = false;
+			}
 			
 			// User filter - check if user filter is set and matches
 			if(userFilter && userFilter !== '' && entry.data('user') != userFilter) {
@@ -283,7 +314,32 @@ $(document).ready(function(){
 	}
 	
 	// Bind filter events
-	$('#user_filter, #activity_filter, #date_from, #date_to').on('change', filterLogs);
+	$('#user_type_filter, #user_filter, #activity_filter, #date_from, #date_to').on('change', filterLogs);
+	$('#apply_filters').on('click', filterLogs);
+	
+	// Update user filter options based on user type selection
+	$('#user_type_filter').on('change', function() {
+		var userType = $(this).val();
+		var userSelect = $('#user_filter');
+		
+		// Show/hide options based on user type
+		userSelect.find('option').each(function() {
+			var option = $(this);
+			var optionType = option.data('type');
+			
+			if(userType === '' || optionType === userType || option.val() === '') {
+				option.show();
+			} else {
+				option.hide();
+			}
+		});
+		
+		// Reset user filter if current selection doesn't match type
+		var currentUserType = userSelect.find('option:selected').data('type');
+		if(userType !== '' && currentUserType !== userType) {
+			userSelect.val('');
+		}
+	});
 	
 	// Export functionality
 	$('#export_logs').click(function() {
