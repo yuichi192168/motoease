@@ -12,6 +12,36 @@
 	</div>
 	<div class="card-body">
 		<div class="container-fluid">
+			<!-- Filters -->
+			<?php 
+				$search = isset($_GET['search']) ? $_GET['search'] : '';
+				$category_filter = isset($_GET['category_filter']) ? $_GET['category_filter'] : '';
+			?>
+			<div class="row mb-3">
+				<div class="col-md-6">
+					<label for="category_filter">Filter by Category:</label>
+					<select id="category_filter" class="form-control form-control-sm">
+						<option value="">All Categories</option>
+						<?php 
+							$cats = $conn->query("SELECT id, category FROM categories WHERE delete_flag = 0 AND status = 1 ORDER BY category");
+							while($c = $cats->fetch_assoc()):
+						?>
+							<option value="<?= $c['id'] ?>" <?= ($category_filter == $c['id'] ? 'selected' : '') ?>><?= $c['category'] ?></option>
+						<?php endwhile; ?>
+					</select>
+				</div>
+				<div class="col-md-6">
+					<label for="search_filter">Search Products:</label>
+					<form id="search_form">
+						<div class="input-group input-group-sm">
+							<input type="text" name="search" id="search_filter" value="<?= htmlspecialchars($search) ?>" class="form-control form-control-sm" placeholder="Search by product name...">
+							<div class="input-group-append">
+								<button class="btn btn-outline-secondary" type="submit"><i class="fa fa-search"></i></button>
+							</div>
+						</div>
+					</form>
+				</div>
+			</div>
         <div class="container-fluid">
 			<table class="table table-bordered table-stripped">
 				<colgroup>
@@ -34,7 +64,15 @@
 				<tbody>
 					<?php 
 					$i = 1;
-                        $qry = $conn->query("SELECT p.* from `product_list` p where p.delete_flag = 0 order by (p.`name`) asc ");
+						$where = " WHERE p.delete_flag = 0 ";
+						if(!empty($category_filter)){
+							$where .= " AND p.category_id = '".$conn->real_escape_string($category_filter)."' ";
+						}
+						if(!empty($search)){
+							$st = $conn->real_escape_string($search);
+							$where .= " AND (p.name LIKE '%{$st}%' OR p.description LIKE '%{$st}%') ";
+						}
+						$qry = $conn->query("SELECT p.* FROM `product_list` p {$where} ORDER BY (p.`name`) ASC");
 						while($row = $qry->fetch_assoc()):
 							foreach($row as $k=> $v){
 								$row[$k] = trim(stripslashes($v));
@@ -75,6 +113,20 @@
 </div>
 <script>
 	$(document).ready(function(){
+		// Apply filters
+		$('#category_filter').change(function(){
+			const params = new URLSearchParams(window.location.search);
+			const val = $(this).val();
+			if(val){ params.set('category_filter', val); } else { params.delete('category_filter'); }
+			window.location.search = params.toString();
+		});
+		$('#search_form').submit(function(e){
+			e.preventDefault();
+			const params = new URLSearchParams(window.location.search);
+			const val = $('#search_filter').val();
+			if(val){ params.set('search', val); } else { params.delete('search'); }
+			window.location.search = params.toString();
+		});
 		$('.delete_data').click(function(){
 			_conf("Are you sure to delete this product permanently?","delete_product",[$(this).attr('data-id')])
 		})

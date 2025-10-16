@@ -38,15 +38,15 @@
 						<?php 
 						try {
 							$i = 1;
-							$qry = $conn->query("SELECT c.*, 
-												COALESCE(SUM(o.total_amount), 0) as total_balance,
-												COALESCE(SUM(CASE WHEN o.status = 4 THEN o.total_amount ELSE 0 END), 0) as paid_amount,
-												COALESCE(SUM(CASE WHEN o.status != 4 AND o.status != 5 THEN o.total_amount ELSE 0 END), 0) as unpaid_amount
-												FROM `client_list` c 
-												LEFT JOIN order_list o ON c.id = o.client_id 
-												WHERE c.delete_flag = 0 
-												GROUP BY c.id 
-												ORDER BY c.lastname, c.firstname");
+                            $qry = $conn->query("SELECT c.*, 
+                                                c.account_balance as total_balance,
+                                                COALESCE(SUM(CASE WHEN o.status IN (4,6) THEN o.total_amount ELSE 0 END), 0) as paid_amount,
+                                                COALESCE(SUM(CASE WHEN o.status IN (0,1,2,3) THEN o.total_amount ELSE 0 END), 0) as unpaid_amount
+                                                FROM `client_list` c 
+                                                LEFT JOIN order_list o ON c.id = o.client_id 
+                                                WHERE c.delete_flag = 0 
+                                                GROUP BY c.id 
+                                                ORDER BY c.lastname, c.firstname");
 							while($row = $qry->fetch_assoc()):
 								$installment_plan = "₱" . number_format($row['total_balance'] / 6, 2) . "/month for 6 months";
 								if($row['total_balance'] == 0) $installment_plan = "No balance";
@@ -137,7 +137,7 @@
 						<label>Adjustment Type</label>
 						<select name="adjustment_type" class="form-control" required>
 							<option value="add">Add Amount</option>
-							<option value="subtract">Subtract Amount</option>
+							<option value="deduct">Subtract Amount</option>
 							<option value="set">Set New Balance</option>
 						</select>
 					</div>
@@ -147,7 +147,7 @@
 					</div>
 					<div class="form-group">
 						<label>Reason</label>
-						<textarea name="reason" class="form-control" rows="3" placeholder="Reason for adjustment"></textarea>
+						<textarea name="reason" class="form-control" rows="3" placeholder="Reason for adjustment" required></textarea>
 					</div>
 				</form>
 			</div>
@@ -175,6 +175,22 @@
 					<div class="form-group">
 						<label>Customer Name</label>
 						<input type="text" class="form-control" id="upload_customer_name" readonly>
+					</div>
+					<div class="form-group">
+						<label>Document Number (Optional)</label>
+						<input type="text" name="document_number" class="form-control" placeholder="Enter document number">
+					</div>
+					<div class="form-group">
+						<label>Plate Number (Optional)</label>
+						<input type="text" name="plate_number" class="form-control" placeholder="Enter plate number">
+					</div>
+					<div class="form-group">
+						<label>Release Date (Optional)</label>
+						<input type="date" name="release_date" class="form-control">
+					</div>
+					<div class="form-group">
+						<label>Remarks (Optional)</label>
+						<textarea name="remarks" class="form-control" rows="2" placeholder="Remarks"></textarea>
 					</div>
 					<div class="form-group">
 						<label for="or_document">Official Receipt (OR)</label>
@@ -217,6 +233,28 @@
 		</div>
 	</div>
 </div>
+
+<!-- OR/CR File Viewer Modal -->
+<div class="modal fade" id="orcrFileViewer" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">View Document</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="orcr_viewer_container" class="w-100">
+                    <!-- dynamic: iframe or img inserted here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+ </div>
 
 <!-- View Transactions Modal -->
 <div class="modal fade" id="viewTransactionsModal" tabindex="-1" role="dialog">
@@ -394,6 +432,51 @@
 					}
 					end_loader();
 				}
+			});
+		});
+
+		// Delegated handler to view a specific OR/CR file in a modal
+		$(document).on('click', '.btn-view-orcr', function(){
+			var file = $(this).attr('data-file') || '';
+			var extAttr = ($(this).attr('data-ext') || '').toLowerCase();
+			var pathOnly = file.split('?')[0] || file;
+			var ext = extAttr || pathOnly.split('.').pop().toLowerCase();
+			var html = '';
+			if(file){
+				if(ext === 'pdf'){
+					html = '<iframe src="'+file+'" width="100%" height="500" style="border:1px solid #ddd"></iframe>';
+				}else{
+					html = '<img src="'+file+'" class="img-fluid" style="max-height:500px;border:1px solid #ddd">';
+				}
+			}else{
+				html = '<div class="alert alert-secondary">No file to display.</div>';
+			}
+			$('#orcr_viewer_container').html(html);
+			$('#orcrFileViewer').modal('show');
+		});
+
+		// Delegated handler to delete a document
+		$(document).on('click', '.btn-delete-orcr', function(){
+			var id = $(this).attr('data-id');
+			if(!id) return;
+			_confirm("Are you sure you want to delete this document?", function(){
+				start_loader();
+				$.ajax({
+					url: _base_url_ + "classes/Master.php?f=delete_document",
+					method: "POST",
+					data: {document_id: id},
+					dataType: "json",
+					success: function(resp){
+						if(resp && resp.status === 'success'){
+							alert_toast('Document deleted','success');
+							// refresh modal content
+							$('.view_orcr:visible').click();
+						}else{
+							alert_toast(resp.msg || 'Delete failed','error');
+						}
+						end_loader();
+					}
+				});
 			});
 		});
 		

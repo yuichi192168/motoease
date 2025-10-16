@@ -101,9 +101,8 @@ ADD COLUMN IF NOT EXISTS `is_locked` tinyint(1) NOT NULL DEFAULT 0 AFTER `login_
 ADD COLUMN IF NOT EXISTS `locked_until` datetime DEFAULT NULL AFTER `is_locked`,
 ADD COLUMN IF NOT EXISTS `last_login` datetime DEFAULT NULL AFTER `locked_until`;
 
--- 6. Add missing columns to order_list table
-ALTER TABLE `order_list` 
-ADD COLUMN IF NOT EXISTS `delivery_address` text DEFAULT NULL AFTER `total_amount`;
+-- 6. (Removed) delivery-related columns are deprecated; orders are pickup-based
+-- Intentionally no-op to avoid reintroducing `delivery_address`
 
 -- 7. Add missing columns to service_requests table
 ALTER TABLE `service_requests` 

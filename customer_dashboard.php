@@ -10,11 +10,14 @@ $customer = $conn->query("SELECT * FROM client_list WHERE id = '{$client_id}'")-
 
 // Get account balance and installment details
 $account_balance = $conn->query("SELECT 
-    COALESCE(SUM(total_amount), 0) as total_balance,
     COALESCE(SUM(CASE WHEN payment_status = 'installment' THEN total_amount ELSE 0 END), 0) as installment_balance,
     COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END), 0) as paid_amount
     FROM order_list 
     WHERE client_id = '{$client_id}' AND status != 5")->fetch_assoc();
+
+// Reflect account balance from client_list (single source of truth)
+$client_balance_row = $conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}' AND delete_flag = 0")->fetch_assoc();
+$client_account_balance = $client_balance_row ? (float)$client_balance_row['account_balance'] : 0;
 
 // Get installment details
 $installments = $conn->query("SELECT 
@@ -74,7 +77,7 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
         </div>
 
         Account Balance Section
-        <!-- <div class="row mb-4">
+        <div class="row mb-4">
             <div class="col-12">
                 <div class="card card-outline card-success shadow rounded-0">
                     <div class="card-header">
@@ -87,7 +90,7 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
                                     <span class="info-box-icon"><i class="fas fa-money-bill-wave"></i></span>
                                     <div class="info-box-content">
                                         <span class="info-box-text">Total Balance</span>
-                                        <span class="info-box-number">₱<?= number_format($account_balance['total_balance'], 2) ?></span>
+                                        <span class="info-box-number" id="client_account_balance_value">₱<?= number_format($client_account_balance, 2) ?></span>
                                     </div>
                                 </div>
                             </div>
@@ -113,7 +116,7 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
                     </div>
                 </div>
             </div>
-        </div> -->
+        </div>
 
         <!-- Quick Stats -->
         <div class="row mb-4">
@@ -452,6 +455,57 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
                 </div>
             </div>
         </div>
+        
+        <!-- OR/CR Upload Modal (Client) -->
+        <div class="modal fade" id="orcrUploadModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Upload OR/CR Document</h5>
+                        <button type="button" class="close" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <form id="orcrUploadForm" enctype="multipart/form-data">
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label>Document Type</label>
+                                <select name="document_type" class="form-control" required>
+                                    <option value="">Select Document Type</option>
+                                    <option value="or">Original Receipt (OR)</option>
+                                    <option value="cr">Certificate of Registration (CR)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Document Number</label>
+                                <input type="text" name="document_number" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Plate Number</label>
+                                <input type="text" name="plate_number" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>Release Date</label>
+                                <input type="date" name="release_date" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>Document File</label>
+                                <input type="file" name="document_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
+                                <small class="text-muted">Accepted formats: PDF, JPG, JPEG, PNG</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Remarks</label>
+                                <textarea name="remarks" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Upload Document</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -501,7 +555,7 @@ $(document).ready(function(){
             success: function(resp){
                 if(resp.status == 'success'){
                     // Update balance
-                    $('.text-primary').text('₱' + parseFloat(resp.data.balance).toFixed(2));
+                    $('#client_account_balance_value').text('₱' + parseFloat(resp.data.balance).toFixed(2));
                     
                     // Update notification count
                     // You can implement real-time updates here
@@ -519,5 +573,33 @@ $(document).ready(function(){
     function viewOrder(order_id){
         uni_modal("Order Details", "view_order.php?id=" + order_id, "modal-lg");
     }
+    
+    // OR/CR upload (client)
+    window.showORCRUpload = function(){
+        $('#orcrUploadModal').modal('show');
+    }
+    
+    $('#orcrUploadForm').submit(function(e){
+        e.preventDefault();
+        start_loader();
+        $.ajax({
+            url:_base_url_+"classes/Master.php?f=upload_orcr_document",
+            data: new FormData($(this)[0]),
+            cache: false,
+            contentType: false,
+            processData: false,
+            method: 'POST',
+            dataType: 'json',
+            success:function(resp){
+                if(resp.status == 'success'){
+                    $('#orcrUploadModal').modal('hide');
+                    location.reload();
+                }else{
+                    alert_toast(resp.msg,'error');
+                }
+                end_loader();
+            }
+        });
+    });
 });
 </script>

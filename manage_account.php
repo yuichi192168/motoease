@@ -2,6 +2,7 @@
 // Updated: Fixed database query errors - removed non-existent payment_status and due_date fields
 // Last updated: 2025-01-27
 if($_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2){
+    // Always fetch fresh client record so Admin updates reflect instantly
     $qry = $conn->query("SELECT * FROM `client_list` where id = '{$_settings->userdata('id')}'");
     if($qry->num_rows >0){
         $res = $qry->fetch_array();
@@ -19,9 +20,12 @@ if($_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2){
 
 // Get account balance and order details
 $client_id = $_settings->userdata('id');
+$current_balance_row = $conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}' AND delete_flag = 0")->fetch_assoc();
+$current_balance = $current_balance_row ? (float)$current_balance_row['account_balance'] : 0;
+// Align with report logic: delivered and claimed count as paid
 $account_balance = $conn->query("SELECT 
     COALESCE(SUM(total_amount), 0) as total_balance,
-    COALESCE(SUM(CASE WHEN status = 4 THEN total_amount ELSE 0 END), 0) as delivered_amount,
+    COALESCE(SUM(CASE WHEN status IN (4,6) THEN total_amount ELSE 0 END), 0) as delivered_amount,
     COALESCE(SUM(CASE WHEN status IN (0,1,2,3) THEN total_amount ELSE 0 END), 0) as pending_amount
     FROM order_list 
     WHERE client_id = '{$client_id}' AND status != 5")->fetch_assoc();
@@ -83,8 +87,8 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                                 <div class="info-box bg-primary">
                                     <span class="info-box-icon"><i class="fas fa-money-bill-wave"></i></span>
                                     <div class="info-box-content">
-                                        <span class="info-box-text">Total Price</span>
-                                        <span class="info-box-number">₱157,350</span>
+                                        <span class="info-box-text">Total Order Amount</span>
+                                        <span class="info-box-number">₱<?= number_format($account_balance['total_balance'] ?? 0, 2) ?></span>
                                     </div>
                                 </div>
                             </div>
@@ -92,8 +96,8 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                                 <div class="info-box bg-warning">
                                     <span class="info-box-icon"><i class="fas fa-credit-card"></i></span>
                                     <div class="info-box-content">
-                                        <span class="info-box-text">Estimated Down Payment</span>
-                                        <span class="info-box-number">₱16,200</span>
+                                        <span class="info-box-text">Pending Amount</span>
+                                        <span class="info-box-number">₱<?= number_format($account_balance['pending_amount'] ?? 0, 2) ?></span>
                                     </div>
                                 </div>
                             </div>
@@ -101,8 +105,8 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                                 <div class="info-box bg-info">
                                     <span class="info-box-icon"><i class="fas fa-calendar-alt"></i></span>
                                     <div class="info-box-content">
-                                        <span class="info-box-text">Monthly Payment</span>
-                                        <span class="info-box-number">₱7,340</span>
+                                        <span class="info-box-text">Paid Amount</span>
+                                        <span class="info-box-number">₱<?= number_format($account_balance['delivered_amount'] ?? 0, 2) ?></span>
                                     </div>
                                 </div>
                             </div>
@@ -110,19 +114,14 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                                 <div class="info-box bg-success">
                                     <span class="info-box-icon"><i class="fas fa-check-circle"></i></span>
                                     <div class="info-box-content">
-                                        <span class="info-box-text">Payment Status</span>
-                                        <span class="info-box-number">
-                                            <span class="badge badge-success">Up-to-date</span>
-                                        </span>
+                                        <span class="info-box-text">Current Balance</span>
+                                        <span class="info-box-number">₱<?= number_format($current_balance, 2) ?></span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         
                         <!-- Payment Status Alert -->
-                <div class="alert alert-success mt-3" role="alert">
-                            <i class="fas fa-check-circle me-2"></i>
-                    <strong>Order Status:</strong> Status values reflect live order updates (Pending, Ready for Pickup, For Delivery, On the Way, Delivered).
                         </div>
                         
                         <!-- Payment History Table -->
@@ -234,7 +233,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                     </div>
                     <div class="card-body">
                         <button class="btn btn-info btn-sm" onclick="showVehicleInfo()">Update Vehicle Info</button>
-                        <!-- <button class="btn btn-warning btn-sm" onclick="showORCRUpload()">Upload OR/CR Document</button> -->
+                        <button class="btn btn-warning btn-sm" onclick="showORCRUpload()">Upload OR/CR Document</button>
                     </div>
                 </div>
             </div>
@@ -447,7 +446,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                                 </td>
                                 <td>
                                     <?php if($doc['file_path']): ?>
-                                    <a href="<?= validate_image($doc['file_path']) ?>" target="_blank" class="btn btn-sm btn-info">View</a>
+                                    <button type="button" class="btn btn-sm btn-info btn-view-orcr" data-file="<?= $doc['file_path'] ?>">View</button>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -463,89 +462,22 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
     </div>
 </div>
 
-<!-- Add Balance Modal removed -->
-
-<!-- Vehicle Info Modal -->
-<div class="modal fade" id="vehicleInfoModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
+<!-- OR/CR File Viewer Modal (Client) -->
+<div class="modal fade" id="orcrFileViewerClient" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Update Vehicle Information</h5>
+                <h5 class="modal-title">View Document</h5>
                 <button type="button" class="close" data-dismiss="modal">
                     <span>&times;</span>
                 </button>
             </div>
-            <form id="vehicleInfoForm">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Vehicle Brand</label>
-                        <input type="text" name="vehicle_brand" class="form-control" value="<?= isset($vehicle_brand) ? $vehicle_brand : '' ?>">
-                    </div>
-                    <div class="form-group">
-                        <label>Vehicle Model</label>
-                        <input type="text" name="vehicle_model" class="form-control" value="<?= isset($vehicle_model) ? $vehicle_model : '' ?>">
-                    </div>
-                    <div class="form-group">
-                        <label>Plate Number</label>
-                        <input type="text" name="vehicle_plate_number" class="form-control" value="<?= isset($vehicle_plate_number) ? $vehicle_plate_number : '' ?>">
-                            </div>
-                            </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Update Vehicle Info</button>
-                        </div>
-                    </form>
-                </div>
+            <div class="modal-body">
+                <div id="orcr_viewer_container_client"></div>
             </div>
-</div>
-
-<!-- OR/CR Upload Modal -->
-<div class="modal fade" id="orcrUploadModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Upload OR/CR Document</h5>
-                <button type="button" class="close" data-dismiss="modal">
-                    <span>&times;</span>
-                </button>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
-            <form id="orcrUploadForm" enctype="multipart/form-data">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Document Type</label>
-                        <select name="document_type" class="form-control" required>
-                            <option value="">Select Document Type</option>
-                            <option value="or">Original Receipt (OR)</option>
-                            <option value="cr">Certificate of Registration (CR)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Document Number</label>
-                        <input type="text" name="document_number" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Plate Number</label>
-                        <input type="text" name="plate_number" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label>Release Date</label>
-                        <input type="date" name="release_date" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label>Document File</label>
-                        <input type="file" name="document_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
-                        <small class="text-muted">Accepted formats: PDF, JPG, JPEG, PNG</small>
-                    </div>
-                    <div class="form-group">
-                        <label>Remarks</label>
-                        <textarea name="remarks" class="form-control" rows="3"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Upload Document</button>
-                </div>
-            </form>
         </div>
     </div>
 </div>
@@ -671,6 +603,25 @@ function displayImg(input,_this) {
                     end_loader();
                 }
             });
+        });
+
+        // View document in modal (client)
+        $(document).on('click', '.btn-view-orcr', function(){
+            var file = $(this).attr('data-file') || '';
+            var pathOnly = file.split('?')[0] || file;
+            var ext = pathOnly.split('.').pop().toLowerCase();
+            var html = '';
+            if(file){
+                if(ext === 'pdf'){
+                    html = '<iframe src="'+file+'" width="100%" height="500" style="border:1px solid #ddd"></iframe>';
+                } else {
+                    html = '<img src="'+file+'" class="img-fluid" style="max-height:500px;border:1px solid #ddd">';
+                }
+            } else {
+                html = '<div class="alert alert-secondary">No file to display.</div>';
+            }
+            $('#orcr_viewer_container_client').html(html);
+            $('#orcrFileViewerClient').modal('show');
         });
     })
     

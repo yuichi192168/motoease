@@ -156,11 +156,16 @@ Class Master extends DBConnection {
 		$product_data = $product_check->fetch_assoc();
 		$is_motorcycle = (strtolower($product_data['category']) == 'motorcycles');
 		
-		// For motorcycles, require motorcycle unit selection
-		if($is_motorcycle && empty($motorcycle_unit)){
+		// Check if product has available colors defined
+		$product_colors_check = $this->conn->query("SELECT available_colors FROM product_list WHERE id = '{$product_id}'");
+		$product_colors_data = $product_colors_check->fetch_assoc();
+		$has_available_colors = !empty($product_colors_data['available_colors']) && trim($product_colors_data['available_colors']) !== '';
+		
+		// For products with available colors (motorcycles or any product with colors), require color selection
+		if($has_available_colors && empty($color)){
 			$resp['status'] = 'failed';
-			$resp['msg'] = "Please select your motorcycle unit before adding to cart.";
-			$resp['requires_motorcycle_selection'] = true;
+			$resp['msg'] = "Please select a color before adding to cart.";
+			$resp['requires_color_selection'] = true;
 			return json_encode($resp);
 		}
 		
@@ -211,6 +216,39 @@ Class Master extends DBConnection {
 			$resp['msg'] = "Failed to add product to cart.";
 			$resp['error'] = $this->conn->error;
 		}
+		return json_encode($resp);
+	}
+	
+	// Get product details (colors and price) for add to cart modal
+	function get_product_details(){
+		$product_id = isset($_POST['product_id']) ? $this->conn->real_escape_string($_POST['product_id']) : '';
+		
+		if(empty($product_id)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Product ID is required.";
+			return json_encode($resp);
+		}
+		
+		// Get product details
+		$product_query = $this->conn->query("SELECT available_colors, price FROM product_list WHERE id = '{$product_id}' AND delete_flag = 0 AND status = 1");
+		
+		if($product_query->num_rows == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Product not found.";
+			return json_encode($resp);
+		}
+		
+		$product_data = $product_query->fetch_assoc();
+		$colors = [];
+		
+		if(!empty($product_data['available_colors']) && trim($product_data['available_colors']) !== ''){
+			$colors = array_map('trim', explode(',', $product_data['available_colors']));
+			$colors = array_filter($colors); // Remove empty values
+		}
+		
+		$resp['status'] = 'success';
+		$resp['colors'] = $colors;
+		$resp['price'] = floatval($product_data['price']);
 		return json_encode($resp);
 	}
 	
@@ -386,6 +424,14 @@ Class Master extends DBConnection {
 	function place_order(){
 		$client_id = $this->settings->userdata('id');
 		$resp = array();
+		
+		// Enforce Terms & Conditions acceptance
+		$tnc_ok = isset($_POST['terms_accepted']) && in_array($_POST['terms_accepted'], ['on','1','true','yes'], true);
+		if(!$tnc_ok){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Please accept the terms and conditions before placing an order.";
+			return json_encode($resp);
+		}
 		
 		// Check if cart has items
 		$cart_items = $this->conn->query("SELECT COUNT(*) as count FROM cart_list WHERE client_id = '{$client_id}'");
@@ -1195,6 +1241,14 @@ Class Master extends DBConnection {
 	function save_request(){
 		if(empty($_POST['id']))
 		$_POST['client_id'] = $this->settings->userdata('id');
+		
+		// Enforce Terms & Conditions acceptance
+		$tnc_ok = isset($_POST['terms_accepted']) && in_array($_POST['terms_accepted'], ['on','1','true','yes'], true);
+		if(!$tnc_ok){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Please accept the terms and conditions before submitting the service request.";
+			return json_encode($resp);
+		}
 		extract($_POST);
 		$data = "";
 		foreach($_POST as $k=> $v){
@@ -1567,8 +1621,22 @@ Class Master extends DBConnection {
 	
 	function delete_document(){
 		extract($_POST);
-		$del = $this->conn->query("DELETE FROM `or_cr_documents` where id = '{$document_id}'");
+    // Fetch file path to delete from storage
+    $fp = $this->conn->query("SELECT file_path FROM `or_cr_documents` WHERE id = '{$document_id}'");
+    $filePath = '';
+    if($fp && $fp->num_rows > 0){
+        $row = $fp->fetch_assoc();
+        $filePath = $row['file_path'];
+    }
+    $del = $this->conn->query("DELETE FROM `or_cr_documents` where id = '{$document_id}'");
 		if($del){
+        // Attempt to delete the physical file if present
+        if(!empty($filePath)){
+            $parsed = parse_url($filePath);
+            $pathOnly = isset($parsed['path']) ? $parsed['path'] : $filePath;
+            $absPath = base_app . ltrim($pathOnly, '/');
+            if(is_file($absPath)) @unlink($absPath);
+        }
 			$resp['status'] = 'success';
 			$resp['msg'] = "Document successfully deleted.";
 		}else{
@@ -1638,95 +1706,148 @@ Class Master extends DBConnection {
 	function upload_orcr_document(){
 		extract($_POST);
 		$client_id = $this->settings->userdata('id');
+		$resp = array();
 		
-		$data = "client_id = '{$client_id}', document_type = '{$document_type}', document_number = '{$document_number}', plate_number = '{$plate_number}', release_date = '{$release_date}', remarks = '{$remarks}', status = 'pending'";
-		
-		$sql = "INSERT INTO `or_cr_documents` set {$data} ";
-		$save = $this->conn->query($sql);
-		
-		if($save){
-			$doc_id = $this->conn->insert_id;
-			
-			// Handle file upload
-			if(!empty($_FILES['document_file']['tmp_name'])){
-				$ext = pathinfo($_FILES['document_file']['name'], PATHINFO_EXTENSION);
-				$dir = base_app."uploads/documents/";
-				if(!is_dir($dir))
-				mkdir($dir);
-				$name = $doc_id.".".$ext;
-				if(is_file($dir.$name))
-					unlink($dir.$name);
-				$move = move_uploaded_file($_FILES['document_file']['tmp_name'],$dir.$name);
-				if($move){
-					$this->conn->query("UPDATE `or_cr_documents` set file_path = CONCAT('uploads/documents/$name','?v=',unix_timestamp(CURRENT_TIMESTAMP)) where id = '{$doc_id}'");
-				}
-			}
-			
-			$resp['status'] = 'success';
-			$resp['msg'] = "Document successfully uploaded.";
-		}else{
+		// Basic validation
+		if(empty($client_id)){
 			$resp['status'] = 'failed';
-			$resp['msg'] = "Failed to upload document.";
-			$resp['error'] = $this->conn->error;
+			$resp['msg'] = 'Not authenticated.';
+			return json_encode($resp);
 		}
+		if(empty($document_type) || empty($document_number)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Document type and number are required.';
+			return json_encode($resp);
+		}
+		if(!isset($_FILES['document_file']) || $_FILES['document_file']['error'] !== 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Please select a valid document file to upload.';
+			return json_encode($resp);
+		}
+		
+		// Ensure upload directory
+		$dir = base_app."uploads/documents/";
+		if(!is_dir($dir)){
+			mkdir($dir, 0755, true);
+		}
+		
+		// Validate file type
+		$allowed_types = ['pdf','jpg','jpeg','png'];
+		$extension = strtolower(pathinfo($_FILES['document_file']['name'], PATHINFO_EXTENSION));
+		if(!in_array($extension, $allowed_types)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Invalid file type. Allowed: PDF, JPG, JPEG, PNG.';
+			return json_encode($resp);
+		}
+		
+		// Insert minimal, safe columns plus optional plate and release date
+		$doc_type = $this->conn->real_escape_string($document_type);
+		$doc_number = $this->conn->real_escape_string($document_number);
+		$plate_val = isset($plate_number) ? $this->conn->real_escape_string($plate_number) : '';
+		$release_val = isset($release_date) && !empty($release_date) ? $this->conn->real_escape_string($release_date) : null;
+		$remarks_val = isset($remarks) ? $this->conn->real_escape_string($remarks) : '';
+		$data = "client_id = '{$client_id}', document_type = '{$doc_type}', document_number = '{$doc_number}', status = 'pending', remarks = '{$remarks_val}', plate_number = '{$plate_val}'";
+		if(!is_null($release_val)){
+			$data .= ", release_date = '{$release_val}'";
+		}
+		$sql = "INSERT INTO `or_cr_documents` SET {$data}";
+		$save = $this->conn->query($sql);
+		if(!$save){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Failed to create document record.';
+			$resp['error'] = $this->conn->error;
+			return json_encode($resp);
+		}
+		
+		$doc_id = $this->conn->insert_id;
+		$name = $doc_id.'.'.$extension;
+		if(is_file($dir.$name)) unlink($dir.$name);
+		$move = move_uploaded_file($_FILES['document_file']['tmp_name'], $dir.$name);
+		if(!$move){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Failed to move uploaded file.';
+			return json_encode($resp);
+		}
+		$this->conn->query("UPDATE `or_cr_documents` SET file_path = CONCAT('uploads/documents/{$name}','?v=',unix_timestamp(CURRENT_TIMESTAMP)) WHERE id = '{$doc_id}'");
+		
+		$resp['status'] = 'success';
+		$resp['msg'] = 'Document successfully uploaded.';
 		return json_encode($resp);
 	}
 	
 	function add_document(){
 		extract($_POST);
+		$resp = array();
 		
 		// Debug logging
 		error_log("Add document function called with data: " . print_r($_POST, true));
 		error_log("Files: " . print_r($_FILES, true));
 		
-		// Validate and sanitize inputs
-		$client_id = $this->conn->real_escape_string($client_id);
-		$document_type = in_array($document_type, ['or', 'cr']) ? $document_type : 'or';
-		$document_number = $this->conn->real_escape_string($document_number);
-		$plate_number = $this->conn->real_escape_string($plate_number);
-		$vehicle_model = $this->conn->real_escape_string($vehicle_model);
-		$vehicle_brand = $this->conn->real_escape_string($vehicle_brand);
-		$release_date = !empty($release_date) ? "'{$release_date}'" : 'NULL';
-		$expiry_date = !empty($expiry_date) ? "'{$expiry_date}'" : 'NULL';
-		$status = in_array($status, ['pending', 'released', 'expired']) ? $status : 'pending';
-		$remarks = $this->conn->real_escape_string($remarks);
-		
-		$data = "client_id = '{$client_id}', document_type = '{$document_type}', document_number = '{$document_number}', plate_number = '{$plate_number}', vehicle_model = '{$vehicle_model}', vehicle_brand = '{$vehicle_brand}', release_date = {$release_date}, expiry_date = {$expiry_date}, status = '{$status}', remarks = '{$remarks}'";
-		
-		$sql = "INSERT INTO `or_cr_documents` set {$data} ";
-		error_log("SQL Query: " . $sql);
-		$save = $this->conn->query($sql);
-		
-		if($save){
-			$doc_id = $this->conn->insert_id;
-			error_log("Document inserted with ID: " . $doc_id);
-			
-			// Handle file upload
-			if(!empty($_FILES['document_file']['tmp_name'])){
-				$ext = pathinfo($_FILES['document_file']['name'], PATHINFO_EXTENSION);
-				$dir = base_app."uploads/documents/";
-				if(!is_dir($dir))
-					mkdir($dir, 0755, true);
-				$name = $doc_id.".".$ext;
-				if(is_file($dir.$name))
-					unlink($dir.$name);
-				$move = move_uploaded_file($_FILES['document_file']['tmp_name'],$dir.$name);
-				if($move){
-					$this->conn->query("UPDATE `or_cr_documents` set file_path = CONCAT('uploads/documents/$name','?v=',unix_timestamp(CURRENT_TIMESTAMP)) where id = '{$doc_id}'");
-					error_log("File uploaded successfully: " . $dir.$name);
-				} else {
-					error_log("File upload failed");
-				}
-			}
-			
-			$resp['status'] = 'success';
-			$resp['msg'] = "Document successfully added.";
-		}else{
+		// Validate required inputs
+		if(empty($client_id)){
 			$resp['status'] = 'failed';
-			$resp['msg'] = "Failed to add document.";
-			$resp['error'] = $this->conn->error;
-			error_log("Database error: " . $this->conn->error);
+			$resp['msg'] = 'Client is required.';
+			return json_encode($resp);
 		}
+		if(empty($document_type)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Document type is required.';
+			return json_encode($resp);
+		}
+		// File must be provided
+		if(!isset($_FILES['document_file']) || $_FILES['document_file']['error'] !== 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Please select a valid document file to upload.';
+			return json_encode($resp);
+		}
+		
+		// Sanitize and normalize
+		$client_id = $this->conn->real_escape_string($client_id);
+		$doc_type = in_array(strtolower($document_type), ['or','cr']) ? strtolower($document_type) : 'or';
+		$doc_number = isset($document_number) ? $this->conn->real_escape_string($document_number) : '';
+		$plate = isset($plate_number) ? $this->conn->real_escape_string($plate_number) : '';
+		$remarks_val = isset($remarks) ? $this->conn->real_escape_string($remarks) : '';
+		$status_val = isset($status) && in_array($status, ['pending','released','expired']) ? $status : 'pending';
+		
+		// Ensure upload directory
+		$dir = base_app."uploads/documents/";
+		if(!is_dir($dir)){
+			mkdir($dir, 0755, true);
+		}
+		
+		// Validate file type
+		$allowed_types = ['pdf','jpg','jpeg','png'];
+		$extension = strtolower(pathinfo($_FILES['document_file']['name'], PATHINFO_EXTENSION));
+		if(!in_array($extension, $allowed_types)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Invalid file type. Allowed: PDF, JPG, JPEG, PNG.';
+			return json_encode($resp);
+		}
+		
+		// Insert only safe/common columns
+		$data = "client_id = '{$client_id}', document_type = '{$doc_type}', document_number = '{$doc_number}', plate_number = '{$plate}', status = '{$status_val}', remarks = '{$remarks_val}'";
+		$sql = "INSERT INTO `or_cr_documents` SET {$data}";
+		$save = $this->conn->query($sql);
+		if(!$save){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Failed to add document.';
+			$resp['error'] = $this->conn->error;
+			return json_encode($resp);
+		}
+		
+		$doc_id = $this->conn->insert_id;
+		$name = $doc_id.'.'.$extension;
+		if(is_file($dir.$name)) unlink($dir.$name);
+		$move = move_uploaded_file($_FILES['document_file']['tmp_name'], $dir.$name);
+		if(!$move){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Failed to move uploaded file.';
+			return json_encode($resp);
+		}
+		$this->conn->query("UPDATE `or_cr_documents` SET file_path = CONCAT('uploads/documents/{$name}','?v=',unix_timestamp(CURRENT_TIMESTAMP)) WHERE id = '{$doc_id}'");
+		
+		$resp['status'] = 'success';
+		$resp['msg'] = 'Document successfully added.';
 		return json_encode($resp);
 	}
 	
@@ -1758,6 +1879,29 @@ Class Master extends DBConnection {
 		
 		$resp['status'] = 'success';
 		$resp['balance'] = $balance;
+		return json_encode($resp);
+	}
+
+	// Customer dashboard lightweight data for auto-refresh
+	function get_customer_dashboard_data(){
+		$resp = array();
+		$client_id = $this->settings->userdata('id');
+		if(empty($client_id)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Not authenticated.';
+			return json_encode($resp);
+		}
+		$client_id = $this->conn->real_escape_string($client_id);
+		$client = $this->conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}' AND delete_flag = 0");
+		if(!$client || $client->num_rows == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Client not found.';
+			return json_encode($resp);
+		}
+		$balance = $client->fetch_assoc()['account_balance'];
+		$balance = $balance ? $balance : 0;
+		$resp['status'] = 'success';
+		$resp['data'] = [ 'balance' => (float)$balance ];
 		return json_encode($resp);
 	}
 	
@@ -1825,10 +1969,10 @@ Class Master extends DBConnection {
 	function adjust_client_balance(){
 		extract($_POST);
 		
-		// Validate inputs
-		if(empty($client_id) || empty($adjustment_type) || empty($amount) || empty($reason)){
+		// Validate inputs (make reason optional to avoid false "All fields are required" errors)
+		if(empty($client_id) || empty($adjustment_type) || empty($amount)){
 			$resp['status'] = 'failed';
-			$resp['msg'] = "All fields are required.";
+			$resp['msg'] = "Client, adjustment type, and amount are required.";
 			return json_encode($resp);
 		}
 		
@@ -1836,7 +1980,7 @@ Class Master extends DBConnection {
 		$client_id = $this->conn->real_escape_string($client_id);
 		$adjustment_type = $this->conn->real_escape_string($adjustment_type);
 		$amount = (float)$amount;
-		$reason = $this->conn->real_escape_string($reason);
+		$reason = isset($reason) ? $this->conn->real_escape_string(trim($reason)) : '';
 		
 		// Validate amount
 		if($amount <= 0){
@@ -1926,9 +2070,15 @@ Class Master extends DBConnection {
 		extract($_POST);
 		
 		// Validate inputs
-        if(empty($product_id) || !isset($quantity)){
+        if(empty($product_id) || $product_id <= 0){
 			$resp['status'] = 'failed';
-			$resp['msg'] = "Product and quantity are required.";
+			$resp['msg'] = "Please select a valid product.";
+			return json_encode($resp);
+		}
+		
+		if(!isset($quantity) || $quantity <= 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Please enter a valid quantity greater than 0.";
 			return json_encode($resp);
 		}
 		
@@ -2020,6 +2170,70 @@ Class Master extends DBConnection {
 			$this->conn->rollback();
 			$resp['status'] = 'failed';
             $resp['msg'] = "Failed to save stock: " . $e->getMessage();
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function delete_stock(){
+		extract($_POST);
+		$resp = array();
+		
+		// Validate input
+		if(empty($id) || $id <= 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Invalid stock entry ID.";
+			return json_encode($resp);
+		}
+		
+		$stock_id = (int)$id;
+		
+		// Check if stock entry exists
+		$check = $this->conn->query("SELECT * FROM stock_list WHERE id = '{$stock_id}'");
+		if($check->num_rows == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Stock entry not found.";
+			return json_encode($resp);
+		}
+		
+		$stock_data = $check->fetch_assoc();
+		$product_id = $stock_data['product_id'];
+		$quantity = $stock_data['quantity'];
+		
+		// Start transaction
+		$this->conn->begin_transaction();
+		
+		try {
+			// Get current total stock
+			$current_stock_query = $this->conn->query("SELECT SUM(quantity) as total_stock FROM stock_list WHERE product_id = '{$product_id}' AND type = 1");
+			$current_stock = $current_stock_query->fetch_assoc()['total_stock'];
+			$current_stock = $current_stock ? $current_stock : 0;
+			
+			// Calculate new stock after deletion
+			$new_stock = $current_stock - $quantity;
+			
+			// Delete the stock entry
+			$delete = $this->conn->query("DELETE FROM stock_list WHERE id = '{$stock_id}'");
+			if(!$delete){
+				throw new Exception("Failed to delete stock entry: " . $this->conn->error);
+			}
+			
+			// Record stock movement
+			$movement_data = "('{$product_id}', 'OUT', '{$quantity}', '{$current_stock}', '{$new_stock}', 'Stock entry deleted', 'STOCK_DELETE', 'DELETION', NOW(), NULL)";
+			$this->conn->query("INSERT INTO stock_movements (product_id, movement_type, quantity, previous_stock, new_stock, reason, reference_id, reference_type, date_created, created_by) VALUES {$movement_data}");
+			
+			// Check for stock alerts
+			$this->check_stock_alerts($product_id, $new_stock);
+			
+			$this->conn->commit();
+			$resp['status'] = 'success';
+			$resp['msg'] = "Stock entry deleted successfully.";
+			$resp['new_stock'] = $new_stock;
+			
+		} catch (Exception $e) {
+			$this->conn->rollback();
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to delete stock entry: " . $e->getMessage();
 		}
 		
 		return json_encode($resp);
@@ -2254,6 +2468,38 @@ Class Master extends DBConnection {
 	}
 	
 	function get_stock_alerts(){
+		$resp = array();
+		
+		// Check if inventory_alerts table exists
+		$table_check = $this->conn->query("SHOW TABLES LIKE 'inventory_alerts'");
+		if($table_check->num_rows == 0){
+			// Table doesn't exist, create it
+			$create_table = $this->conn->query("
+				CREATE TABLE IF NOT EXISTS `inventory_alerts` (
+					`id` int(11) NOT NULL AUTO_INCREMENT,
+					`product_id` int(11) NOT NULL,
+					`alert_type` varchar(50) NOT NULL,
+					`current_stock` decimal(10,2) NOT NULL,
+					`threshold_value` decimal(10,2) NOT NULL,
+					`message` text NOT NULL,
+					`is_resolved` tinyint(1) NOT NULL DEFAULT 0,
+					`resolved_by` varchar(100) DEFAULT NULL,
+					`resolved_date` datetime DEFAULT NULL,
+					`date_created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					PRIMARY KEY (`id`),
+					KEY `idx_product_id` (`product_id`),
+					KEY `idx_alert_type` (`alert_type`),
+					KEY `idx_is_resolved` (`is_resolved`)
+				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+			");
+			
+			if(!$create_table){
+				$resp['status'] = 'failed';
+				$resp['msg'] = "Failed to create inventory_alerts table: " . $this->conn->error;
+				return json_encode($resp);
+			}
+		}
+		
 		$alerts_query = $this->conn->query("
 			SELECT ia.*, p.name as product_name, p.abc_category
 			FROM inventory_alerts ia
@@ -2261,6 +2507,12 @@ Class Master extends DBConnection {
 			WHERE ia.is_resolved = 0
 			ORDER BY ia.date_created DESC
 		");
+		
+		if(!$alerts_query){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to query inventory alerts: " . $this->conn->error;
+			return json_encode($resp);
+		}
 		
 		$alerts = [];
 		while($row = $alerts_query->fetch_assoc()){
@@ -2275,6 +2527,7 @@ Class Master extends DBConnection {
 	
 	function resolve_stock_alert(){
 		extract($_POST);
+		$resp = array();
 		
 		// Validate inputs
 		if(empty($alert_id)){
@@ -2287,6 +2540,14 @@ Class Master extends DBConnection {
 		$alert_id = $this->conn->real_escape_string($alert_id);
 		$resolved_by = isset($resolved_by) ? $this->conn->real_escape_string($resolved_by) : NULL;
 		
+		// Check if alert exists
+		$check_alert = $this->conn->query("SELECT id FROM inventory_alerts WHERE id = '{$alert_id}'");
+		if($check_alert->num_rows == 0){
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Alert not found.";
+			return json_encode($resp);
+		}
+		
 		// Update alert
 		$update_query = "UPDATE inventory_alerts SET is_resolved = 1, resolved_by = " . ($resolved_by ? "'{$resolved_by}'" : "NULL") . ", resolved_date = NOW() WHERE id = '{$alert_id}'";
 		$update = $this->conn->query($update_query);
@@ -2296,7 +2557,73 @@ Class Master extends DBConnection {
 			$resp['msg'] = "Alert resolved successfully.";
 		} else {
 			$resp['status'] = 'failed';
-			$resp['msg'] = "Failed to resolve alert.";
+			$resp['msg'] = "Failed to resolve alert: " . $this->conn->error;
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function create_test_alerts(){
+		$resp = array();
+		
+		// Check if inventory_alerts table exists
+		$table_check = $this->conn->query("SHOW TABLES LIKE 'inventory_alerts'");
+		if($table_check->num_rows == 0){
+			// Table doesn't exist, create it
+			$create_table = $this->conn->query("
+				CREATE TABLE IF NOT EXISTS `inventory_alerts` (
+					`id` int(11) NOT NULL AUTO_INCREMENT,
+					`product_id` int(11) NOT NULL,
+					`alert_type` varchar(50) NOT NULL,
+					`current_stock` decimal(10,2) NOT NULL,
+					`threshold_value` decimal(10,2) NOT NULL,
+					`message` text NOT NULL,
+					`is_resolved` tinyint(1) NOT NULL DEFAULT 0,
+					`resolved_by` varchar(100) DEFAULT NULL,
+					`resolved_date` datetime DEFAULT NULL,
+					`date_created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					PRIMARY KEY (`id`),
+					KEY `idx_product_id` (`product_id`),
+					KEY `idx_alert_type` (`alert_type`),
+					KEY `idx_is_resolved` (`is_resolved`)
+				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+			");
+		}
+		
+		// Get some products to create test alerts
+		$products = $this->conn->query("SELECT id, name FROM product_list WHERE delete_flag = 0 LIMIT 3");
+		
+		if($products->num_rows > 0){
+			$alert_count = 0;
+			while($product = $products->fetch_assoc()){
+				// Create a low stock alert
+				$alert_data = "('{$product['id']}', 'LOW_STOCK', '5', '10', 'Low stock alert: {$product['name']} has 5 units remaining (Reorder point: 10)', 0, NULL, NULL, NOW())";
+				$insert = $this->conn->query("INSERT INTO inventory_alerts (product_id, alert_type, current_stock, threshold_value, message, is_resolved, resolved_by, resolved_date, date_created) VALUES {$alert_data}");
+				if($insert) $alert_count++;
+			}
+			
+			$resp['status'] = 'success';
+			$resp['msg'] = "Created {$alert_count} test alerts.";
+		} else {
+			$resp['status'] = 'failed';
+			$resp['msg'] = "No products found to create test alerts.";
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function clear_all_alerts(){
+		$resp = array();
+		
+		// Clear all alerts
+		$clear = $this->conn->query("DELETE FROM inventory_alerts");
+		
+		if($clear){
+			$resp['status'] = 'success';
+			$resp['msg'] = "All alerts cleared successfully.";
+		} else {
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Failed to clear alerts: " . $this->conn->error;
 		}
 		
 		return json_encode($resp);
@@ -3132,70 +3459,70 @@ Class Master extends DBConnection {
             $resp['msg'] = 'Client not found.';
             return json_encode($resp);
         }
-        
         $client_data = $client_check->fetch_assoc();
-        $upload_dir = "uploads/orcr/";
         
-        // Create directory if it doesn't exist
-        if(!is_dir($upload_dir)){
-            mkdir($upload_dir, 0777, true);
+        // Ensure upload directory
+        $dir = base_app."uploads/documents/";
+        if(!is_dir($dir)){
+            mkdir($dir, 0755, true);
         }
         
-        $uploaded_files = array();
+        $allowed_types = ['pdf','jpg','jpeg','png'];
+        $uploaded_any = false;
+        $errors = [];
         
-        // Handle OR document upload
-        if(isset($_FILES['or_document']) && $_FILES['or_document']['error'] == 0){
-            $allowed_types = ['pdf', 'jpg', 'jpeg', 'png'];
-            $file_extension = strtolower(pathinfo($_FILES['or_document']['name'], PATHINFO_EXTENSION));
-            
-            if(in_array($file_extension, $allowed_types)){
-                $file_name = 'or_' . $client_id . '_' . time() . '.' . $file_extension;
-                $file_path = $upload_dir . $file_name;
-                
-                if(move_uploaded_file($_FILES['or_document']['tmp_name'], $file_path)){
-                    $uploaded_files['or_document'] = $file_path;
-                }
+        // Helper to insert a document row and move file
+        $process_upload = function($file, $docType) use ($client_id, $dir, $allowed_types){
+            if(!isset($_FILES[$file]) || $_FILES[$file]['error'] !== 0){
+                return [false, ''];
             }
-        }
-        
-        // Handle CR document upload
-        if(isset($_FILES['cr_document']) && $_FILES['cr_document']['error'] == 0){
-            $allowed_types = ['pdf', 'jpg', 'jpeg', 'png'];
-            $file_extension = strtolower(pathinfo($_FILES['cr_document']['name'], PATHINFO_EXTENSION));
-            
-            if(in_array($file_extension, $allowed_types)){
-                $file_name = 'cr_' . $client_id . '_' . time() . '.' . $file_extension;
-                $file_path = $upload_dir . $file_name;
-                
-                if(move_uploaded_file($_FILES['cr_document']['tmp_name'], $file_path)){
-                    $uploaded_files['cr_document'] = $file_path;
-                }
+            $extension = strtolower(pathinfo($_FILES[$file]['name'], PATHINFO_EXTENSION));
+            if(!in_array($extension, $allowed_types)){
+                return [false, ''];
             }
-        }
+            // Collect metadata if provided; otherwise fallback to placeholder
+            $document_number = isset($_POST['document_number']) && $_POST['document_number'] !== ''
+                ? $this->conn->real_escape_string($_POST['document_number'])
+                : (strtoupper($docType).' upload '.date('Ymd-His'));
+            $plate_number = isset($_POST['plate_number']) ? $this->conn->real_escape_string($_POST['plate_number']) : '';
+            $release_date = (isset($_POST['release_date']) && $_POST['release_date'] !== '') ? $this->conn->real_escape_string($_POST['release_date']) : null;
+            $status = 'pending';
+            $remarks = isset($_POST['remarks']) ? $this->conn->real_escape_string($_POST['remarks']) : '';
+            
+            // Insert only common columns to avoid SQL errors on missing columns
+            $data = "client_id = '{$client_id}', document_type = '{$docType}', document_number = '{$document_number}', plate_number = '{$plate_number}', status = '{$status}', remarks = '{$remarks}'";
+            if(!is_null($release_date)){
+                $data .= ", release_date = '{$release_date}'";
+            }
+            $sql = "INSERT INTO `or_cr_documents` set {$data} ";
+            $save = $this->conn->query($sql);
+            if(!$save){
+                return [false, ''];
+            }
+            $doc_id = $this->conn->insert_id;
+            $name = $doc_id.'.'.$extension;
+            if(is_file($dir.$name)) unlink($dir.$name);
+            $moved = move_uploaded_file($_FILES[$file]['tmp_name'], $dir.$name);
+            if($moved){
+                $this->conn->query("UPDATE `or_cr_documents` set file_path = CONCAT('uploads/documents/{$name}','?v=',unix_timestamp(CURRENT_TIMESTAMP)) where id = '{$doc_id}'");
+                return [true, $doc_id];
+            }
+            return [false, ''];
+        };
         
-        if(empty($uploaded_files)){
+        list($okOr,) = $process_upload('or_document','or');
+        $uploaded_any = $uploaded_any || $okOr;
+        list($okCr,) = $process_upload('cr_document','cr');
+        $uploaded_any = $uploaded_any || $okCr;
+        
+        if(!$uploaded_any){
             $resp['status'] = 'failed';
             $resp['msg'] = 'No valid documents uploaded.';
             return json_encode($resp);
         }
         
-        // Update client record with document paths
-        $update_data = array();
-        foreach($uploaded_files as $type => $path){
-            $update_data[] = "`{$type}` = '{$path}'";
-        }
-        
-        $sql = "UPDATE client_list SET " . implode(', ', $update_data) . " WHERE id = '{$client_id}'";
-        $update = $this->conn->query($sql);
-        
-        if($update){
-            $resp['status'] = 'success';
-            $resp['msg'] = 'Documents uploaded successfully for ' . $client_data['name'];
-        } else {
-            $resp['status'] = 'failed';
-            $resp['msg'] = 'Failed to save document information.';
-        }
-        
+        $resp['status'] = 'success';
+        $resp['msg'] = 'Documents uploaded successfully for ' . $client_data['name'];
         return json_encode($resp);
     }
     
@@ -3204,56 +3531,63 @@ Class Master extends DBConnection {
         extract($_POST);
         $resp = array();
         
-        $client_check = $this->conn->query("SELECT id, CONCAT(lastname, ', ', firstname) as name, or_document, cr_document FROM client_list WHERE id = '{$client_id}' AND delete_flag = 0");
+        $client_check = $this->conn->query("SELECT id, CONCAT(lastname, ', ', firstname) as name FROM client_list WHERE id = '{$client_id}' AND delete_flag = 0");
         if($client_check->num_rows == 0){
             $resp['status'] = 'failed';
             $resp['msg'] = 'Client not found.';
             return json_encode($resp);
         }
-        
         $client_data = $client_check->fetch_assoc();
-        $html = '<div class="row">';
         
-        // OR Document
-        if(!empty($client_data['or_document'])){
-            $html .= '<div class="col-md-6 mb-3">';
-            $html .= '<h6>Official Receipt (OR)</h6>';
-            $file_extension = strtolower(pathinfo($client_data['or_document'], PATHINFO_EXTENSION));
-            if($file_extension == 'pdf'){
-                $html .= '<iframe src="' . $client_data['or_document'] . '" width="100%" height="400" style="border: 1px solid #ddd;"></iframe>';
-            } else {
-                $html .= '<img src="' . $client_data['or_document'] . '" class="img-fluid" style="max-height: 400px; border: 1px solid #ddd;">';
-            }
-            $html .= '<br><a href="' . $client_data['or_document'] . '" target="_blank" class="btn btn-sm btn-primary mt-2">Download OR</a>';
-            $html .= '</div>';
-        } else {
-            $html .= '<div class="col-md-6 mb-3">';
-            $html .= '<h6>Official Receipt (OR)</h6>';
-            $html .= '<p class="text-muted">No OR document uploaded yet.</p>';
-            $html .= '</div>';
-        }
-        
-        // CR Document
-        if(!empty($client_data['cr_document'])){
-            $html .= '<div class="col-md-6 mb-3">';
-            $html .= '<h6>Certificate of Registration (CR)</h6>';
-            $file_extension = strtolower(pathinfo($client_data['cr_document'], PATHINFO_EXTENSION));
-            if($file_extension == 'pdf'){
-                $html .= '<iframe src="' . $client_data['cr_document'] . '" width="100%" height="400" style="border: 1px solid #ddd;"></iframe>';
-            } else {
-                $html .= '<img src="' . $client_data['cr_document'] . '" class="img-fluid" style="max-height: 400px; border: 1px solid #ddd;">';
-            }
-            $html .= '<br><a href="' . $client_data['cr_document'] . '" target="_blank" class="btn btn-sm btn-primary mt-2">Download CR</a>';
-            $html .= '</div>';
-        } else {
-            $html .= '<div class="col-md-6 mb-3">';
-            $html .= '<h6>Certificate of Registration (CR)</h6>';
-            $html .= '<p class="text-muted">No CR document uploaded yet.</p>';
-            $html .= '</div>';
-        }
-        
-        $html .= '</div>';
-        
+		$docs = $this->conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$client_id}' ORDER BY date_created DESC");
+		$html = '<div class="container-fluid">';
+		$html .= '<h6 class="mb-3">Documents for: <strong>'.htmlspecialchars($client_data['name']).'</strong></h6>';
+		
+		if($docs && $docs->num_rows > 0){
+			$html .= '<div class="table-responsive">';
+			$html .= '<table class="table table-bordered table-striped">';
+			$html .= '<thead><tr>'
+				. '<th>Document Type</th>'
+				. '<th>Document Number</th>'
+				. '<th>Plate Number</th>'
+				. '<th>Release Date</th>'
+				. '<th>Status</th>'
+				// . '<th>Action</th>'
+				. '</tr></thead>';
+			$html .= '<tbody>';
+			while($doc = $docs->fetch_assoc()){
+				$filePath = $doc['file_path'];
+				$displayMissing = false;
+				if(!empty($filePath)){
+					$parsed = parse_url($filePath);
+					$pathOnly = isset($parsed['path']) ? $parsed['path'] : $filePath;
+					$absPath = base_app . ltrim($pathOnly, '/');
+					if(!is_file($absPath)){
+						$displayMissing = true;
+					}
+				} else {
+					$displayMissing = true;
+				}
+				$status_badge = '<span class="badge badge-'.($doc['status']=='released'?'success':($doc['status']=='expired'?'danger':'warning')).'">'.ucfirst($doc['status']).'</span>';
+				$viewBtn = !$displayMissing 
+					? '<button type="button" class="btn btn-sm btn-info btn-view-orcr" data-file="'.htmlspecialchars($filePath).'" data-ext="'.htmlspecialchars(strtolower(pathinfo(isset($parsed['path'])?$parsed['path']:$filePath, PATHINFO_EXTENSION))).'">View</button>' 
+					: '<span class="text-muted">No File</span>';
+				$deleteBtn = '<button type="button" class="btn btn-sm btn-danger btn-delete-orcr" data-id="'.(int)$doc['id'].'">Delete</button>';
+				$html .= '<tr>'
+					. '<td>'.strtoupper($doc['document_type']).'</td>'
+					. '<td>'.htmlspecialchars($doc['document_number']).'</td>'
+					. '<td>'.(!empty($doc['plate_number']) ? htmlspecialchars($doc['plate_number']) : 'N/A').'</td>'
+					. '<td>'.(!empty($doc['release_date']) ? date('M d, Y', strtotime($doc['release_date'])) : 'N/A').'</td>'
+					. '<td>'.$status_badge.'</td>'
+					// . '<td class="text-nowrap">'.$viewBtn.' '.$deleteBtn.'</td>'
+					. '</tr>';
+			}
+			$html .= '</tbody></table></div>';
+		} else {
+			$html .= '<p class="text-muted">No OR/CR documents uploaded yet.</p>';
+		}
+		
+		$html .= '</div>';
         $resp['status'] = 'success';
         $resp['html'] = $html;
         return json_encode($resp);
@@ -3303,6 +3637,9 @@ $sysset = new SystemSettings();
 	break;
 	case 'save_to_cart':
 		echo $Master->save_to_cart();
+	break;
+	case 'get_product_details':
+		echo $Master->get_product_details();
 	break;
 	case 'update_cart_quantity':
 		echo $Master->update_cart_quantity();
@@ -3364,12 +3701,21 @@ $sysset = new SystemSettings();
 	case 'upload_orcr_document':
 		echo $Master->upload_orcr_document();
 	break;
+	case 'upload_client_orcr':
+		echo $Master->upload_client_orcr();
+	break;
+	case 'get_client_orcr':
+		echo $Master->get_client_orcr();
+	break;
 	case 'get_client_balance':
 		echo $Master->get_client_balance();
 	break;
 	case 'get_client_transactions':
 		echo $Master->get_client_transactions();
 	break;
+		case 'get_customer_dashboard_data':
+			echo $Master->get_customer_dashboard_data();
+		break;
 	case 'adjust_client_balance':
 		echo $Master->adjust_client_balance();
 	break;
@@ -3378,6 +3724,9 @@ $sysset = new SystemSettings();
 	break;
 	case 'update_stock':
 		echo $Master->update_stock();
+	break;
+	case 'delete_stock':
+		echo $Master->delete_stock();
 	break;
 	case 'get_abc_analysis':
 		echo $Master->get_abc_analysis();
@@ -3399,6 +3748,12 @@ $sysset = new SystemSettings();
 	break;
 	case 'resolve_stock_alert':
 		echo $Master->resolve_stock_alert();
+	break;
+	case 'create_test_alerts':
+		echo $Master->create_test_alerts();
+	break;
+	case 'clear_all_alerts':
+		echo $Master->clear_all_alerts();
 	break;
 	case 'auto_classify_abc':
 		echo $Master->auto_classify_abc();

@@ -257,7 +257,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 <?php endif; ?>
                 
                 <!-- Customer Account Management -->
-                <!-- <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'admin_assistant'])): ?>
+                <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'admin_assistant'])): ?>
                 <li class="nav-item <?php echo in_array($page, ['customer_accounts']) ? 'menu-open' : '' ?>">
                     <a href="#" class="nav-link <?php echo in_array($page, ['customer_accounts']) ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-user-cog"></i>
@@ -267,15 +267,15 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                         </p>
                     </a>
                     <ul class="nav nav-treeview">
-                        <!-- <li class="nav-item">
+                        <li class="nav-item">
                             <a href="./?page=customer_accounts" class="nav-link <?php echo $page == 'customer_accounts' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Account Balances</p>
                             </a>
-                        </li> -->
+                        </li>
                     </ul>
                 </li>
-                <?php endif; ?> -->
+                <?php endif; ?>
                 
                 
             </ul>

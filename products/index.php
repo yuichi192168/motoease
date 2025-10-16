@@ -5,6 +5,7 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
 ?>
 <div class="content py-5 mt-3">
     <div class="container">
+        
         <div class="row">
             <div class="col-12">
                 <!-- Categories Filter and Search Bar in Same Row -->
@@ -815,42 +816,139 @@ function addToCart(productId) {
     // Find the product card containing this button
     var productCard = $('button[onclick="addToCart(' + productId + ')"]').closest('.card');
     
-    // Check if color selection is required
-    var colorOptions = productCard.find('.color-option');
-    var selectedColor = '';
-    
-    if(colorOptions.length > 0) {
-        var selectedOption = productCard.find('.color-option.selected');
-        if(selectedOption.length === 0) {
-            alert_toast('Please select a color first!', 'warning');
-            return;
-        }
-        selectedColor = selectedOption.attr('data-color');
-    }
+    // Get product information from DOM as fallback
+    var productName = productCard.find('.card-title b').text();
+    var productPrice = productCard.find('.price-tag b').text();
+    var productPriceValue = productPrice.replace('₱', '').replace(/,/g, '');
     
     // Check if this is a motorcycle product
     var category = productCard.find('.text-muted').eq(1).text().toLowerCase();
     var isMotorcycle = category.includes('motorcycle') || category.includes('bike');
     
-    if(isMotorcycle) {
-        // Show motorcycle unit selection modal
-        showMotorcycleUnitSelection(productId, selectedColor);
-        return;
-    }
-    
-    // For non-motorcycle products, add directly to cart
-    addToCartDirect(productId, selectedColor, '');
+    // Get product details (colors and price) from database
+    $.ajax({
+        url: '<?= base_url ?>classes/Master.php?f=get_product_details',
+        method: 'POST',
+        data: {
+            product_id: productId
+        },
+        dataType: 'json',
+        success: function(resp) {
+            if(resp.status === 'success') {
+                // Use database values for price and colors
+                var dbPrice = resp.price || productPriceValue;
+                var dbColors = resp.colors || [];
+                
+                if(dbColors.length > 0) {
+                    // Product has colors, show color selection modal
+                    showColorSelectionModal(productId, productName, dbPrice, dbColors, isMotorcycle);
+                } else {
+                    // No colors, add directly to cart
+                    addToCartDirect(productId, '', '');
+                }
+            } else {
+                // Fallback to DOM values
+    var colorOptions = productCard.find('.color-option');
+                var availableColors = [];
+                if(colorOptions.length > 0) {
+                    colorOptions.each(function() {
+                        availableColors.push($(this).attr('data-color'));
+                    });
+                }
+                
+                if(availableColors.length > 0) {
+                    showColorSelectionModal(productId, productName, productPriceValue, availableColors, isMotorcycle);
+                } else {
+                    addToCartDirect(productId, '', '');
+                }
+            }
+        },
+        error: function() {
+            // Fallback to DOM values on error
+            var colorOptions = productCard.find('.color-option');
+            var availableColors = [];
+    if(colorOptions.length > 0) {
+                colorOptions.each(function() {
+                    availableColors.push($(this).attr('data-color'));
+                });
+            }
+            
+            if(availableColors.length > 0) {
+                showColorSelectionModal(productId, productName, productPriceValue, availableColors, isMotorcycle);
+            } else {
+                addToCartDirect(productId, '', '');
+            }
+        }
+    });
 }
 
-function addToCartDirect(productId, selectedColor, motorcycleUnit) {
+// Show color selection modal (similar to view_product.php)
+function showColorSelectionModal(productId, productName, productPrice, availableColors, isMotorcycle) {
+    var colorOptionsHtml = '';
+    if(availableColors.length > 0) {
+        colorOptionsHtml = '<div class="form-group">';
+        colorOptionsHtml += '<label for="swal_color">Color:</label>';
+        colorOptionsHtml += '<select id="swal_color" class="form-control" required>';
+        colorOptionsHtml += '<option value="" selected disabled>Choose color</option>';
+        availableColors.forEach(function(color) {
+            colorOptionsHtml += '<option value="' + color + '">' + color + '</option>';
+        });
+        colorOptionsHtml += '</select>';
+        colorOptionsHtml += '</div>';
+    }
+    
+    Swal.fire({
+        title: 'Add to Cart',
+        html: `
+            <div class="text-center">
+                <h5>${productName}</h5>
+                <p class="text-muted">Price: ₱${parseFloat(productPrice || 0).toLocaleString()}</p>
+                ${colorOptionsHtml}
+                <div class="form-group">
+                    <label for="quantity">Quantity:</label>
+                    <input type="number" id="quantity" class="form-control" value="1" min="1" style="width: 100px; margin: 0 auto;">
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Add to Cart',
+        cancelButtonText: 'Cancel',
+        preConfirm: () => {
+            const quantity = document.getElementById('quantity').value;
+            const color = document.getElementById('swal_color').value;
+            
+            if(availableColors.length > 0 && !color) {
+                Swal.showValidationMessage('Please choose a color');
+                return false;
+            }
+            
+            if (quantity < 1) {
+                Swal.showValidationMessage('Please enter a valid quantity');
+                return false;
+            }
+            
+            return {
+                quantity: quantity,
+                color: color || null
+            };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const quantity = result.value.quantity;
+            const color = result.value.color;
+            addToCartDirect(productId, color, '', quantity);
+        }
+    });
+}
+
+function addToCartDirect(productId, selectedColor, motorcycleUnit, quantity = 1) {
     $.ajax({
         url: '<?= base_url ?>classes/Master.php?f=save_to_cart',
         method: 'POST',
         data: {
             product_id: productId,
-            quantity: 1,
-            color: selectedColor,
-            motorcycle_unit: motorcycleUnit
+            quantity: quantity,
+            color: selectedColor
         },
         dataType: 'json',
         beforeSend: function() {
@@ -859,9 +957,27 @@ function addToCartDirect(productId, selectedColor, motorcycleUnit) {
         },
         success: function(resp) {
             if(resp.status === 'success') {
-                alert_toast('Product added to cart successfully!', 'success');
-            } else if(resp.requires_motorcycle_selection) {
-                showMotorcycleUnitSelection(productId, selectedColor);
+                // Update cart count if available
+                if(resp.cart_count) {
+                    update_cart_count(resp.cart_count);
+                }
+                // Show success modal similar to view_product.php
+                Swal.fire({
+                    title: 'Success!',
+                    text: resp.msg,
+                    icon: 'success',
+                    confirmButtonText: 'Continue Shopping',
+                    showCancelButton: true,
+                    cancelButtonText: 'View Cart'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Stay on current page
+                    } else {
+                        location.href = './?p=cart';
+                    }
+                });
+            } else if(resp.requires_color_selection) {
+                alert_toast('Please select a color first!', 'warning');
             } else {
                 alert_toast(resp.msg || 'Failed to add product to cart', 'error');
             }
@@ -875,47 +991,7 @@ function addToCartDirect(productId, selectedColor, motorcycleUnit) {
     });
 }
 
-function showMotorcycleUnitSelection(productId, selectedColor) {
-    Swal.fire({
-        title: 'Select Your Motorcycle Unit',
-        html: `
-            <div class="text-left">
-                <p>Please select your motorcycle unit before adding to cart:</p>
-                <div class="form-group">
-                    <label for="motorcycleUnit">Motorcycle Unit:</label>
-                    <select id="motorcycleUnit" class="form-control">
-                        <option value="">-- Select Motorcycle Unit --</option>
-                        <option value="Honda Click 125i">Honda Click 125i</option>
-                        <option value="Honda Click 160">Honda Click 160</option>
-                        <option value="Honda RS125">Honda RS125</option>
-                        <option value="Honda Scoopy Slant">Honda Scoopy Slant</option>
-                        <option value="Honda PCX160">Honda PCX160</option>
-                        <option value="Honda ADV160">Honda ADV160</option>
-                        <option value="Honda CRF150L">Honda CRF150L</option>
-                        <option value="Honda CRF250L">Honda CRF250L</option>
-                        <option value="Other">Other (Specify in notes)</option>
-                    </select>
-                </div>
-            </div>
-        `,
-        icon: 'info',
-        showCancelButton: true,
-        confirmButtonText: 'Add to Cart',
-        cancelButtonText: 'Cancel',
-        preConfirm: () => {
-            const unit = document.getElementById('motorcycleUnit').value;
-            if (!unit) {
-                Swal.showValidationMessage('Please select a motorcycle unit');
-                return false;
-            }
-            return unit;
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            addToCartDirect(productId, selectedColor, result.value);
-        }
-    });
-}
+// Motorcycle unit selection function removed - now using color selection instead
 
 // Color selection functionality
 $(document).ready(function() {

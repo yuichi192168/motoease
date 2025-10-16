@@ -114,7 +114,7 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                 <div class="error-msg" id="vehicle_model_error"></div>
             </div>
             <div class="form-group col-md-12">
-                <label for="service_id" class="control-label">Services Required *</label>
+                <label for="service_id" class="control-label">Services Request *</label>
                 <select name="service_id[]" id="service_id" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?> select2" multiple required>
                     <option value="">Select Services</option>
                     <?php 

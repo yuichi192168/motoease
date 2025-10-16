@@ -14,38 +14,44 @@
 	<div class="card-body">
 		<div class="container-fluid">
 			<!-- ABC Category Summary -->
-			<div class="row mb-3">
-				<div class="col-md-4">
-					<div class="info-box bg-danger">
-						<span class="info-box-icon"><i class="fas fa-star"></i></span>
-						<div class="info-box-content">
-							<span class="info-box-text">Category A Items</span>
-							<span class="info-box-number" id="category_a_count">0</span>
-							<span class="info-box-text">High Value (80% of total value)</span>
-						</div>
-					</div>
-				</div>
-				<div class="col-md-4">
-					<div class="info-box bg-warning">
-						<span class="info-box-icon"><i class="fas fa-star-half-alt"></i></span>
-						<div class="info-box-content">
-							<span class="info-box-text">Category B Items</span>
-							<span class="info-box-number" id="category_b_count">0</span>
-							<span class="info-box-text">Medium Value (15% of total value)</span>
-						</div>
-					</div>
-				</div>
-				<div class="col-md-4">
-					<div class="info-box bg-info">
-						<span class="info-box-icon"><i class="far fa-star"></i></span>
-						<div class="info-box-content">
-							<span class="info-box-text">Category C Items</span>
-							<span class="info-box-number" id="category_c_count">0</span>
-							<span class="info-box-text">Low Value (5% of total value)</span>
-						</div>
-					</div>
-				</div>
-			</div>
+<div class="row mb-3">
+  <!-- Category A - Red -->
+  <div class="col-md-4">
+    <div class="info-box bg-danger">
+      <span class="info-box-icon"><i class="fas fa-star"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Category A Items</span>
+        <span class="info-box-number" id="category_a_count">0</span>
+        <span class="info-box-text">High Value (80% of total value)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category B - Yellow -->
+  <div class="col-md-4">
+    <div class="info-box bg-warning">
+      <span class="info-box-icon"><i class="fas fa-star-half-alt"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Category B Items</span>
+        <span class="info-box-number" id="category_b_count">0</span>
+        <span class="info-box-text">Medium Value (15% of total value)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category C - Blue -->
+  <div class="col-md-4">
+    <div class="info-box bg-primary">
+      <span class="info-box-icon"><i class="far fa-star"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Category C Items</span>
+        <span class="info-box-number" id="category_c_count">0</span>
+        <span class="info-box-text">Low Value (5% of total value)</span>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 			<!-- Stock Alerts -->
 			<div class="row mb-3">
@@ -171,17 +177,20 @@
     color: white !important;
 }
 
-/* Info Box Color Updates */
+/* Info Box Color Updates - ABC Analysis Categories */
 .info-box.bg-danger {
-    background-color: #E76F51 !important;
+    background-color: #dc3545 !important; /* Category A - Red */
+    color: white !important;
 }
 
 .info-box.bg-warning {
-    background-color: #E9C56A !important;
+    background-color: #ffc107 !important; /* Category B - Yellow */
+    color: #212529 !important;
 }
 
-.info-box.bg-info {
-    background-color: #F4A261 !important;
+.info-box.bg-primary {
+    background-color: #007bff !important; /* Category C - Blue */
+    color: white !important;
 }
 
 /* Alert Color Updates */
@@ -202,7 +211,7 @@
     border-color: #F4A261 !important;
     color: white !important;
 }
-</style></style>
+</style>
 
 <script>
 $(document).ready(function(){
@@ -326,13 +335,15 @@ $(document).ready(function(){
 			method: "POST",
 			dataType: "json",
 			error: err => {
-				console.log(err);
+				console.log('Error loading stock alerts:', err);
 			},
 			success: function(resp){
+				console.log('Stock alerts response:', resp);
 				if(resp.status == 'success'){
 					var html = '';
 					if(resp.alerts.length > 0){
 						$.each(resp.alerts, function(index, alert){
+							console.log('Processing alert:', alert);
 							var alert_class = '';
 							switch(alert.alert_type){
 								case 'LOW_STOCK':
@@ -358,6 +369,8 @@ $(document).ready(function(){
 						html = '<div class="alert alert-success">No stock alerts at this time.</div>';
 					}
 					$('#stock_alerts_container').html(html);
+				} else {
+					console.log('Failed to load stock alerts:', resp.msg);
 				}
 			}
 		});
@@ -366,22 +379,33 @@ $(document).ready(function(){
 	// Resolve alert
 	$(document).on('click', '.resolve_alert', function(){
 		var alert_id = $(this).data('id');
+		console.log('Resolving alert with ID:', alert_id);
+		
+		if(!alert_id || alert_id === 'undefined' || alert_id === '') {
+			alert_toast('Invalid alert ID. Please refresh the page and try again.', 'error');
+			return;
+		}
+		
 		if(confirm('Mark this alert as resolved?')){
+			start_loader();
 			$.ajax({
 				url: _base_url_ + "classes/Master.php?f=resolve_stock_alert",
 				method: "POST",
 				data: {alert_id: alert_id},
 				dataType: "json",
 				error: err => {
-					console.log(err);
-					alert_toast("An error occurred.",'error');
+					console.log('AJAX Error:', err);
+					alert_toast("An error occurred while resolving the alert.",'error');
+					end_loader();
 				},
 				success: function(resp){
+					end_loader();
+					console.log('Resolve response:', resp);
 					if(resp.status == 'success'){
 						alert_toast(resp.msg,'success');
 						loadStockAlerts();
 					} else {
-						alert_toast(resp.msg,'error');
+						alert_toast(resp.msg || 'Failed to resolve alert','error');
 					}
 				}
 			});

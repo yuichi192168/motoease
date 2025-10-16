@@ -46,7 +46,7 @@
                                             <?php elseif($row['status'] == 2): ?>
                                                 <span class="badge badge-success px-3 rounded-pill">For Delivery</span>
                                             <?php elseif($row['status'] == 3): ?>
-                                                <span class="badge badge-warning px-3 rounded-pill">On the Way</span>
+                                                <!-- <span class="badge badge-warning px-3 rounded-pill">On the Way</span> -->
                                             <?php elseif($row['status'] == 4): ?>
                                                 <span class="badge badge-default bg-gradient-teal px-3 rounded-pill">Delivered</span>
                                             <?php elseif($row['status'] == 6): ?>

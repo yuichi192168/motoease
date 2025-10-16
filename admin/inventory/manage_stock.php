@@ -17,25 +17,45 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 <div class="container-fluid">
 	<form action="" id="stock-form">
 		<input type="hidden" name ="id" value="<?php echo isset($id) ? $id : '' ?>">
-		<?php if(isset($product_id)): ?>
-		<input type="hidden" name ="product_id" value="<?php echo $product_id ?>">
-		<?php else: ?>
+		<input type="hidden" name ="product_id" value="<?php echo isset($product_id) ? $product_id : (isset($product_id) ? $product_id : '') ?>">
+		
+		<?php if(isset($id) && $id > 0): ?>
+		<!-- Edit Mode: Show product info as read-only -->
 		<div class="form-group">
-			<label for="product_id" class="control-label">Product</label>
-			<select name="product_id" id="product_id" class="custom-select select2">
-				<option value="" <?= !isset($product_id) ? "selected" : "" ?> disabled></option>
+			<label class="control-label">Product</label>
+			<div class="form-control-plaintext border rounded p-2 bg-light">
 				<?php 
-				$product = $conn->query("SELECT p.*,b.name as brand from `product_list` p inner join brand_list b on p.brand_id = b.id where p.delete_flag = 0 ".(isset($product_id) ? " or p.id = '{$product_id}'" : "")." order by (p.`name`) asc ");
+				$product_info = $conn->query("SELECT p.*, b.name as brand FROM product_list p INNER JOIN brand_list b ON p.brand_id = b.id WHERE p.id = '{$product_id}'")->fetch_assoc();
+				if($product_info):
+				?>
+					<strong><?= $product_info['brand'] ?> - <?= $product_info['name'] ?></strong>
+					<br><small class="text-muted">Category: <?= $product_info['category'] ?? 'N/A' ?></small>
+				<?php else: ?>
+					<span class="text-muted">Product not found</span>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php else: ?>
+		<!-- Add Mode: Show product selection only if no product_id is provided -->
+		<?php if(!isset($product_id) || empty($product_id)): ?>
+		<div class="form-group">
+			<label for="product_id" class="control-label">Product <span class="text-danger">*</span></label>
+			<select name="product_id" id="product_id" class="custom-select select2" required>
+				<option value="" disabled selected>-- Select Product --</option>
+				<?php 
+				$product = $conn->query("SELECT p.*,b.name as brand from `product_list` p inner join brand_list b on p.brand_id = b.id where p.delete_flag = 0 and p.status = 1 order by (p.`name`) asc ");
 				while($row= $product->fetch_assoc()):
 				?>
-				<option value="<?= $row['id'] ?>" <?= isset($product_id) && $product_id == $row['id'] ? "selected" : "" ?>><?= $row['brand'].' - '.$row['name'] ?> <?= $row['status'] == 0 ? "<small>(Inactive)</small>" : "" ?> <?= $row['delete_flag'] == 1 ? "<small>(Deleted)</small>" : "" ?></option>
+				<option value="<?= $row['id'] ?>"><?= $row['brand'].' - '.$row['name'] ?></option>
 				<?php endwhile; ?>
 			</select>
 		</div>
 		<?php endif; ?>
+		<?php endif; ?>
 		<div class="form-group">
-			<label for="quantity" class="control-label">Quantity</label>
-			<input name="quantity" id="quantity" type="number" min="1" class="form-control rounded-0 text-right" value="<?php echo isset($quantity) ? $quantity : 1; ?>" required>
+			<label for="quantity" class="control-label">Quantity <span class="text-danger">*</span></label>
+			<input name="quantity" id="quantity" type="number" min="0.01" step="0.01" class="form-control rounded-0 text-right" value="<?php echo isset($quantity) ? $quantity : 1; ?>" required>
+			<small class="text-muted">Enter the quantity to add or adjust</small>
 		</div>
 		
 		<?php if(isset($product_id)): ?>
@@ -90,6 +110,21 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 			e.preventDefault();
             var _this = $(this)
 			 $('.err-msg').remove();
+			
+			// Validate form before submission
+			var product_id = $('input[name="product_id"]').val();
+			var quantity = $('#quantity').val();
+			
+			if(!product_id || product_id == '') {
+				alert_toast('Please select a product.', 'error');
+				return false;
+			}
+			
+			if(!quantity || quantity <= 0) {
+				alert_toast('Please enter a valid quantity greater than 0.', 'error');
+				return false;
+			}
+			
 			start_loader();
 			$.ajax({
 				url:_base_url_+"classes/Master.php?f=save_stock",
