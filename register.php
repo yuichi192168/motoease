@@ -15,10 +15,13 @@
 
       body {
         width:calc(100%);
-          height:calc(100%);
-          background-image:url('<?= validate_image($_settings->info('cover')) ?>');
-          background-repeat: no-repeat;
-          background-size:cover;
+        height:calc(100%);
+        background-image:url('<?= validate_image($_settings->info('cover')) ?>');
+        background-repeat: no-repeat;
+        background-size:cover;
+        background-position:center center;
+        background-attachment:fixed;
+        background-color:#111; /* fallback */
       }
 
       .overlay {
@@ -64,6 +67,8 @@
       .card {
         border-radius: 10px;
         border: 2px solid #dc3545;
+        backdrop-filter: blur(2px);
+        background: rgba(255,255,255,0.92);
       }
 
       /* Keep scrolling inside the form only */
@@ -326,9 +331,9 @@
                   <div class="col-12 mb-2">
                     <a href="<?= base_url.'login.php' ?>" class="btn btn-outline-primary btn-block"><i class="fa fa-sign-in-alt mr-1"></i> Already have an account? Login here</a>
                   </div>
-                  <div class="col-12 text-right">
+                  <!-- <div class="col-12 text-right">
                     <a href="forgot-password.html" class="btn btn-link p-0">I forgot my password</a>
-                  </div>
+                  </div> -->
                 </div>
 
               </form>

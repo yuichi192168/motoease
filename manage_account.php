@@ -74,7 +74,13 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
             </div>
         </div>
         
-        <!-- Account Balance Section -->
+        <?php
+        // Determine if the client has any installment plans (orders requiring credit)
+        $has_installments_q = $conn->query("SELECT COUNT(*) as cnt FROM order_list WHERE client_id = '{$client_id}' AND requires_credit = 1");
+        $has_installments = $has_installments_q ? ((int)$has_installments_q->fetch_assoc()['cnt'] > 0) : false;
+        ?>
+        <!-- Account Balance Section (shown only when client has installment plans) -->
+        <?php if($has_installments): ?>
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card card-outline card-success shadow rounded-0">
@@ -157,6 +163,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
         <!-- Order Details Section -->
         <?php if($installments->num_rows > 0): ?>

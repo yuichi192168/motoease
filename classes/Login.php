@@ -195,10 +195,31 @@ class Login extends DBConnection {
 	public function reset_password() {
 		extract($_POST);
 		
-		// Check if email exists
-		$check = $this->conn->query("SELECT id, firstname, lastname FROM client_list WHERE email = '{$email}' AND delete_flag = 0");
+        // Throttle: limit to 1 request per 30 seconds per session
+        if(isset($_SESSION['last_reset_req']) && (time() - (int)$_SESSION['last_reset_req']) < 30){
+            $resp['status'] = 'success';
+            $resp['msg'] = 'If the details match our records, a reset option is now available.';
+            return json_encode($resp);
+        }
+        $_SESSION['last_reset_req'] = time();
+
+        // Check if email exists and verify additional factors
+        $emailEsc = $this->conn->real_escape_string($email);
+        $lnameEsc = isset($lastname) ? $this->conn->real_escape_string(trim($lastname)) : '';
+        $last4 = isset($contact_last4) ? preg_replace('/[^0-9]/', '', $contact_last4) : '';
+        $check = $this->conn->query("SELECT id, firstname, lastname, contact FROM client_list WHERE email = '{$emailEsc}' AND delete_flag = 0");
 		if($check->num_rows > 0) {
 			$user = $check->fetch_assoc();
+            // Verify lastname (case-insensitive) and last 4 digits of contact
+            $lnameOk = empty($lnameEsc) ? false : (strcasecmp($lnameEsc, $user['lastname']) === 0);
+            $contactDigits = preg_replace('/[^0-9]/', '', (string)$user['contact']);
+            $contactOk = !empty($last4) && strlen($contactDigits) >= 4 && substr($contactDigits, -4) === $last4;
+            if(!$lnameOk || !$contactOk){
+                // Always reply generically to avoid user enumeration
+                $resp['status'] = 'success';
+                $resp['msg'] = 'If the details match our records, a reset option is now available.';
+                return json_encode($resp);
+            }
 			
 			// Generate reset token
 			$token = bin2hex(random_bytes(32));
@@ -206,17 +227,56 @@ class Login extends DBConnection {
 			
 			// Store reset token (you might want to create a password_resets table)
 			$this->conn->query("UPDATE client_list SET reset_token = '{$token}', reset_expires = '{$expires}' WHERE id = '{$user['id']}'");
-			
-			// Send email (implement your email sending logic here)
-			$reset_link = base_url . "reset_password.php?token=" . $token;
-			
+			// Alternative to email: return the token directly (for SMS or manual copy)
+			// In production, prefer SMS OTP or admin-issued reset links.
 			$resp['status'] = 'success';
-			$resp['msg'] = 'Password reset instructions have been sent to your email.';
+			$resp['msg'] = 'Password reset token has been generated.';
+			$resp['reset_link'] = base_url . "reset_password.php?token=" . $token;
+			$resp['token'] = $token;
 		} else {
-			$resp['status'] = 'failed';
-			$resp['msg'] = 'Email address not found.';
+            // Generic response to avoid email enumeration
+            $resp['status'] = 'success';
+            $resp['msg'] = 'If the details match our records, a reset option is now available.';
 		}
 		
+		return json_encode($resp);
+	}
+
+	public function apply_password_reset(){
+		$resp = array();
+		try{
+			extract($_POST);
+			$token = isset($token) ? trim($token) : '';
+			$new_password = isset($password) ? trim($password) : '';
+			if(empty($token) || empty($new_password)){
+				$resp['status'] = 'failed';
+				$resp['msg'] = 'Missing token or password.';
+				return json_encode($resp);
+			}
+			$tokenEsc = $this->conn->real_escape_string($token);
+			$now = date('Y-m-d H:i:s');
+			$q = $this->conn->query("SELECT id FROM client_list WHERE reset_token = '{$tokenEsc}' AND reset_expires IS NOT NULL AND reset_expires > '{$now}' AND delete_flag = 0 LIMIT 1");
+			if(!$q || $q->num_rows === 0){
+				$resp['status'] = 'failed';
+				$resp['msg'] = 'Invalid or expired token.';
+				return json_encode($resp);
+			}
+			$row = $q->fetch_assoc();
+			$client_id = (int)$row['id'];
+			$hashed = md5($new_password);
+			$upd = $this->conn->query("UPDATE client_list SET password = '{$hashed}', reset_token = NULL, reset_expires = NULL WHERE id = '{$client_id}'");
+			if($upd){
+				$resp['status'] = 'success';
+				$resp['msg'] = 'Password has been reset successfully.';
+			}else{
+				$resp['status'] = 'failed';
+				$resp['msg'] = 'Failed to update password.';
+				$resp['error'] = $this->conn->error;
+			}
+		}catch(Exception $e){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'An error occurred: ' . $e->getMessage();
+		}
 		return json_encode($resp);
 	}
 }
@@ -237,6 +297,9 @@ switch ($action) {
 		break;
 	case 'reset_password':
 		echo $auth->reset_password();
+		break;
+	case 'apply_password_reset':
+		echo $auth->apply_password_reset();
 		break;
 	default:
 		echo $auth->index();

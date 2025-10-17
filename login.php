@@ -12,10 +12,10 @@
           height:calc(100%);
           background-image:url('<?= validate_image($_settings->info('cover')) ?>');
           background-repeat: no-repeat;
-          background-size:cover; /* ensure full-bleed cover */
-          background-position:center center; /* center image */
-          background-attachment:fixed; /* prevent tiling feel on scroll */
-          background-color:#111; /* fallback color */
+          background-size:cover;
+          background-position:center center;
+          background-attachment:fixed;
+          background-color:#111;
       }
       /* Constrain login box to avoid stretching on wide screens */
       .login-box{
@@ -65,10 +65,10 @@
           </div>
         </div>
         <div class="row align-items-center">
-          <div class="col-6 pr-1 mb-2">
+          <div class="col-12 col-sm-6 pr-sm-1 mb-2">
             <a href="<?php echo base_url ?>" class="btn btn-outline-secondary btn-block"><i class="fa fa-store mr-1"></i> Back to Shop</a>
           </div>
-          <div class="col-6 pl-1 mb-2">
+          <div class="col-12 col-sm-6 pl-sm-1 mb-2">
             <button type="submit" class="btn btn-primary btn-sm btn-flat btn-block"><i class="fa fa-sign-in-alt mr-1"></i> Sign In</button>
           </div>
         </div>
@@ -76,17 +76,17 @@
           <div class="col-12 mb-2">
             <a href="<?php echo base_url.'register.php' ?>" class="btn btn-outline-primary btn-block"><i class="fa fa-user-plus mr-1"></i> Create an Account</a>
           </div>
-          <div class="col-12 d-flex justify-content-between">
-            <a href="<?php echo base_url.'login.php' ?>" class="btn btn-link p-0">Already have an account? Login here</a>
-            <a href="forgot-password.html" class="btn btn-link p-0">I forgot my password</a>
+          <div class="col-12 text-center">
+            <!-- <a href="<?php echo base_url.'login.php' ?>" class="btn btn-link p-0 mr-3">Already have an account? Login here</a> -->
+            <a href="<?php echo base_url.'forgot_password.php' ?>" class="btn btn-link p-0">I forgot my password</a>
           </div>
         </div>
       </form>
       <!-- /.social-auth-links -->
 
-      <p class="mb-1">
+      <!-- <p class="mb-1">
         <a href="forgot-password.html">I forgot my password</a>
-      </p>
+      </p> -->
       
     </div>
     <!-- /.card-body -->

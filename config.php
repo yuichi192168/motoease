@@ -48,3 +48,13 @@ function isMobileDevice(){
 }
 ob_end_flush();
 ?>
+<?php
+// SMTP / Mail configuration (fill these in for PHPMailer)
+if(!defined('SMTP_HOST')) define('SMTP_HOST', getenv('SMTP_HOST') ?: 'smtp.mailtrap.io');
+if(!defined('SMTP_PORT')) define('SMTP_PORT', getenv('SMTP_PORT') ?: 587);
+if(!defined('SMTP_USER')) define('SMTP_USER', getenv('SMTP_USER') ?: '');
+if(!defined('SMTP_PASS')) define('SMTP_PASS', getenv('SMTP_PASS') ?: '');
+if(!defined('SMTP_SECURE')) define('SMTP_SECURE', getenv('SMTP_SECURE') ?: 'tls'); // 'tls' or 'ssl'
+if(!defined('MAIL_FROM')) define('MAIL_FROM', getenv('MAIL_FROM') ?: 'no-reply@example.com');
+if(!defined('MAIL_FROM_NAME')) define('MAIL_FROM_NAME', getenv('MAIL_FROM_NAME') ?: ($_settings->info('name') ?: 'MotoEase'));
+?>

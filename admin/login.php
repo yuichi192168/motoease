@@ -61,21 +61,19 @@
             </div>
           </div>
         </div>
-        <div class="row">
-          <div class="col-8">
-            <a href="<?php echo base_url ?>">Back to Shop</a>
+        <div class="row align-items-center">
+          <div class="col-12 col-sm-6 pr-sm-1 mb-2">
+            <a href="<?php echo base_url ?>" class="btn btn-outline-secondary btn-block"><i class="fa fa-store mr-1"></i> Back to Shop</a>
           </div>
-          <!-- /.col -->
-          <div class="col-4">
-            <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+          <div class="col-12 col-sm-6 pl-sm-1 mb-2">
+            <button type="submit" class="btn btn-primary btn-block"><i class="fa fa-sign-in-alt mr-1"></i> Sign In</button>
           </div>
-          <!-- /.col -->
         </div>
       </form>
       <!-- /.social-auth-links -->
 
-      <p class="mb-1">
-        <a href="forgot-password.html">I forgot my password</a>
+      <p class="mb-1 text-center">
+        <a href="../forgot_password.php" class="btn btn-link p-0">I forgot my password</a>
       </p>
       
     </div>
