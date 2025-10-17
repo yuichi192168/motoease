@@ -51,10 +51,10 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                     </div>
                 </div>
                 <!-- Loading Skeleton -->
-                <div id="products-skeleton" class="row row-cols-sm-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4">
+                <div id="products-skeleton" class="row row-cols-1 row-cols-sm-2 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 justify-content-center">
                     <?php for($i = 0; $i < 8; $i++): ?>
-                    <div class="col px-1 py-2">
-                        <div class="card rounded-0 shadow h-100">
+                    <div class="col px-1 py-2 d-flex justify-content-center">
+                        <div class="card rounded-0 shadow h-100 w-100" style="max-width:340px;">
                             <div class="product-img-holder overflow-hidden position-relative">
                                 <div class="skeleton-img"></div>
                                 <div class="position-absolute" style="top:6px; left:6px;">
@@ -83,7 +83,7 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                 </div>
 
                 <!-- Products Container -->
-                <div id="products-container" class="row row-cols-sm-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4" style="display: none;">
+                <div id="products-container" class="row row-cols-1 row-cols-sm-2 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 justify-content-center" style="display: none;">
                     <?php 
                     $where="";
                     if(is_array($brand_filter)){
@@ -104,8 +104,8 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                             $out = $out > 0 ? $out : 0;
                             $available = $stocks - $out;
                     ?>
-                        <div class="col px-1 py-2">
-                            <div class="card rounded-0 shadow h-100">
+                        <div class="col px-1 py-2 d-flex justify-content-center">
+                            <div class="card rounded-0 shadow h-100 w-100" style="max-width:340px;">
                                 <div class="product-img-holder overflow-hidden position-relative">
                                     <img src="<?= validate_image($row['image_path']) ?>" alt="Product Image" class="img-top"/>
                                     
@@ -292,6 +292,11 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
     transition: opacity 0.3s ease-in-out;
 }
 
+/* Mobile grid improvements */
+@media (max-width: 576px) {
+    .product-img-holder { height: 140px; }
+}
+
 .fade-in {
     animation: fadeIn 0.5s ease-in-out;
 }
@@ -311,6 +316,19 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
 <script>
     // Loading skeleton functions
     function showSkeleton() {
+        // On mobile, append skeleton after products for bottom placement
+        var isMobile = window.matchMedia('(max-width: 576px)').matches;
+        if(isMobile){
+            if($('#products-skeleton').next('#products-container').length){
+                // already above, move below
+                $('#products-skeleton').insertAfter('#products-container');
+            }
+        } else {
+            // ensure skeleton is above on larger screens
+            if($('#products-container').next('#products-skeleton').length){
+                $('#products-skeleton').insertBefore('#products-container');
+            }
+        }
         $('#products-skeleton').show();
         $('#products-container').hide();
         $('.categories-filter-container').addClass('loading-filters');
@@ -327,11 +345,11 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
         showSkeleton();
         setTimeout(function() {
             hideSkeleton();
-        }, 800); // 800ms delay to show skeleton
+        }, 400); // shorter delay for better mobile responsiveness
     }
 
     $(function(){
-        // Show skeleton on page load
+        // Show products immediately on mobile; skeleton on larger screens
         $(document).ready(function() {
             simulateLoading();
         });

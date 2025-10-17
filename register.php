@@ -319,10 +319,10 @@
                 </div>
 
                 <div class="row align-items-center mt-3">
-                  <div class="col-6 pr-1 mb-2">
+                  <div class="col-12 col-sm-6 pr-sm-1 mb-2">
                     <a href="<?= base_url ?>" class="btn btn-outline-secondary btn-block"><i class="fa fa-store mr-1"></i> Back to Shop</a>
                   </div>
-                  <div class="col-6 pl-1 mb-2">
+                  <div class="col-12 col-sm-6 pl-sm-1 mb-2">
                     <button type="submit" class="btn btn-primary btn-sm btn-flat btn-block"><i class="fa fa-user-check mr-1"></i> Register</button>
                   </div>
                 </div>
