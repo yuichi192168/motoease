@@ -28,9 +28,11 @@ require_once('./inc/sess_auth.php');
                                                         AND (cat.category LIKE '%motorcycle%' OR cat.category LIKE '%bike%' OR p.name LIKE '%motorcycle%' OR p.name LIKE '%bike%')");
                         $has_motorcycles = $motorcycle_items->fetch_assoc()['count'] > 0;
                         
+                        // Always check application status for motorcycle orders
+                        $application_status = $conn->query("SELECT credit_application_completed FROM client_list WHERE id = '{$customer_id}'")->fetch_assoc();
+                        $application_completed = $application_status && $application_status['credit_application_completed'] == 1;
+                        
                         if($has_motorcycles):
-                            $application_status = $conn->query("SELECT credit_application_completed FROM client_list WHERE id = '{$customer_id}'")->fetch_assoc();
-                            $application_completed = $application_status && $application_status['credit_application_completed'] == 1;
                         ?>
                         <div class="alert <?= $application_completed ? 'alert-success' : 'alert-warning' ?> mb-3">
                             <div class="d-flex align-items-center">
@@ -133,7 +135,7 @@ require_once('./inc/sess_auth.php');
                             <input type="hidden" name="addons_total" value="<?= $addons_total ?>">
                             
                             <!-- Payment Method Selection -->
-                            <div class="form-group">
+                            <div class="form-group payment-method-section">
                                 <label for="payment_method" class="form-label"><strong>Payment Method *</strong></label>
                                 <select class="form-control" name="payment_method" id="payment_method" required>
                                     <option value="">-- Select Payment Method --</option>
@@ -142,7 +144,23 @@ require_once('./inc/sess_auth.php');
                                     <option value="installment">Installment Plan</option>
                                     <?php endif; ?>
                                 </select>
-                                <div class="invalid-feedback" id="payment_method_error"></div>
+                                <div class="invalid-feedback" id="payment_method_error">Please select a payment method.</div>
+                                
+                                <?php if(isset($has_motorcycles) && $has_motorcycles): ?>
+                                <div class="installment-requirements">
+                                    <h6><i class="fa fa-info-circle"></i> Installment Requirements</h6>
+                                    <ul>
+                                        <li>Minimum 20% down payment required</li>
+                                        <li>Credit application must be completed</li>
+                                        <li>Monthly payments due on the same date each month</li>
+                                        <li>Late payment fees may apply for overdue installments</li>
+                                    </ul>
+                                </div>
+                                <?php else: ?>
+                                <div class="alert alert-info mt-2">
+                                    <i class="fa fa-info-circle"></i> <strong>Motorcycle Parts Only:</strong> Installment plans are available only for motorcycle purchases. You can proceed directly to Advance Order.
+                                </div>
+                                <?php endif; ?>
                             </div>
                             
                             <!-- Full Payment Option -->
@@ -201,18 +219,18 @@ require_once('./inc/sess_auth.php');
                             
                             <!-- Terms and Conditions -->
                             <div class="form-group">
-                                <div class="form-check">
+                                <div class="form-check terms-checkbox-container">
                                     <input class="form-check-input" type="checkbox" name="terms_accepted" id="terms_accepted" required>
                                     <label class="form-check-label" for="terms_accepted">
-                                        I agree to the <a href="#" data-toggle="modal" data-target="#termsModal">Terms and Conditions</a> *
+                                        I agree to the <a href="#" data-toggle="modal" data-target="#termsModal" class="terms-link">Terms and Conditions</a> <span class="text-danger">*</span>
                                     </label>
-                                    <div class="invalid-feedback" id="terms_accepted_error"></div>
+                                    <div class="invalid-feedback" id="terms_accepted_error">Please agree to the terms and conditions before proceeding.</div>
                                 </div>
                             </div>
                             
                             <div class="form-group text-right">
-                                <button class="btn btn-flat btn-primary" type="submit" id="place_order_btn">
-                                    <i class="fa fa-shopping-cart"></i> <?php if(isset($has_motorcycles) && $has_motorcycles): ?><?php echo isset($application_completed) && $application_completed ? 'Continue to Order' : 'Proceed to Credit Application'; ?><?php else: ?>Advance Order<?php endif; ?>
+                                <button class="btn btn-flat btn-primary" type="submit" id="place_order_btn" disabled>
+                                    <i class="fa fa-shopping-cart"></i> <?php if(isset($has_motorcycles) && $has_motorcycles): ?><?php echo isset($application_completed) && $application_completed ? 'Continue to Order' : 'Complete Credit Application'; ?><?php else: ?>Advance Order<?php endif; ?>
                                 </button>
                             </div>
                         </form>
@@ -271,6 +289,108 @@ require_once('./inc/sess_auth.php');
         </div>
     </div>
 </div>
+
+<style>
+    /* Terms and Conditions Checkbox Styling */
+    .terms-checkbox-container {
+        padding: 15px;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        background-color: #f8f9fa;
+        margin: 10px 0;
+        transition: all 0.3s ease;
+    }
+    
+    .terms-checkbox-container:hover {
+        border-color: #007bff;
+        background-color: #f0f8ff;
+    }
+    
+    .terms-checkbox-container .form-check-input {
+        margin-top: 0.25rem;
+        margin-right: 10px;
+        transform: scale(1.2);
+    }
+    
+    .terms-checkbox-container .form-check-label {
+        font-size: 14px;
+        line-height: 1.5;
+        margin-bottom: 0;
+        cursor: pointer;
+        display: flex;
+        align-items: flex-start;
+    }
+    
+    .terms-link {
+        color: #007bff;
+        text-decoration: underline;
+        font-weight: 500;
+        margin: 0 5px;
+    }
+    
+    .terms-link:hover {
+        color: #0056b3;
+        text-decoration: none;
+    }
+    
+    .terms-checkbox-container .invalid-feedback {
+        display: block;
+        margin-top: 8px;
+        font-size: 13px;
+        color: #dc3545;
+    }
+    
+    /* Button Disabled State */
+    #place_order_btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background-color: #6c757d;
+        border-color: #6c757d;
+    }
+    
+    #place_order_btn:disabled:hover {
+        background-color: #6c757d;
+        border-color: #6c757d;
+        transform: none;
+    }
+    
+    /* Payment Method Section Styling */
+    .payment-method-section {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 15px 0;
+        background-color: #ffffff;
+    }
+    
+    .installment-requirements {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 6px;
+        padding: 12px;
+        margin: 10px 0;
+    }
+    
+    .installment-requirements .fa-info-circle {
+        color: #856404;
+    }
+    
+    .installment-requirements h6 {
+        color: #856404;
+        margin-bottom: 8px;
+    }
+    
+    .installment-requirements ul {
+        margin-bottom: 0;
+        padding-left: 20px;
+    }
+    
+    .installment-requirements li {
+        color: #856404;
+        font-size: 13px;
+        margin-bottom: 4px;
+    }
+</style>
 
 <script>
     $(function(){
@@ -336,10 +456,11 @@ require_once('./inc/sess_auth.php');
             // Validate payment method
             if(!paymentMethod) {
                 $('#payment_method').addClass('is-invalid');
-                $('#payment_method_error').text('Please select a payment method.');
+                $('#payment_method_error').text('Please select a payment method.').show();
                 isValid = false;
             } else {
                 $('#payment_method').addClass('is-valid');
+                $('#payment_method_error').hide();
             }
             
             // Validate full payment section
@@ -347,10 +468,11 @@ require_once('./inc/sess_auth.php');
                 var paymentType = $('#payment_type').val();
                 if(!paymentType) {
                     $('#payment_type').addClass('is-invalid');
-                    $('#payment_type_error').text('Please select a payment type.');
+                    $('#payment_type_error').text('Please select a payment type (Cash or Card).').show();
                     isValid = false;
                 } else {
                     $('#payment_type').addClass('is-valid');
+                    $('#payment_type_error').hide();
                 }
             }
             
@@ -363,18 +485,20 @@ require_once('./inc/sess_auth.php');
                 
                 if(!months) {
                     $('#installment_months').addClass('is-invalid');
-                    $('#installment_months_error').text('Please select installment period.');
+                    $('#installment_months_error').text('Please select an installment period.').show();
                     isValid = false;
                 } else {
                     $('#installment_months').addClass('is-valid');
+                    $('#installment_months_error').hide();
                 }
                 
                 if(!downPayment || downPayment < minimumDown) {
                     $('#down_payment').addClass('is-invalid');
-                    $('#down_payment_error').text('Down payment must be at least ₱' + minimumDown.toFixed(2));
+                    $('#down_payment_error').text('Down payment must be at least ₱' + minimumDown.toFixed(2) + ' (20% of total amount)').show();
                     isValid = false;
                 } else {
                     $('#down_payment').addClass('is-valid');
+                    $('#down_payment_error').hide();
                 }
             }
             
@@ -385,11 +509,11 @@ require_once('./inc/sess_auth.php');
             // Validate terms acceptance (aligned with send_request)
             if(!$('#terms_accepted').is(':checked')) {
                 $('#terms_accepted').addClass('is-invalid');
-                $('#terms_accepted_error').text('You must accept the terms and conditions');
+                $('#terms_accepted_error').text('Please agree to the terms and conditions before proceeding.').show();
                 isValid = false;
             } else {
                 $('#terms_accepted').addClass('is-valid');
-                $('#terms_accepted_error').text('');
+                $('#terms_accepted_error').text('').hide();
             }
             
             return isValid;
@@ -398,14 +522,25 @@ require_once('./inc/sess_auth.php');
         // Terms checkbox changes button label contextually for motorcycle carts
         var hasMotorcycles = <?php echo isset($has_motorcycles) && $has_motorcycles ? 'true' : 'false'; ?>;
         var applicationCompleted = <?php echo isset($application_completed) && $application_completed ? 'true' : 'false'; ?>;
+        
+        // Terms and Conditions checkbox handler
         $('#terms_accepted').on('change', function(){
+            var isChecked = $(this).is(':checked');
+            
+            // Update button state
+            if(isChecked) {
+                $('#place_order_btn').prop('disabled', false);
+                $('#terms_accepted').removeClass('is-invalid').addClass('is-valid');
+                $('#terms_accepted_error').text('').hide();
+            } else {
+                $('#place_order_btn').prop('disabled', true);
+                $('#terms_accepted').removeClass('is-valid');
+            }
+            
+            // Update button text based on cart contents
             if(hasMotorcycles){
                 if(!applicationCompleted){
-                    if($(this).is(':checked')){
-                        $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Proceed to Credit Application');
-                    } else {
-                        $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Proceed to Credit Application');
-                    }
+                    $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Complete Credit Application');
                 } else {
                     $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Continue to Order');
                 }
@@ -414,21 +549,56 @@ require_once('./inc/sess_auth.php');
             }
         }).trigger('change');
 
-        // Mirror send_request: update T&C validity on change
-        $('#terms_accepted').on('change', function(){
-            if($(this).is(':checked')){
-                $('#terms_accepted').removeClass('is-invalid').addClass('is-valid');
-                $('#terms_accepted_error').text('');
-            }
-        });
-
         // Submit order
         $('#place_order').submit(function(e){
             e.preventDefault();
             
+            // Clear previous validation errors
+            $('.is-invalid').removeClass('is-invalid');
+            $('.invalid-feedback').text('').hide();
+            
+            // Validate Terms and Conditions first
+            if(!$('#terms_accepted').is(':checked')) {
+                $('#terms_accepted').addClass('is-invalid');
+                $('#terms_accepted_error').text('Please agree to the terms and conditions before proceeding.').show();
+                alert_toast('Please agree to the terms and conditions before proceeding.', 'warning');
+                return false;
+            }
+            
             // Validate form before submission
             if(!validateForm()) {
                 alert_toast('Please fill in all required fields correctly.', 'warning');
+                return false;
+            }
+            
+            // Redirect to credit application for motorcycle orders if not completed
+            console.log('Debug - hasMotorcycles:', hasMotorcycles, 'applicationCompleted:', applicationCompleted);
+            if(hasMotorcycles && !applicationCompleted) {
+                // Open credit application form in new tab
+                window.open("https://form.jotform.com/242488642552463", '_blank');
+                
+                // Show completion confirmation dialog
+                Swal.fire({
+                    title: 'Credit Application Form Opened',
+                    html: `
+                        <div class="text-center">
+                            <i class="fa fa-external-link-alt text-info" style="font-size: 3rem;"></i>
+                            <p class="mt-3">Please complete the Motorcentral Credit Application form in the new tab.</p>
+                            <p class="text-muted">After completing the form, return here and click "I've Completed the Application" to proceed with your order.</p>
+                        </div>
+                    `,
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonText: 'I\'ve Completed the Application',
+                    cancelButtonText: 'I\'ll Complete It Later',
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#6c757d'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Mark application as completed and retry order
+                        markApplicationCompleted();
+                    }
+                });
                 return false;
             }
             
@@ -469,7 +639,12 @@ require_once('./inc/sess_auth.php');
                                 end_loader();
                                 $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Advance Order');
                                 if(parsed.status == 'success'){
-                                    window.location.replace('./?p=my_orders');
+                                    // Show success message before redirecting
+                                    uni_modal('Order Placed Successfully','success_msg.php');
+                                    if(parsed.ref_code){
+                                        alert_toast('Reference Code: '+parsed.ref_code,'success');
+                                    }
+                                    setTimeout(function(){ window.location.replace('./?p=my_orders'); }, 3000);
                                     return;
                                 } else if(parsed.status == 'failed' && parsed.msg){
                                     var el = $('<div>');
@@ -486,7 +661,7 @@ require_once('./inc/sess_auth.php');
                     end_loader();
                     // Reset button text based on context
                     if(hasMotorcycles){
-                        $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> ' + (applicationCompleted ? 'Continue to Order' : 'Proceed to Credit Application'));
+                        $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> ' + (applicationCompleted ? 'Continue to Order' : 'Complete Credit Application'));
                     } else {
                         $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Advance Order');
                     }
@@ -495,7 +670,7 @@ require_once('./inc/sess_auth.php');
                     // Always clear loader first
                     end_loader();
                     if(hasMotorcycles){
-                        $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> ' + (applicationCompleted ? 'Continue to Order' : 'Proceed to Credit Application'));
+                        $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> ' + (applicationCompleted ? 'Continue to Order' : 'Complete Credit Application'));
                     } else {
                         $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Advance Order');
                     }
@@ -507,7 +682,8 @@ require_once('./inc/sess_auth.php');
                         if(resp.ref_code){
                             alert_toast('Reference Code: '+resp.ref_code,'success');
                         }
-                        setTimeout(function(){ location.replace('./?p=my_orders'); }, 1200);
+                        // Increase delay to allow user to see the success message
+                        setTimeout(function(){ location.replace('./?p=my_orders'); }, 3000);
                     }else if(resp.status == 'failed' && !!resp.msg){
                         if(resp.application_required){
                             // Show application form modal
@@ -603,8 +779,8 @@ require_once('./inc/sess_auth.php');
                         icon: 'success',
                         confirmButtonText: 'Place Order Now'
                     }).then(() => {
-                        // Retry placing the order
-                        $('#place_order').submit();
+                        // Refresh the page to update application status
+                        location.reload();
                     });
                 } else {
                     alert_toast('Failed to update application status. Please try again.', 'error');

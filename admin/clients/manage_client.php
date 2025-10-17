@@ -135,7 +135,10 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 				},
 				success:function(resp){
 					if(typeof resp =='object' && resp.status == 'success'){
-						location.href = "./?page=clients";
+						alert_toast(resp.msg || "Client data saved successfully.", 'success');
+						setTimeout(() => {
+							location.href = "./?page=clients";
+						}, 1500);
 					}else if(resp.status == 'failed' && !!resp.msg){
                         var el = $('<div>')
                             el.addClass("alert alert-danger err-msg").text(resp.msg)

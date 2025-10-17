@@ -164,8 +164,17 @@ Class Users extends DBConnection {
 		
 		extract($_POST);
 		$data = "";
+		
+		// Define allowed fields for client_list table to prevent SQL errors
+		$allowed_fields = array(
+			'firstname', 'middlename', 'lastname', 'gender', 'contact', 
+			'address', 'email', 'avatar', 'password', 'status', 'delete_flag',
+			'credit_application_completed', 'login_attempts', 'is_locked', 
+			'locked_until', 'reset_token'
+		);
+		
 		foreach($_POST as $k => $v){
-			if(!in_array($k, array('id'))){
+			if(!in_array($k, array('id')) && in_array($k, $allowed_fields)){
 				if(!empty($data)) $data .= ", ";
 				$data .= " `{$k}` = '{$v}' ";
 			}

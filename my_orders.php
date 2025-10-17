@@ -63,6 +63,10 @@
                                                 <button class="btn btn-sm btn-outline-danger cancel_order" data-id="<?= $row['id'] ?>">
                                                     <i class="fa fa-times"></i> Cancel
                                                 </button>
+                                            <?php elseif($row['status'] == 4): ?>
+                                                <button class="btn btn-sm btn-success confirm_receipt" data-id="<?= $row['id'] ?>">
+                                                    <i class="fa fa-check"></i> Confirm Receipt
+                                                </button>
                                             <?php endif; ?>
                                         </td>
                                     </tr>
@@ -131,6 +135,10 @@
                                     <button class="btn btn-sm btn-outline-danger cancel_order" data-id="<?= $row['id'] ?>">
                                         <i class="fa fa-times"></i> Cancel
                                     </button>
+                                <?php elseif($row['status'] == 4): ?>
+                                    <button class="btn btn-sm btn-success confirm_receipt" data-id="<?= $row['id'] ?>">
+                                        <i class="fa fa-check"></i> Confirm Receipt
+                                    </button>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -168,6 +176,12 @@
 			var order_id = $(this).data('id');
 			cancelOrder(order_id);
 		});
+		
+		// Handle confirm receipt button clicks
+		$('.confirm_receipt').click(function(){
+			var order_id = $(this).data('id');
+			confirmReceipt(order_id);
+		});
     })
     
 	
@@ -177,6 +191,10 @@
 	
 	function cancelOrder(order_id){
 		_conf("Are you sure you want to cancel this order?","cancel_order",[order_id]);
+	}
+	
+	function confirmReceipt(order_id){
+		_conf("Are you sure you have received this order?","confirm_receipt",[order_id]);
 	}
 	
 	function cancel_order(order_id){
@@ -204,7 +222,10 @@
 						}
 						if(parsed && parsed.status == 'success'){
 							alert_toast("Order cancelled successfully.", 'success');
-							location.reload();
+							// Add delay to allow user to see the success message
+							setTimeout(function(){
+								location.reload();
+							}, 2000);
 							return;
 						}else if(parsed && parsed.msg){
 							alert_toast(parsed.msg,'error');
@@ -219,11 +240,69 @@
 			success: function(resp){
 				if(typeof resp == 'object' && resp.status == 'success'){
 					alert_toast("Order cancelled successfully.", 'success');
-					location.reload();
+					// Add delay to allow user to see the success message
+					setTimeout(function(){
+						location.reload();
+					}, 2000);
 				} else {
 					alert_toast(resp.msg || "An error occurred.", 'error');
+					end_loader();
 				}
+			}
+		});
+	}
+	
+	function confirm_receipt(order_id){
+		start_loader();
+		$.ajax({
+			url: _base_url_ + "classes/Master.php?f=confirm_receipt",
+			method: "POST",
+			data: {id: order_id},
+			dataType: "json",
+			error: err => {
+				console.log(err);
+				// Try to recover from non-JSON responses that still contain JSON
+				try{
+					if(err && err.responseText){
+						var parsed = null;
+						try{ parsed = JSON.parse(err.responseText); }catch(e){ parsed = null; }
+						if(!parsed){
+							var txt = err.responseText;
+							var s = txt.indexOf('{');
+							var e = txt.lastIndexOf('}');
+							if(s !== -1 && e !== -1 && e > s){
+								var sub = txt.substring(s, e+1);
+								try{ parsed = JSON.parse(sub); }catch(e2){ parsed = null; }
+							}
+						}
+						if(parsed && parsed.status == 'success'){
+							alert_toast("Order receipt confirmed successfully.", 'success');
+							// Add delay to allow user to see the success message
+							setTimeout(function(){
+								location.reload();
+							}, 2000);
+							return;
+						}else if(parsed && parsed.msg){
+							alert_toast(parsed.msg,'error');
+							end_loader();
+							return;
+						}
+					}
+				}catch(parseErr){ console.log('Response parse failed', parseErr); }
+				alert_toast("An error occurred.", 'error');
 				end_loader();
+			},
+			success: function(resp){
+				if(typeof resp == 'object' && resp.status == 'success'){
+					alert_toast("Order receipt confirmed successfully.", 'success');
+					// Add delay to allow user to see the success message
+					setTimeout(function(){
+						location.reload();
+					}, 2000);
+				} else {
+					alert_toast(resp.msg || "An error occurred.", 'error');
+					end_loader();
+				}
 			}
 		});
 	}

@@ -116,7 +116,10 @@ $(document).ready(function(){
             },
             success: function(resp){
                 if(typeof resp =='object' && resp.status == 'success'){
-                    location.href = "./?page=maintenance/brands";
+                    alert_toast(resp.msg || "Brand data saved successfully.", 'success');
+                    setTimeout(() => {
+                        location.href = "./?page=maintenance/brands";
+                    }, 1500);
                 }else if(resp.status == 'failed' && !!resp.msg){
                     var el = $('<div>').addClass("alert alert-danger err-msg").text(resp.msg)
                     _this.prepend(el)

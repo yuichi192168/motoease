@@ -453,16 +453,8 @@ Class Master extends DBConnection {
 		$has_motorcycle = isset($motorcycle_count_row['count']) && (int)$motorcycle_count_row['count'] > 0;
 		
 		if($has_motorcycle && $payment_method === 'installment'){
-			// Check if customer has completed the credit application
-			$application_status = $this->conn->query("SELECT credit_application_completed FROM client_list WHERE id = '{$client_id}'")->fetch_assoc();
-			
-			if(!$application_status || $application_status['credit_application_completed'] != 1){
-				$resp['status'] = 'failed';
-				$resp['msg'] = "Please complete the Motorcentral Credit Application form before proceeding with motorcycle orders.";
-				$resp['application_required'] = true;
-				$resp['application_url'] = "https://form.jotform.com/242488642552463";
-				return json_encode($resp);
-			}
+		// Note: Credit application validation is now handled on the frontend
+		// The frontend will redirect users to the credit application form if needed
 		}
 		
 		// Start transaction
@@ -1248,12 +1240,15 @@ Class Master extends DBConnection {
 		if(empty($_POST['id']))
 		$_POST['client_id'] = $this->settings->userdata('id');
 		
-		// Enforce Terms & Conditions acceptance
-		$tnc_ok = isset($_POST['terms_accepted']) && in_array($_POST['terms_accepted'], ['on','1','true','yes'], true);
-		if(!$tnc_ok){
-			$resp['status'] = 'failed';
-			$resp['msg'] = "Please accept the terms and conditions before submitting the service request.";
-			return json_encode($resp);
+		// Enforce Terms & Conditions acceptance only for new requests (not admin updates)
+		$is_update = !empty($_POST['id']);
+		if(!$is_update) {
+			$tnc_ok = isset($_POST['terms_accepted']) && in_array($_POST['terms_accepted'], ['on','1','true','yes'], true);
+			if(!$tnc_ok){
+				$resp['status'] = 'failed';
+				$resp['msg'] = "Please accept the terms and conditions before submitting the service request.";
+				return json_encode($resp);
+			}
 		}
 		extract($_POST);
 		$data = "";
@@ -1598,6 +1593,67 @@ Class Master extends DBConnection {
 			$resp['status'] = 'failed';
 			$resp['msg'] = "Order status update failed.";
 			$resp['error'] = $this->conn->error;
+		}
+		return json_encode($resp);
+	}
+	
+	// Confirm order receipt
+	function confirm_receipt(){
+		extract($_POST);
+		$resp = array();
+		$id = isset($id) ? intval($id) : 0;
+		if($id <= 0){
+			return json_encode(['status'=>'failed','msg'=>'Invalid order id.']);
+		}
+		
+		$check = $this->conn->query("SELECT id, status, client_id FROM `order_list` WHERE id = '{$id}'");
+		if(!$check || $check->num_rows == 0){
+			return json_encode(['status'=>'failed','msg'=>'Order not found.']);
+		}
+		$order = $check->fetch_assoc();
+		
+		$user_id = $this->settings->userdata('id');
+		
+		// Only allow the customer who placed the order to confirm receipt
+		if($order['client_id'] != $user_id){
+			return json_encode(['status'=>'failed','msg'=>'You can only confirm receipt of your own orders.']);
+		}
+		
+		// Only allow confirmation if order is delivered (status 4)
+		if($order['status'] != 4){
+			return json_encode(['status'=>'failed','msg'=>'You can only confirm receipt of delivered orders.']);
+		}
+		
+		// Update order status to claimed (status 6)
+		$update = $this->conn->query("UPDATE `order_list` SET status = 6 WHERE id = '{$id}'");
+		if($update){
+			$resp['status'] = 'success';
+			$resp['msg'] = 'Order receipt confirmed successfully. Thank you for your purchase!';
+			
+			// Auto-generate invoice when order is confirmed as received
+			try {
+				require_once 'Invoice.php';
+				$invoice = new Invoice();
+				$invoice_result = $invoice->createInvoiceFromOrder($id, $this->settings->userdata('id'));
+				
+				if($invoice_result['status'] == 'success') {
+					$resp['msg'] .= " Invoice generated: " . $invoice_result['invoice_number'];
+					$resp['invoice_number'] = $invoice_result['invoice_number'];
+				}
+			} catch (Exception $e) { 
+				// Non-fatal error - invoice generation failed but order is still confirmed
+			}
+			
+			// Create notification
+			try {
+				if(file_exists(base_app.'classes/Notification.php')){
+					require_once base_app.'classes/Notification.php';
+					$notif = new Notification();
+					$notif->createNotification($order['client_id'], 'order', 'Order Confirmed', 'You have confirmed receipt of your order. Thank you for your purchase!', [ 'order_id' => $id ]);
+				}
+			} catch (Exception $e) { /* non-fatal */ }
+		}else{
+			$resp = ['status'=>'failed','msg'=>'Failed to confirm order receipt.','error'=>$this->conn->error];
 		}
 		return json_encode($resp);
 	}
@@ -3894,6 +3950,9 @@ $sysset = new SystemSettings();
 	break;
 	case 'cancel_order':
 		echo $Master->cancel_order();
+	break;
+	case 'confirm_receipt':
+		echo $Master->confirm_receipt();
 	break;
 	case 'update_promo':
 		echo $Master->update_promo();

@@ -538,7 +538,10 @@ function displayImg(input,_this) {
                 },
                 success:function(resp){
                     if(typeof resp =='object' && resp.status == 'success'){
-                        location.reload();
+                        alert_toast(resp.msg || "Account updated successfully.", 'success');
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
                     }else if(resp.status == 'failed' && !!resp.msg){   
                         el.addClass("alert alert-danger err-msg").text(resp.msg)
                         _this.prepend(el)
@@ -571,7 +574,10 @@ function displayImg(input,_this) {
                 success:function(resp){
                     if(resp.status == 'success'){
                         $('#vehicleInfoModal').modal('hide');
-                        location.reload();
+                        alert_toast(resp.msg || "Vehicle information saved successfully.", 'success');
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
                     }else{
                         alert_toast(resp.msg,'error');
                     }
@@ -595,7 +601,10 @@ function displayImg(input,_this) {
                 success:function(resp){
                     if(resp.status == 'success'){
                         $('#orcrUploadModal').modal('hide');
-                        location.reload();
+                        alert_toast(resp.msg || "OR/CR document uploaded successfully.", 'success');
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
                     }else{
                         alert_toast(resp.msg,'error');
                     }

@@ -46,18 +46,21 @@ if(isset($_GET['id'])){
 					end_loader();
 				},
 				success:function(resp){
+					end_loader();
 					if(typeof resp =='object' && resp.status == 'success'){
-						location.reload();
+						$('#uni_modal').modal('hide');
+						alert_toast(resp.msg || "Order status updated successfully.", 'success');
+						setTimeout(() => {
+							location.reload();
+						}, 1500);
 					}else if(resp.status == 'failed' && !!resp.msg){
                         var el = $('<div>')
                             el.addClass("alert alert-danger err-msg").text(resp.msg)
                             _this.prepend(el)
                             el.show('slow')
                             $("html, body").animate({ scrollTop: _this.closest('.card').offset().top }, "fast");
-                            end_loader()
                     }else{
 						alert_toast("An error occured",'error');
-						end_loader();
                         console.log(resp)
 					}
 				}

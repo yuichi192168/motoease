@@ -164,6 +164,58 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         margin-top: 0.25rem;
         display: none;
     }
+    
+    /* Specifications Content Overflow Handling */
+    .specifications-content {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        max-width: 100%;
+    }
+    
+    /* Mobile-specific specifications handling */
+    @media (max-width: 768px) {
+        .specifications-content {
+            overflow-x: auto;
+            overflow-y: visible;
+            white-space: nowrap;
+            max-width: 100%;
+            padding-right: 10px;
+        }
+        
+        .specifications-content table {
+            min-width: 100%;
+            white-space: nowrap;
+        }
+        
+        .specifications-content img {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .specifications-content pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+        }
+        
+        .specifications-content p {
+            white-space: normal;
+            word-wrap: break-word;
+        }
+    }
+    
+    /* Desktop specifications handling */
+    @media (min-width: 769px) {
+        .specifications-content {
+            overflow-x: visible;
+            white-space: normal;
+        }
+        
+        .specifications-content table {
+            width: 100%;
+            table-layout: auto;
+        }
+    }
 </style>
 <div class="content py-5 mt-3">
     <div class="container">
@@ -485,7 +537,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                     <div class="row">
                         <div class="col-md-12">
                             <small class="mx-2 text-muted">Specifications</small>
-                            <div class="pl-4">
+                            <div class="pl-4 specifications-content">
                                 <?= isset($description) ? html_entity_decode($description) : '' ?>
                             </div>
                         </div>
@@ -730,6 +782,172 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         });
     }
 
+    // Global variables for review functionality
+    let selectedRating = 0;
+    let isHovering = false;
+
+    // Global function for review submission
+    function submitReviewForm(){
+        // Clear previous validation errors
+        $('#rating_error').hide();
+        $('#review_comment').removeClass('is-invalid');
+        
+        // Validate rating selection
+        if(selectedRating < 1){
+            $('#rating_error').show();
+            return;
+        }
+        
+        // Validate comment (optional but if provided, should not be empty)
+        const comment = $('#review_comment').val().trim();
+        if(comment.length > 0 && comment.length < 10){
+            $('#review_comment').addClass('is-invalid');
+            alert_toast('Please provide a more detailed comment (at least 10 characters) or leave it empty.', 'warning');
+            return;
+        }
+        
+        // Submit the review
+        start_loader();
+        $.ajax({
+            url:_base_url_+"classes/Master.php?f=save_review",
+            method:'POST',
+            data:{
+                target_type:'product',
+                target_id:'<?= isset($id) ? $id : "" ?>',
+                rating:selectedRating,
+                comment:comment
+            },
+            dataType:'json',
+            error:err=>{
+                console.error(err);
+                alert_toast("An error occurred","error");
+                end_loader();
+            },
+            success:function(resp){
+                if(resp.status =='success'){
+                    $('#review_comment').val('');
+                    selectedRating = 0; 
+                    highlightStars(0, false);
+                    loadReviews();
+                    alert_toast(resp.msg,'success');
+                }else if(!!resp.msg){
+                    alert_toast(resp.msg,'error');
+                }else{
+                    alert_toast("An error occurred","error");
+                }
+                end_loader();
+            }
+        });
+    }
+
+    // Global function for highlighting stars
+    function highlightStars(v, isHover = false){
+        $('#rating_stars .star').each(function(){
+            const s = parseInt($(this).data('val'));
+            const $star = $(this);
+            
+            // Remove all classes
+            $star.removeClass('selected hovered');
+            
+            if (isHover) {
+                // During hover, show hover effect up to hovered star
+                if (s <= v) {
+                    $star.addClass('hovered');
+                }
+            } else {
+                // When not hovering, show selected stars
+                if (s <= v) {
+                    $star.addClass('selected');
+                }
+            }
+        });
+    }
+
+    // Global function for loading reviews
+    function loadReviews(){
+        $.ajax({
+            url: _base_url_ + "classes/Master.php?f=get_reviews",
+            method: "POST",
+            data: {
+                target_type: 'product',
+                target_id: '<?= isset($id) ? $id : "" ?>',
+                limit: 1000, // Fetch all reviews
+                offset: 0
+            },
+            dataType: "json",
+            error: err => {
+                console.log(err);
+            },
+            success: function(resp){
+                if(resp.status == 'success'){
+                    let s = resp.count + ' review' + (resp.count==1?'':'s');
+                    if(resp.count>0){ s += ' • Avg ' + (resp.avg_rating||0) + '/5'; }
+                    $('#reviews_summary').text(s);
+                    
+                    if(resp.reviews.length > 0){
+                        const initialDisplayCount = 3; // Show first 3 reviews initially
+                        const allReviews = resp.reviews;
+                        const initialReviews = allReviews.slice(0, initialDisplayCount);
+                        const additionalReviews = allReviews.slice(initialDisplayCount);
+                        
+                        // Display initial reviews
+                        var html = '';
+                        $.each(initialReviews, function(idx, r){
+                            html += generateReviewHTML(r);
+                        });
+                        $('#reviews_list').html(html);
+                        
+                        // Display additional reviews in collapsible section
+                        if(additionalReviews.length > 0){
+                            var additionalHtml = '';
+                            $.each(additionalReviews, function(idx, r){
+                                additionalHtml += generateReviewHTML(r);
+                            });
+                            $('#reviews_additional').html(additionalHtml);
+                            $('#reviews_controls').show();
+                        }
+                    } else {
+                        $('#reviews_list').html('<p class="text-muted">No reviews yet. Be the first to review this product.</p>');
+                    }
+                }
+            }
+        });
+    }
+
+    // Global function for generating review HTML
+    function generateReviewHTML(r){
+        const name = r.reviewer_name ? r.reviewer_name : 'Customer';
+        const stars = '★★★★★'.slice(0, r.rating) + '☆☆☆☆☆'.slice(0, 5 - r.rating);
+        const ratingText = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][r.rating] || '';
+        const formattedDate = new Date(r.date_created).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        
+        var html = '<div class="mb-3 p-3 border rounded shadow-sm" style="background-color: #f8f9fa; border-left: 4px solid #dc3545;">';
+        html += '<div class="d-flex justify-content-between align-items-start mb-2">';
+        html += '<div>';
+        html += '<strong class="text-primary">'+ name +'</strong>';
+        html += '<div class="mt-1">';
+        html += '<span class="text-warning h5" style="font-size: 1.2rem;">'+ stars +'</span>';
+        html += '<span class="ml-2 text-muted small">('+ ratingText +')</span>';
+        html += '</div>';
+        html += '</div>';
+        html += '<small class="text-muted">'+ formattedDate +'</small>';
+        html += '</div>';
+        if(r.comment && r.comment.trim()){ 
+            html += '<div class="text-dark mt-2" style="line-height: 1.5;">';
+            html += '<i class="fa fa-quote-left text-muted mr-1"></i>';
+            html += $('<div>').text(r.comment).html();
+            html += '</div>'; 
+        } else {
+            html += '<div class="text-muted small mt-2"><em>No comment provided</em></div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
     $(function(){
         // Load product recommendations if out of stock
         <?php if($available <= 0): ?>
@@ -741,8 +959,6 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 
         // Reviews
         loadReviews();
-        let selectedRating = 0;
-        let isHovering = false;
         
         // Enhanced star rating functionality
         $('#rating_stars .star').on('mouseenter', function(){
@@ -755,38 +971,8 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         }).on('click', function(){
             selectedRating = parseInt($(this).data('val'));
             highlightStars(selectedRating, false);
-            hideRatingError();
-        });
-        
-        function highlightStars(v, isHover = false){
-            $('#rating_stars .star').each(function(){
-                const s = parseInt($(this).data('val'));
-                const $star = $(this);
-                
-                // Remove all classes
-                $star.removeClass('selected hovered');
-                
-                if (isHover) {
-                    // During hover, show hover effect up to hovered star
-                    if (s <= v) {
-                        $star.addClass('hovered');
-                    }
-                } else {
-                    // When not hovering, show selected stars
-                    if (s <= v) {
-                        $star.addClass('selected');
-                    }
-                }
-            });
-        }
-        
-        function showRatingError() {
-            $('#rating_error').show();
-        }
-        
-        function hideRatingError() {
             $('#rating_error').hide();
-        }
+        });
         
         // Initialize with no rating selected
         highlightStars(0, false);
@@ -811,59 +997,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
             return true;
         }
 
-        // Function to handle review submission (called from onclick)
-        function submitReviewForm(){
-            // Clear previous validation errors
-            hideRatingError();
-            $('#review_comment').removeClass('is-invalid');
-            
-            // Validate rating selection
-            if(selectedRating < 1){
-                showRatingError();
-                return;
-            }
-            
-            // Validate comment (optional but if provided, should not be empty)
-            const comment = $('#review_comment').val().trim();
-            if(comment.length > 0 && comment.length < 10){
-                $('#review_comment').addClass('is-invalid');
-                alert_toast('Please provide a more detailed comment (at least 10 characters) or leave it empty.', 'warning');
-                return;
-            }
-            
-            // Submit the review
-            start_loader();
-            $.ajax({
-                url:_base_url_+"classes/Master.php?f=save_review",
-                method:'POST',
-                data:{
-                    target_type:'product',
-                    target_id:'<?= isset($id) ? $id : "" ?>',
-                    rating:selectedRating,
-                    comment:comment
-                },
-                dataType:'json',
-                error:err=>{
-                    console.error(err);
-                    alert_toast("An error occurred","error");
-                    end_loader();
-                },
-                success:function(resp){
-                    if(resp.status =='success'){
-                        $('#review_comment').val('');
-                        selectedRating = 0; 
-                        highlightStars(0, false);
-                        loadReviews();
-                        alert_toast(resp.msg,'success');
-                    }else if(!!resp.msg){
-                        alert_toast(resp.msg,'error');
-                    }else{
-                        alert_toast("An error occurred","error");
-                    }
-                    end_loader();
-                }
-            });
-        }
+        
         
 
         // Function to handle add to cart (called from onclick) - OLD FUNCTION
@@ -1091,88 +1225,6 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         $('#show_more_reviews').show();
     });
     
-    function loadReviews(){
-        $.ajax({
-            url: _base_url_ + "classes/Master.php?f=get_reviews",
-            method: "POST",
-            data: {
-                target_type: 'product',
-                target_id: '<?= isset($id) ? $id : "" ?>',
-                limit: 1000, // Fetch all reviews
-                offset: 0
-            },
-            dataType: "json",
-            error: err => {
-                console.log(err);
-            },
-            success: function(resp){
-                if(resp.status == 'success'){
-                    let s = resp.count + ' review' + (resp.count==1?'':'s');
-                    if(resp.count>0){ s += ' • Avg ' + (resp.avg_rating||0) + '/5'; }
-                    $('#reviews_summary').text(s);
-                    
-                    if(resp.reviews.length > 0){
-                        const initialDisplayCount = 3; // Show first 3 reviews initially
-                        const allReviews = resp.reviews;
-                        const initialReviews = allReviews.slice(0, initialDisplayCount);
-                        const additionalReviews = allReviews.slice(initialDisplayCount);
-                        
-                        // Display initial reviews
-                        var html = '';
-                        $.each(initialReviews, function(idx, r){
-                            html += generateReviewHTML(r);
-                        });
-                        $('#reviews_list').html(html);
-                        
-                        // Display additional reviews in collapsible section
-                        if(additionalReviews.length > 0){
-                            var additionalHtml = '';
-                            $.each(additionalReviews, function(idx, r){
-                                additionalHtml += generateReviewHTML(r);
-                            });
-                            $('#reviews_additional').html(additionalHtml);
-                            $('#reviews_controls').show();
-                        }
-                    } else {
-                        $('#reviews_list').html('<p class="text-muted">No reviews yet. Be the first to review this product.</p>');
-                    }
-                }
-            }
-        });
-    }
-    
-    function generateReviewHTML(r){
-        const name = r.reviewer_name ? r.reviewer_name : 'Customer';
-        const stars = '★★★★★'.slice(0, r.rating) + '☆☆☆☆☆'.slice(0, 5 - r.rating);
-        const ratingText = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][r.rating] || '';
-        const formattedDate = new Date(r.date_created).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-        
-        var html = '<div class="mb-3 p-3 border rounded shadow-sm" style="background-color: #f8f9fa; border-left: 4px solid #dc3545;">';
-        html += '<div class="d-flex justify-content-between align-items-start mb-2">';
-        html += '<div>';
-        html += '<strong class="text-primary">'+ name +'</strong>';
-        html += '<div class="mt-1">';
-        html += '<span class="text-warning h5" style="font-size: 1.2rem;">'+ stars +'</span>';
-        html += '<span class="ml-2 text-muted small">('+ ratingText +')</span>';
-        html += '</div>';
-        html += '</div>';
-        html += '<small class="text-muted">'+ formattedDate +'</small>';
-        html += '</div>';
-        if(r.comment && r.comment.trim()){ 
-            html += '<div class="text-dark mt-2" style="line-height: 1.5;">';
-            html += '<i class="fa fa-quote-left text-muted mr-1"></i>';
-            html += $('<div>').text(r.comment).html();
-            html += '</div>'; 
-        } else {
-            html += '<div class="text-muted small mt-2"><em>No comment provided</em></div>';
-        }
-        html += '</div>';
-        return html;
-    }
 
     function loadProductRecommendations(){
         $.ajax({

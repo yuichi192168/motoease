@@ -109,7 +109,10 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 				try {
 					var response = typeof resp === 'string' ? JSON.parse(resp) : resp;
 					if(response.status === 'success'){
-						location.href = './?page=user/list';
+						alert_toast(response.msg || "User data saved successfully.", 'success');
+						setTimeout(() => {
+							location.href = './?page=user/list';
+						}, 1500);
 					}else{
 						$('#msg').html('<div class="alert alert-danger">' + response.msg + '</div>')
 						$("html, body").animate({ scrollTop: 0 }, "fast");

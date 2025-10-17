@@ -81,7 +81,10 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 				},
 				success:function(resp){
 					if(typeof resp =='object' && resp.status == 'success'){
-						location.href = "./?page=mechanics";
+						alert_toast(resp.msg || "Mechanic data saved successfully.", 'success');
+						setTimeout(() => {
+							location.href = "./?page=mechanics";
+						}, 1500);
 					}else if(resp.status == 'failed' && !!resp.msg){
                         var el = $('<div>')
                             el.addClass("alert alert-danger err-msg").text(resp.msg)

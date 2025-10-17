@@ -252,6 +252,10 @@
                                                                    data-part-name="<?= htmlspecialchars($part['name']) ?>">
                                                             <label class="form-check-label" for="part_<?= $part['id'] ?>_<?= $row['id'] ?>" style="cursor: pointer;">
                                                                 <div class="d-flex align-items-center">
+                                                                    <div class="mr-2">
+                                                                        <img src="<?= validate_image($part['image_path']) ?>" alt="Part Image" 
+                                                                             style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">
+                                                                    </div>
                                                                     <div class="flex-grow-1">
                                                                         <small><strong><?= htmlspecialchars($part['name']) ?></strong></small><br>
                                                                         <small class="text-muted"><?= $part['brand'] ?> - <?= $part['category'] ?></small><br>

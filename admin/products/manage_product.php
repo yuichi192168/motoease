@@ -391,11 +391,17 @@ $(document).ready(function(){
                             dataType:'json',
                             data:{product_id: resp.id, models: compat},
                             complete:function(){
-                                location.href = "./?page=products/view_product&id="+resp.id;
+                                alert_toast(resp.msg || "Product saved successfully.", 'success');
+                                setTimeout(() => {
+                                    location.href = "./?page=products/view_product&id="+resp.id;
+                                }, 1500);
                             }
                         });
                     } else {
-                        location.href = "./?page=products/view_product&id="+resp.id;
+                        alert_toast(resp.msg || "Product saved successfully.", 'success');
+                        setTimeout(() => {
+                            location.href = "./?page=products/view_product&id="+resp.id;
+                        }, 1500);
                     }
                 }else if(resp.status == 'failed' && !!resp.msg){
                     var el = $('<div>')
