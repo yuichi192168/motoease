@@ -313,13 +313,22 @@
                   </div>
                 </div>
 
-                <div class="d-flex justify-content-between mt-3">
-                  <a href="<?= base_url ?>" class="text-muted">← Back to Shop</a>
-                  <button type="submit" class="btn btn-primary btn-sm px-4">Register</button>
+                <div class="row align-items-center mt-3">
+                  <div class="col-6 pr-1 mb-2">
+                    <a href="<?= base_url ?>" class="btn btn-outline-secondary btn-block"><i class="fa fa-store mr-1"></i> Back to Shop</a>
+                  </div>
+                  <div class="col-6 pl-1 mb-2">
+                    <button type="submit" class="btn btn-primary btn-sm btn-flat btn-block"><i class="fa fa-user-check mr-1"></i> Register</button>
+                  </div>
                 </div>
 
-                <div class="text-center mt-2">
-                  <a href="<?= base_url.'login.php' ?>" class="small">Already have an account? Login here</a>
+                <div class="row mt-1">
+                  <div class="col-12 mb-2">
+                    <a href="<?= base_url.'login.php' ?>" class="btn btn-outline-primary btn-block"><i class="fa fa-sign-in-alt mr-1"></i> Already have an account? Login here</a>
+                  </div>
+                  <div class="col-12 text-right">
+                    <a href="forgot-password.html" class="btn btn-link p-0">I forgot my password</a>
+                  </div>
                 </div>
 
               </form>

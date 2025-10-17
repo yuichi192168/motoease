@@ -3,8 +3,8 @@
         display:none
     }
 </style>
-<div class="container-fluid">
-    <p>Your order has been placed successfully! You will receive a confirmation with your reference code. The management will contact you as soon as they process your order. Thank you!</p>
+<div class="container-fluid bg-white" style="color:#212529; padding:16px; line-height:1.5;">
+    <p style="margin-bottom:12px;">Your order has been placed successfully! You will receive a confirmation with your reference code. The management will contact you as soon as they process your order. Thank you!</p>
     <div class="w-100 d-flex justify-content-end mx-2">
         <div class="col-auto">
             <button class="btn btn-dark btn-sm rounded-0" type="button" data-dismiss="modal">Close</button>

@@ -433,8 +433,19 @@ Class Master extends DBConnection {
 			return json_encode($resp);
 		}
 		
-		// Check if cart has items
-		$cart_items = $this->conn->query("SELECT COUNT(*) as count FROM cart_list WHERE client_id = '{$client_id}'");
+		// Get selected cart items from form data
+		$selected_items = isset($_POST['selected_items']) ? $_POST['selected_items'] : '';
+		
+		// Check if cart has items (either selected items or all items if none selected)
+		if(!empty($selected_items)) {
+			$selected_items = explode(',', $selected_items);
+			$selected_items = array_map('intval', $selected_items); // Convert to integers for security
+			$selected_items_str = implode(',', $selected_items);
+			$cart_items = $this->conn->query("SELECT COUNT(*) as count FROM cart_list WHERE client_id = '{$client_id}' AND id IN ({$selected_items_str})");
+		} else {
+			$cart_items = $this->conn->query("SELECT COUNT(*) as count FROM cart_list WHERE client_id = '{$client_id}'");
+		}
+		
 		if($cart_items->fetch_assoc()['count'] == 0){
 			$resp['status'] = 'failed';
 			$resp['msg'] = "Your cart is empty.";
@@ -444,11 +455,21 @@ Class Master extends DBConnection {
 		// Check if customer has completed Motorcentral Credit Application for motorcycle orders
 		// Only enforce when payment method is installment; allow cash/full payments without the requirement
 		$payment_method = isset($_POST['payment_method']) ? strtolower(trim($_POST['payment_method'])) : '';
-		$motorcycle_cart_items = $this->conn->query("SELECT COUNT(*) as count FROM cart_list c 
-											INNER JOIN product_list p ON c.product_id = p.id 
-											INNER JOIN categories cat ON p.category_id = cat.id 
-											WHERE c.client_id = '{$client_id}' 
-											AND (cat.category LIKE '%motorcycle%' OR cat.category LIKE '%bike%' OR p.name LIKE '%motorcycle%' OR p.name LIKE '%bike%')");
+		// Check for motorcycle items in selected cart items
+		if(!empty($selected_items)) {
+			$motorcycle_cart_items = $this->conn->query("SELECT COUNT(*) as count FROM cart_list c 
+												INNER JOIN product_list p ON c.product_id = p.id 
+												INNER JOIN categories cat ON p.category_id = cat.id 
+												WHERE c.client_id = '{$client_id}' 
+												AND c.id IN ({$selected_items_str})
+												AND (cat.category LIKE '%motorcycle%' OR cat.category LIKE '%bike%' OR p.name LIKE '%motorcycle%' OR p.name LIKE '%bike%')");
+		} else {
+			$motorcycle_cart_items = $this->conn->query("SELECT COUNT(*) as count FROM cart_list c 
+												INNER JOIN product_list p ON c.product_id = p.id 
+												INNER JOIN categories cat ON p.category_id = cat.id 
+												WHERE c.client_id = '{$client_id}' 
+												AND (cat.category LIKE '%motorcycle%' OR cat.category LIKE '%bike%' OR p.name LIKE '%motorcycle%' OR p.name LIKE '%bike%')");
+		}
 		$motorcycle_count_row = $motorcycle_cart_items ? $motorcycle_cart_items->fetch_assoc() : ['count' => 0];
 		$has_motorcycle = isset($motorcycle_count_row['count']) && (int)$motorcycle_count_row['count'] > 0;
 		
@@ -464,10 +485,16 @@ Class Master extends DBConnection {
 			// Generate reference code
 			$ref_code = 'ORD-' . date('Ymd') . '-' . strtoupper(substr(md5(uniqid()), 0, 6));
 			
-			// Calculate total amount
-			$total_query = $this->conn->query("SELECT SUM(c.quantity * p.price) as total FROM cart_list c 
-											  INNER JOIN product_list p ON c.product_id = p.id 
-											  WHERE c.client_id = '{$client_id}'");
+			// Calculate total amount for selected items only
+			if(!empty($selected_items)) {
+				$total_query = $this->conn->query("SELECT SUM(c.quantity * p.price) as total FROM cart_list c 
+												  INNER JOIN product_list p ON c.product_id = p.id 
+												  WHERE c.client_id = '{$client_id}' AND c.id IN ({$selected_items_str})");
+			} else {
+				$total_query = $this->conn->query("SELECT SUM(c.quantity * p.price) as total FROM cart_list c 
+												  INNER JOIN product_list p ON c.product_id = p.id 
+												  WHERE c.client_id = '{$client_id}'");
+			}
 			$total_amount = $total_query->fetch_assoc()['total'];
 			
 			// Add add-ons total if provided
@@ -494,10 +521,16 @@ Class Master extends DBConnection {
 			
 			$order_id = $this->conn->insert_id;
 			
-			// Get cart items and create order items
-			$cart_query = $this->conn->query("SELECT c.*, p.name, p.price FROM cart_list c 
-											 INNER JOIN product_list p ON c.product_id = p.id 
-											 WHERE c.client_id = '{$client_id}'");
+			// Get selected cart items and create order items
+			if(!empty($selected_items)) {
+				$cart_query = $this->conn->query("SELECT c.*, p.name, p.price FROM cart_list c 
+												 INNER JOIN product_list p ON c.product_id = p.id 
+												 WHERE c.client_id = '{$client_id}' AND c.id IN ({$selected_items_str})");
+			} else {
+				$cart_query = $this->conn->query("SELECT c.*, p.name, p.price FROM cart_list c 
+												 INNER JOIN product_list p ON c.product_id = p.id 
+												 WHERE c.client_id = '{$client_id}'");
+			}
 			
 			while($item = $cart_query->fetch_assoc()){
 				$order_item_data = "order_id = '{$order_id}', 
@@ -539,8 +572,12 @@ Class Master extends DBConnection {
 				}
 			}
 			
-			// Clear cart
-			$clear_cart = $this->conn->query("DELETE FROM cart_list WHERE client_id = '{$client_id}'");
+			// Clear only selected cart items
+			if(!empty($selected_items)) {
+				$clear_cart = $this->conn->query("DELETE FROM cart_list WHERE client_id = '{$client_id}' AND id IN ({$selected_items_str})");
+			} else {
+				$clear_cart = $this->conn->query("DELETE FROM cart_list WHERE client_id = '{$client_id}'");
+			}
 			
 			if(!$clear_cart){
 				throw new Exception("Failed to clear cart: " . $this->conn->error);

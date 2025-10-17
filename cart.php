@@ -1,3 +1,6 @@
+<?php 
+require_once('./inc/sess_auth.php');
+?>
 <style>
     .prod-cart-img{
         width: 100%;
@@ -58,6 +61,22 @@
         background: linear-gradient(135deg, #c82333, #a71e2a);
         transform: translateY(-2px);
         box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+    }
+    
+    .btn-primary:disabled {
+        background: #6c757d;
+        border-color: #6c757d;
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+    
+    .btn-primary:disabled:hover {
+        background: #6c757d;
+        border-color: #6c757d;
+        transform: none;
+        box-shadow: none;
     }
     
     .addon-checkbox:checked {
@@ -218,7 +237,12 @@
                                     <?php endif; ?>
                                 </div>
                                 
-                                <!-- Add-ons Section -->
+                                <!-- Add-ons Section - Only show for motorcycles -->
+                                <?php 
+                                // Check if this product is a motorcycle (not oils or motorcycle parts)
+                                $is_motorcycle = !in_array(strtolower($row['category']), ['oils', 'motorcycle parts', 'accessories']);
+                                if($is_motorcycle): 
+                                ?>
                                 <div class="add-ons-section mt-3">
                                     <div class="card border-info">
                                         <div class="card-header py-2 bg-info text-white">
@@ -281,6 +305,7 @@
                                         </div>
                                     </div>
                                 </div>
+                                <?php endif; ?>
                                 <?php if($available < $row['quantity']): ?>
                                     <div class="stock-warning">
                                         <i class="fa fa-exclamation-triangle"></i> 
@@ -325,33 +350,38 @@
                 <?php endwhile; ?>
                 <?php if($cart->num_rows <= 0): ?>
                 <div class="d-flex align-items-center w-100 border justify-content-center">
-                    <div class="col-12 flex-grow-1 flex-shrink-1 px-1 py-1">
-                           <small class="text-muted">No Data</small>
+                    <div class="col-12 text-center py-5">
+                        <i class="fa fa-shopping-cart fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No items in your cart</h5>
+                        <p class="text-muted">You haven't added any items to your cart yet.</p>
+                        <a href="./?p=products" class="btn btn-primary">
+                            <i class="fa fa-shopping-bag"></i> Browse Products
+                        </a>
                     </div>
                 </div>
                 <?php endif; ?>
                 <div class="d-flex align-items-center w-100 border">
-                    <div class="col-auto flex-grow-1 flex-shrink-1 px-1 py-1">
-                            <h4 class="text-center text-dark">SUBTOTAL</h4>
+                    <div class="col-auto flex-grow-1 flex-shrink-1 px-3 py-2">
+                            <h4 class="text-dark mb-0">SUBTOTAL</h4>
                     </div>
-                    <div class="col-auto text-right">
-                        <h4 class="text-dark"><b id="subtotal_display">₱<?= number_format($total,2) ?></b></h4>
+                    <div class="col-auto text-right px-3 py-2">
+                        <h4 class="text-dark mb-0"><b id="subtotal_display">₱<?= number_format($total,2) ?></b></h4>
                     </div>
                 </div>
                 <div class="d-flex align-items-center w-100 border">
-                    <div class="col-auto flex-grow-1 flex-shrink-1 px-1 py-1">
-                            <h4 class="text-center text-dark">ADD-ONS TOTAL</h4>
+                    <div class="col-auto flex-grow-1 flex-shrink-1 px-3 py-2">
+                            <h4 class="text-dark mb-0">ADD-ONS TOTAL</h4>
                     </div>
-                    <div class="col-auto text-right">
-                        <h4 class="text-dark"><b id="addons_total_display">₱0.00</b></h4>
+                    <div class="col-auto text-right px-3 py-2">
+                        <h4 class="text-dark mb-0"><b id="addons_total_display">₱0.00</b></h4>
                     </div>
                 </div>
                 <div class="d-flex align-items-center w-100 border border-primary">
-                    <div class="col-auto flex-grow-1 flex-shrink-1 px-1 py-1">
-                            <h3 class="text-center text-dark">GRAND TOTAL</h3>
+                    <div class="col-auto flex-grow-1 flex-shrink-1 px-3 py-2">
+                            <h3 class="text-dark mb-0">GRAND TOTAL</h3>
                     </div>
-                    <div class="col-auto text-right">
-                        <h3 class="text-dark"><b id="grand_total">₱<?= number_format($total,2) ?></b></h3>
+                    <div class="col-auto text-right px-3 py-2">
+                        <h3 class="text-dark mb-0"><b id="grand_total">₱<?= number_format($total,2) ?></b></h3>
                     </div>
                 </div>
             </div>
@@ -364,11 +394,19 @@
                 
             </div>
             <div class="col-md-6 text-right">
-                <button class="btn btn-primary btn-lg" type="button" id="checkout">
+                <button class="btn btn-primary btn-lg" type="button" id="checkout" disabled>
                     <i class="fa fa-shopping-cart"></i> Proceed to Checkout
                 </button>
             </div>
         </div>
+        
+        <!-- Hidden form for POST submission to place_order -->
+        <form id="checkoutForm" action="?p=place_order" method="POST" style="display: none;">
+            <input type="hidden" name="selected_items" id="selectedItemsInput">
+            <input type="hidden" name="addons" id="addonsInput">
+            <input type="hidden" name="addon_details" id="addonDetailsInput">
+            <input type="hidden" name="addons_total" id="addonsTotalInput">
+        </form>
     </div>
 </div>
 <script>
@@ -453,37 +491,55 @@
             var cartId = $(this).attr('data-id');
             _conf("Are you sure to remove this product from cart list?","remove_from_cart",[cartId])
         })
-        $('#checkout').click(function(){
-            if($('#cart-list .cart-item').length > 0){
-                // Simple validation - just proceed to checkout
+        // Item checkbox change handler
+        $(document).on('change', '.item-checkbox', function(){
+            updateCartTotals();
+        });
+        
+        $('#checkout').click(function(e){
+            // Prevent action if button is disabled
+            if($(this).prop('disabled')) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+            
+            var checkedItems = $('.item-checkbox:checked').length;
+            if(checkedItems > 0){
                 proceedToCheckout();
             }else{
-                alert_toast('Shopping cart is empty.','error')
+                alert_toast('Please select at least one item to proceed.','error')
             }
         })
         
         function proceedToCheckout(){
                 try{
+                    // Get only checked cart item IDs
+                    var selectedCartItems = [];
+                    $('.item-checkbox:checked').each(function(){
+                        var cartId = $(this).val();
+                        selectedCartItems.push(cartId);
+                    });
+                    
+                    // Validate that we have selected items
+                    if(selectedCartItems.length === 0){
+                        alert_toast('Please select at least one item to proceed.','error');
+                        return;
+                    }
+                    
                     // Get add-ons data from localStorage
                     var selectedAddons = localStorage.getItem('selected_addons') || '';
                     var selectedAddonDetails = localStorage.getItem('selected_addon_details') || '[]';
                     var addonsTotal = localStorage.getItem('addons_total') || '0';
 
-                    // Pass add-ons data to checkout page
-                    var url = _base_url_ + '?p=place_order';
-                    if(selectedAddons) {
-                        url += '&addons=' + encodeURIComponent(selectedAddons);
-                        url += '&addon_details=' + encodeURIComponent(selectedAddonDetails);
-                        url += '&addons_total=' + encodeURIComponent(addonsTotal);
-                    }
-
-                    // final validation: ensure there's at least one cart item
-                    if($('#cart-list .cart-item').length === 0){
-                        alert_toast('Shopping cart is empty.','error');
-                        return;
-                    }
-
-                    window.location.href = url;
+                    // Set form data and submit
+                    $('#selectedItemsInput').val(selectedCartItems.join(','));
+                    $('#addonsInput').val(selectedAddons);
+                    $('#addonDetailsInput').val(selectedAddonDetails);
+                    $('#addonsTotalInput').val(addonsTotal);
+                    
+                    // Submit the form to place_order
+                    $('#checkoutForm').submit();
                 }catch(e){
                     console.error('Checkout error', e);
                     alert_toast('An error occurred while proceeding to checkout.','error');
@@ -546,28 +602,37 @@
     
     function updateCartTotals(){
         var subtotal = 0;
-        var hasItems = false;
+        var hasCheckedItems = false;
+        var totalItems = $('#cart-list .cart-item').length;
+        var checkedCount = 0;
         
         $('#cart-list .cart-item').each(function(){
-            var quantity = parseInt($(this).find('input[type="text"]').val()) || 0;
-            var priceText = $(this).find('.text-primary b').text();
-            var price = parseFloat(priceText.replace('₱', '').replace(/,/g, '')) || 0;
-            
-            if(quantity > 0 && price > 0) {
-                subtotal += (quantity * price);
-                hasItems = true;
+            var isChecked = $(this).find('.item-checkbox').is(':checked');
+            if(isChecked) {
+                checkedCount++;
+                var quantity = parseInt($(this).find('input[type="text"]').val()) || 0;
+                var priceText = $(this).find('.text-primary b').text();
+                var price = parseFloat(priceText.replace('₱', '').replace(/,/g, '')) || 0;
+                
+                if(quantity > 0 && price > 0) {
+                    subtotal += (quantity * price);
+                    hasCheckedItems = true;
+                }
             }
         });
         
-        // Only update totals if there are valid items
-        if(hasItems) {
-            $('#subtotal_display').text('₱' + subtotal.toLocaleString());
-            var addonsTotal = parseFloat($('#addons_total_display').text().replace('₱', '').replace(/,/g, '')) || 0;
-            var grandTotal = subtotal + addonsTotal;
-            $('#grand_total').text('₱' + grandTotal.toLocaleString());
+        
+        // Update totals based on checked items only
+        $('#subtotal_display').text('₱' + subtotal.toLocaleString());
+        var addonsTotal = parseFloat($('#addons_total_display').text().replace('₱', '').replace(/,/g, '')) || 0;
+        var grandTotal = subtotal + addonsTotal;
+        $('#grand_total').text('₱' + grandTotal.toLocaleString());
+        
+        // Enable/disable checkout button based on checked items
+        if(hasCheckedItems) {
+            $('#checkout').prop('disabled', false).removeClass('btn-secondary').addClass('btn-primary');
         } else {
-            $('#subtotal_display').text('₱0.00');
-            $('#grand_total').text('₱0.00');
+            $('#checkout').prop('disabled', true).removeClass('btn-primary').addClass('btn-secondary');
         }
     }
     
@@ -581,26 +646,30 @@
         var selectedAddons = [];
         var selectedAddonDetails = [];
         
-        $('.addon-checkbox:checked').each(function() {
-            var price = parseFloat($(this).data('price'));
-            var value = $(this).val();
-            var partName = $(this).data('part-name');
-            total += price;
-            selectedAddons.push(value);
-            selectedAddonDetails.push({
-                id: value,
-                name: partName,
-                price: price
-            });
+        // Only count addons for checked cart items
+        $('.cart-item').each(function() {
+            var isChecked = $(this).find('.item-checkbox').is(':checked');
+            if(isChecked) {
+                $(this).find('.addon-checkbox:checked').each(function() {
+                    var price = parseFloat($(this).data('price'));
+                    var value = $(this).val();
+                    var partName = $(this).data('part-name');
+                    total += price;
+                    selectedAddons.push(value);
+                    selectedAddonDetails.push({
+                        id: value,
+                        name: partName,
+                        price: price
+                    });
+                });
+            }
         });
         
         // Update display
         $('#addons_total_display').text('₱' + total.toFixed(2));
         
-        // Update grand total
-        var subtotal = parseFloat('<?= $total ?>');
-        var grandTotal = subtotal + total;
-        $('#grand_total').text('₱' + grandTotal.toFixed(2));
+        // Update grand total by calling updateCartTotals
+        updateCartTotals();
         
         // Store add-ons data for checkout
         localStorage.setItem('selected_addons', selectedAddons.join(','));
@@ -608,7 +677,9 @@
         localStorage.setItem('addons_total', total);
     }
     
-    // Initialize addons total
+    // Initialize cart - check all items by default and calculate totals
+    $('.item-checkbox').prop('checked', true);
+    updateCartTotals();
     updateAddonsTotal();
     
     // Color selector change functionality

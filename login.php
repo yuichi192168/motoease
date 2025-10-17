@@ -12,7 +12,21 @@
           height:calc(100%);
           background-image:url('<?= validate_image($_settings->info('cover')) ?>');
           background-repeat: no-repeat;
-          background-size:cover;
+          background-size:cover; /* ensure full-bleed cover */
+          background-position:center center; /* center image */
+          background-attachment:fixed; /* prevent tiling feel on scroll */
+          background-color:#111; /* fallback color */
+      }
+      /* Constrain login box to avoid stretching on wide screens */
+      .login-box{
+          width:100%;
+          max-width:420px; /* slightly wider for better spacing */
+          margin:40px auto; /* center with some breathing room */
+      }
+      /* Improve card readability atop image backgrounds */
+      .card.card-outline.card-primary{
+          backdrop-filter: blur(2px);
+          background: rgba(255,255,255,0.92);
       }
       #logo-img{
           width:15em;
@@ -23,11 +37,6 @@
   </style>
 <div class="login-box">
 <?php $page = isset($_GET['page']) ? $_GET['page'] : 'home';  ?>
-     <?php if($_settings->chk_flashdata('success')): ?>
-      <script>
-        alert_toast("<?php echo $_settings->flashdata('success') ?>",'success')
-      </script>
-    <?php endif;?>
   <!-- /.login-logo -->
   <center><img src="<?= validate_image($_settings->info('logo')) ?>" alt="System Logo" class="img-thumbnail rounded-circle" id="logo-img"></center>
   <div class="clear-fix my-2"></div>
@@ -56,26 +65,28 @@
           </div>
         </div>
         <div class="row align-items-center">
-          <div class="col-8">
-            <a href="<?php echo base_url ?>">Back to Shop</a>
+          <div class="col-6 pr-1 mb-2">
+            <a href="<?php echo base_url ?>" class="btn btn-outline-secondary btn-block"><i class="fa fa-store mr-1"></i> Back to Shop</a>
           </div>
-          <!-- /.col -->
-          <div class="col-4">
-            <button type="submit" class="btn btn-primary btn-sm btn-flat btn-block">Sign In</button>
+          <div class="col-6 pl-1 mb-2">
+            <button type="submit" class="btn btn-primary btn-sm btn-flat btn-block"><i class="fa fa-sign-in-alt mr-1"></i> Sign In</button>
           </div>
-          <!-- /.col -->
         </div>
-        <div class="row">
-            <div class="col-12 text-center">
-             <a href="<?php echo base_url.'register.php' ?>">Create an Account</a>
-            </div>
+        <div class="row mt-1">
+          <div class="col-12 mb-2">
+            <a href="<?php echo base_url.'register.php' ?>" class="btn btn-outline-primary btn-block"><i class="fa fa-user-plus mr-1"></i> Create an Account</a>
+          </div>
+          <div class="col-12 d-flex justify-content-between">
+            <a href="<?php echo base_url.'login.php' ?>" class="btn btn-link p-0">Already have an account? Login here</a>
+            <a href="forgot-password.html" class="btn btn-link p-0">I forgot my password</a>
+          </div>
         </div>
       </form>
       <!-- /.social-auth-links -->
 
-      <!-- <p class="mb-1">
+      <p class="mb-1">
         <a href="forgot-password.html">I forgot my password</a>
-      </p> -->
+      </p>
       
     </div>
     <!-- /.card-body -->
@@ -99,11 +110,21 @@
     $('#clogin-frm').submit(function(e){
         e.preventDefault();
         var _this = $(this);
-        var el = $('<div>');
-        el.addClass("alert alert-danger err-msg");
-        el.hide();
-        
-        $('.err-msg').remove();
+        // Prevent double submissions
+        if(_this.data('submitting') === true) return;
+        _this.data('submitting', true);
+
+        // Remove any legacy/duplicate alerts to prevent stacking
+        _this.find('.err_msg').remove();
+        _this.find('.alert.alert-danger, .alert.alert-warning').not('.err-msg').remove();
+
+        // Reuse a single error element to avoid duplicates
+        var $err = _this.find('.err-msg');
+        if($err.length === 0){
+            $err = $('<div>').addClass('alert alert-danger err-msg').hide();
+            _this.prepend($err);
+        }
+        $err.text('').removeClass('alert-warning').addClass('alert-danger').hide();
         
         $.ajax({
             url: _base_url_ + 'classes/Login.php?f=login_client',
@@ -122,22 +143,40 @@
                         location.href = './';
                     }, 100);
                 } else if(resp.status == 'locked') {
-                    el.text(resp.msg);
-                    _this.prepend(el);
-                    el.show('slow');
+                    // Show single warning container with optional countdown
+                    $err.removeClass('alert-danger').addClass('alert-warning').html('<i class="fa fa-lock"></i> ' + (resp.msg || 'Account is locked.')).show('slow');
+                    if(resp.locked_until_ts){
+                        try{
+                            var $btn = _this.find('button[type="submit"]');
+                            var endMs = parseInt(resp.locked_until_ts, 10) * 1000;
+                            $btn.prop('disabled', true).data('orig','Sign In').text('Locked');
+                            var timer = setInterval(function(){
+                                var remaining = Math.max(0, endMs - Date.now());
+                                var total = Math.floor(remaining/1000);
+                                var mm = String(Math.floor(total/60)).padStart(2,'0');
+                                var ss = String(total%60).padStart(2,'0');
+                                var base = $err.data('base') || $err.text();
+                                $err.data('base', base);
+                                $err.text(base.replace(/(\s*\(\d{2}:\d{2}\))?$/, '') + ' ('+mm+':'+ss+')');
+                                if(remaining <= 0){
+                                    clearInterval(timer);
+                                    $btn.prop('disabled', false).text('Sign In');
+                                    $err.hide();
+                                }
+                            }, 1000);
+                        }catch(e){ console.log(e); }
+                    }
                 } else {
-                    el.text(resp.msg || 'Login failed. Please try again.');
-                    _this.prepend(el);
-                    el.show('slow');
+                    $err.text(resp.msg || 'Login failed. Please try again.').show('slow');
                 }
                 _this.find('button[type="submit"]').prop('disabled', false).html('Sign In');
+                _this.data('submitting', false);
             },
             error: function(xhr, status, error) {
                 console.error('Login error:', error);
-                el.text('An error occurred. Please try again.');
-                _this.prepend(el);
-                el.show('slow');
+                $err.text('An error occurred. Please try again.').show('slow');
                 _this.find('button[type="submit"]').prop('disabled', false).html('Sign In');
+                _this.data('submitting', false);
             }
         });
     });

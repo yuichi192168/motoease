@@ -13,6 +13,18 @@
           background-image:url('<?= validate_image($_settings->info('cover')) ?>');
           background-repeat: no-repeat;
           background-size:cover;
+          background-position:center center;
+          background-attachment:fixed;
+          background-color:#111; /* fallback */
+      }
+      .login-box{
+          width:100%;
+          max-width:420px;
+          margin:40px auto;
+      }
+      .card.card-outline.card-primary{
+          backdrop-filter: blur(2px);
+          background: rgba(255,255,255,0.92);
       }
       #logo-img{
           width:15em;
@@ -62,9 +74,9 @@
       </form>
       <!-- /.social-auth-links -->
 
-      <!-- <p class="mb-1">
+      <p class="mb-1">
         <a href="forgot-password.html">I forgot my password</a>
-      </p> -->
+      </p>
       
     </div>
     <!-- /.card-body -->
@@ -82,7 +94,18 @@
     $('#login-frm').submit(function(e){
       e.preventDefault();
       var _this = $(this);
-      
+      // prevent double submissions
+      if(_this.data('submitting') === true) return;
+      _this.data('submitting', true);
+
+      // single reusable error container
+      var $err = _this.find('.err-msg');
+      if($err.length === 0){
+        $err = $('<div>').addClass('alert alert-danger err-msg').hide();
+        _this.prepend($err);
+      }
+      $err.text('').removeClass('alert-warning').addClass('alert-danger').hide();
+
       _this.find('.btn-primary').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Signing In...');
       
       $.ajax({
@@ -92,17 +115,15 @@
         dataType: 'json',
         error: function(err) {
           console.log(err);
-          alert('An error occurred.');
+          $err.text('An error occurred. Please try again.').show('slow');
           _this.find('.btn-primary').prop('disabled', false).html('Sign In');
+          _this.data('submitting', false);
         },
         success: function(resp) {
           if(resp.status == 'success') {
             location.replace('./');
           } else if(resp.status == 'locked') {
-            if ($('.err_msg').length > 0) $('.err_msg').remove();
-            var el = $('<div class="alert alert-warning err_msg">');
-            el.html('<i class="fa fa-lock"></i> ' + (resp.msg || 'Account is locked.'));
-            $('#login-frm').prepend(el);
+            $err.removeClass('alert-danger').addClass('alert-warning').html('<i class="fa fa-lock"></i> ' + (resp.msg || 'Account is locked.')).show('slow');
             // countdown if provided
             if (resp.locked_until_ts) {
               (function startLockCountdown(){
@@ -116,25 +137,28 @@
                     var total = Math.floor(remaining/1000);
                     var mm = String(Math.floor(total/60)).padStart(2,'0');
                     var ss = String(total%60).padStart(2,'0');
-                    var base = el.data('base') || el.text();
-                    el.data('base', base);
-                    el.text(base.replace(/(\s*\(\d{2}:\d{2}\))?$/, '') + ' ('+mm+':'+ss+')');
+                    var base = $err.data('base') || $err.text();
+                    $err.data('base', base);
+                    $err.text(base.replace(/(\s*\(\d{2}:\d{2}\))?$/, '') + ' ('+mm+':'+ss+')');
                     if (remaining <= 0) {
                       clearInterval(timer);
                       $btn.prop('disabled', false).text('Sign In');
-                      el.remove();
+                      $err.hide();
                     }
                   }, 1000);
                 } catch(e) { console.log(e); }
               })();
             }
             _this.find('.btn-primary').prop('disabled', false).html('Sign In');
+            _this.data('submitting', false);
           } else if(resp.status == 'incorrect') {
-            alert('Incorrect username or password.');
+            $err.text('Incorrect username or password.').show('slow');
             _this.find('.btn-primary').prop('disabled', false).html('Sign In');
+            _this.data('submitting', false);
           } else {
-            alert('An error occurred.');
+            $err.text(resp.msg || 'An error occurred. Please try again.').show('slow');
             _this.find('.btn-primary').prop('disabled', false).html('Sign In');
+            _this.data('submitting', false);
           }
         }
       });
