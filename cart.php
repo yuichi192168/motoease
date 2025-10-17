@@ -239,8 +239,8 @@ require_once('./inc/sess_auth.php');
                                 
                                 <!-- Add-ons Section - Only show for motorcycles -->
                                 <?php 
-                                // Check if this product is a motorcycle (not oils or motorcycle parts)
-                                $is_motorcycle = !in_array(strtolower($row['category']), ['oils', 'motorcycle parts', 'accessories']);
+                                // Show recommendations ONLY for motorcycles
+                                $is_motorcycle = (isset($row['category']) && strtolower($row['category']) === 'motorcycles');
                                 if($is_motorcycle): 
                                 ?>
                                 <div class="add-ons-section mt-3">
@@ -325,13 +325,14 @@ require_once('./inc/sess_auth.php');
                                 
                                 <div class="d-flex align-items-center justify-content-between mt-3">
                                     <div class="d-flex align-items-center">
+                                        <?php $is_motorcycle_qty_fixed = (isset($row['category']) && strtolower($row['category']) === 'motorcycles'); ?>
                                         <div class="input-group" style="width:8em">
                                             <div class="input-group-prepend">
-                                                <button class="btn btn-sm btn-outline-secondary btn-minus" data-id='<?= $row['id'] ?>' <?= $available < 1 ? 'disabled' : '' ?>><i class="fa fa-minus"></i></button>
+                                                <button class="btn btn-sm btn-outline-secondary btn-minus" data-id='<?= $row['id'] ?>' <?= ($is_motorcycle_qty_fixed || $row['quantity'] <= 1) ? 'disabled' : '' ?>><i class="fa fa-minus"></i></button>
                                             </div>
                                             <input type="text" value="<?= $row['quantity'] ?>" readonly class="form-control form-control-sm text-center">
                                             <div class="input-group-append">
-                                                <button class="btn btn-sm btn-outline-secondary btn-plus" data-id='<?= $row['id'] ?>' <?= $available <= $row['quantity'] ? 'disabled' : '' ?>><i class="fa fa-plus"></i></button>
+                                                <button class="btn btn-sm btn-outline-secondary btn-plus" data-id='<?= $row['id'] ?>' <?= ($available <= $row['quantity'] || $is_motorcycle_qty_fixed) ? 'disabled' : '' ?>><i class="fa fa-plus"></i></button>
                                             </div>
                                         </div>
                                         <span class="ml-2 unit-price">X ₱<?= number_format($row['price'],2) ?></span>

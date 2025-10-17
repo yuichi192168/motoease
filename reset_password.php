@@ -49,11 +49,11 @@
             </div>
           </div>
           <div class="row align-items-center">
-            <div class="col-6 pr-1 mb-2">
+            <div class="col-12 col-sm-6 pr-sm-1 mb-2">
               <a href="<?= base_url.'login.php' ?>" class="btn btn-outline-secondary btn-block"><i class="fa fa-arrow-left mr-1"></i> Back to Login</a>
             </div>
-            <div class="col-6 pl-1 mb-2">
-              <button type="submit" class="btn btn-primary btn-block"><i class="fa fa-save mr-1"></i> Save Password</button>
+            <div class="col-12 col-sm-6 pl-sm-1 mb-2">
+              <button type="submit" class="btn btn-primary btn-sm btn-flat btn-block"><i class="fa fa-save mr-1"></i> Save Password</button>
             </div>
           </div>
         </form>
@@ -106,4 +106,113 @@
   </script>
 </body>
 </html>
+
+
+
+            </div>
+
+          </div>
+
+        </form>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="plugins/jquery/jquery.min.js"></script>
+
+  <script src="plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+
+    $(function(){
+
+      end_loader();
+
+      $('.pass_toggle').click(function(){
+
+        var target = $($(this).data('target'));
+
+        var type = target.attr('type') === 'password' ? 'text' : 'password';
+
+        target.attr('type', type);
+
+        $(this).toggleClass('fa-eye fa-eye-slash');
+
+      });
+
+      $('#reset-frm').submit(function(e){
+
+        e.preventDefault();
+
+        var _this = $(this);
+
+        var $err = _this.find('.err-msg');
+
+        if($err.length === 0){ $err = $('<div>').addClass('alert err-msg').hide(); _this.prepend($err); }
+
+        $err.removeClass('alert-danger alert-success').text('').hide();
+
+        if($('#password').val() !== $('#cpassword').val()){
+
+          $err.addClass('alert-danger').text('Passwords do not match.').show('slow');
+
+          return;
+
+        }
+
+        _this.find('button[type="submit"]').prop('disabled', true).text('Saving...');
+
+        $.ajax({
+
+          url: _base_url_ + 'classes/Login.php?f=apply_password_reset',
+
+          method: 'POST',
+
+          data: _this.serialize(),
+
+          dataType: 'json',
+
+          error: function(){
+
+            $err.addClass('alert-danger').text('An error occurred. Please try again.').show('slow');
+
+            _this.find('button[type="submit"]').prop('disabled', false).text('Save Password');
+
+          },
+
+          success: function(resp){
+
+            if(resp.status === 'success'){
+
+              $err.addClass('alert-success').text(resp.msg || 'Password updated. You can now log in.').show('slow');
+
+              setTimeout(function(){ window.location.href = '<?= base_url.'login.php' ?>'; }, 1500);
+
+            } else {
+
+              $err.addClass('alert-danger').text(resp.msg || 'Invalid or expired token.').show('slow');
+
+              _this.find('button[type="submit"]').prop('disabled', false).text('Save Password');
+
+            }
+
+          }
+
+        });
+
+      });
+
+    });
+
+  </script>
+
+</body>
+
+</html>
+
+
+
 

@@ -3,9 +3,9 @@
 <html lang="en" class="" style="height: auto;">
  <?php require_once('inc/header.php') ?>
 <body class="hold-transition login-page">
-  <script>
+  <!-- <script>
     start_loader()
-  </script>
+  </script> -->
   <style>
       body{
           width:calc(100%);
@@ -114,9 +114,9 @@
         if(_this.data('submitting') === true) return;
         _this.data('submitting', true);
 
-        // Remove any legacy/duplicate alerts to prevent stacking
-        _this.find('.err_msg').remove();
-        _this.find('.alert.alert-danger, .alert.alert-warning').not('.err-msg').remove();
+      // Remove any legacy/duplicate alerts to prevent stacking
+      _this.find('.err_msg').remove();
+      _this.find('.alert.alert-danger, .alert.alert-danger').not('.err-msg').remove();
 
         // Reuse a single error element to avoid duplicates
         var $err = _this.find('.err-msg');
@@ -124,15 +124,16 @@
             $err = $('<div>').addClass('alert alert-danger err-msg').hide();
             _this.prepend($err);
         }
-        $err.text('').removeClass('alert-warning').addClass('alert-danger').hide();
-        
+        $err.text('').removeClass('alert-danger').addClass('alert-danger').hide();
+      
         $.ajax({
             url: _base_url_ + 'classes/Login.php?f=login_client',
             method: 'POST',
             data: $(this).serialize(),
             dataType: 'json',
             beforeSend: function(){
-                _this.find('button[type="submit"]').prop('disabled', true).html('Signing in...');
+            // match admin spinner UX
+            _this.find('button[type="submit"]').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Signing In...');
             },
             success: function(resp){
                 console.log('Login response:', resp);
@@ -142,40 +143,46 @@
                     setTimeout(function(){
                         location.href = './';
                     }, 100);
-                } else if(resp.status == 'locked') {
-                    // Show single warning container with optional countdown
-                    $err.removeClass('alert-danger').addClass('alert-warning').html('<i class="fa fa-lock"></i> ' + (resp.msg || 'Account is locked.')).show('slow');
-                    if(resp.locked_until_ts){
-                        try{
-                            var $btn = _this.find('button[type="submit"]');
-                            var endMs = parseInt(resp.locked_until_ts, 10) * 1000;
-                            $btn.prop('disabled', true).data('orig','Sign In').text('Locked');
-                            var timer = setInterval(function(){
-                                var remaining = Math.max(0, endMs - Date.now());
-                                var total = Math.floor(remaining/1000);
-                                var mm = String(Math.floor(total/60)).padStart(2,'0');
-                                var ss = String(total%60).padStart(2,'0');
-                                var base = $err.data('base') || $err.text();
-                                $err.data('base', base);
-                                $err.text(base.replace(/(\s*\(\d{2}:\d{2}\))?$/, '') + ' ('+mm+':'+ss+')');
-                                if(remaining <= 0){
-                                    clearInterval(timer);
-                                    $btn.prop('disabled', false).text('Sign In');
-                                    $err.hide();
-                                }
-                            }, 1000);
-                        }catch(e){ console.log(e); }
-                    }
-                } else {
+          // } else if(resp.status == 'locked') {
+          //     // Clear any previous countdown
+          //     var existingTimer = _this.data('lock_timer');
+          //     if(existingTimer) { try{ clearInterval(existingTimer); }catch(e){} }
+
+          //     // Single danger container with countdown (mirror admin)
+          //     $err.removeClass('alert-danger').addClass('alert-danger').html('<i class="fa fa-lock"></i> ' + (resp.msg || 'Account is locked.')).show('slow');
+          //     if(resp.locked_until_ts){
+          //         try{
+          //             var $btn = _this.find('button[type="submit"]');
+          //             var endMs = parseInt(resp.locked_until_ts, 10) * 1000;
+          //             $btn.prop('disabled', true).data('orig','Sign In').text('Locked');
+          //             var timer = setInterval(function(){
+          //                 var remaining = Math.max(0, endMs - Date.now());
+          //                 var total = Math.floor(remaining/1000);
+          //                 var mm = String(Math.floor(total/60)).padStart(2,'0');
+          //                 var ss = String(total%60).padStart(2,'0');
+          //                 var base = $err.data('base') || $err.text();
+          //                 $err.data('base', base);
+          //                 $err.text(base.replace(/(\s*\(\d{2}:\d{2}\))?$/, '') + ' ('+mm+':'+ss+')');
+          //                 if(remaining <= 0){
+          //                     clearInterval(timer);
+          //                     _this.removeData('lock_timer');
+          //                     $btn.prop('disabled', false).text('Sign In');
+          //                     $err.hide();
+          //                 }
+          //             }, 1000);
+          //             _this.data('lock_timer', timer);
+          //         }catch(e){ console.log(e); }
+          //     }
+          // } else {
                     $err.text(resp.msg || 'Login failed. Please try again.').show('slow');
                 }
-                _this.find('button[type="submit"]').prop('disabled', false).html('Sign In');
+          _this.find('button[type="submit"]').prop('disabled', false).html('Sign In');
                 _this.data('submitting', false);
             },
             error: function(xhr, status, error) {
                 console.error('Login error:', error);
                 $err.text('An error occurred. Please try again.').show('slow');
-                _this.find('button[type="submit"]').prop('disabled', false).html('Sign In');
+          _this.find('button[type="submit"]').prop('disabled', false).html('Sign In');
                 _this.data('submitting', false);
             }
         });

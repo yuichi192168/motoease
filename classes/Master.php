@@ -155,6 +155,10 @@ Class Master extends DBConnection {
 		
 		$product_data = $product_check->fetch_assoc();
 		$is_motorcycle = (strtolower($product_data['category']) == 'motorcycles');
+		// Enforce quantity = 1 for motorcycles regardless of input
+		if($is_motorcycle){
+			$quantity = 1;
+		}
 		
 		// Check if product has available colors defined
 		$product_colors_check = $this->conn->query("SELECT available_colors FROM product_list WHERE id = '{$product_id}'");
@@ -185,7 +189,12 @@ Class Master extends DBConnection {
 		if($cart_check->num_rows > 0){
 			// Product already in cart, update quantity
 			$cart_item = $cart_check->fetch_assoc();
-			$new_quantity = $cart_item['quantity'] + $quantity;
+			if($is_motorcycle){
+				// Always keep motorcycles at quantity 1
+				$new_quantity = 1;
+			}else{
+				$new_quantity = $cart_item['quantity'] + $quantity;
+			}
 			
 			// Check if new quantity exceeds available stock
 			if($new_quantity > $available){
@@ -203,7 +212,7 @@ Class Master extends DBConnection {
 				return json_encode($resp);
 			}
 			
-            $sql = "INSERT INTO `cart_list` (client_id, product_id, color, quantity, date_added) VALUES ('{$client_id}', '{$product_id}', {$color_sql}, '{$quantity}', NOW())";
+			$sql = "INSERT INTO `cart_list` (client_id, product_id, color, quantity, date_added) VALUES ('{$client_id}', '{$product_id}', {$color_sql}, '{$quantity}', NOW())";
 		}
 		
 		$save = $this->conn->query($sql);
@@ -328,9 +337,10 @@ Class Master extends DBConnection {
 		$quantity = trim($quantity);
 		
 		// Get current cart item
-		$cart_item = $this->conn->query("SELECT c.*, p.name FROM cart_list c 
-										INNER JOIN product_list p ON c.product_id = p.id 
-										WHERE c.id = '{$cart_id}' AND c.client_id = '{$client_id}'");
+		$cart_item = $this->conn->query("SELECT c.*, p.name, cat.category FROM cart_list c 
+									INNER JOIN product_list p ON c.product_id = p.id 
+									INNER JOIN categories cat ON p.category_id = cat.id 
+									WHERE c.id = '{$cart_id}' AND c.client_id = '{$client_id}'");
 		
 		if(!$cart_item || $cart_item->num_rows == 0){
 			$resp['status'] = 'failed';
@@ -341,6 +351,7 @@ Class Master extends DBConnection {
 		
 		$item = $cart_item->fetch_assoc();
 		$current_qty = floatval($item['quantity']);
+		$is_motorcycle = isset($item['category']) && strtolower($item['category']) === 'motorcycles';
 		
 		// Parse quantity change
 		$new_qty = $current_qty;
@@ -354,8 +365,12 @@ Class Master extends DBConnection {
 			$new_qty = intval($quantity);
 		}
 		
-		// Ensure minimum quantity of 1
-		$new_qty = max(1, $new_qty);
+		// Enforce limits
+		if($is_motorcycle){
+			$new_qty = 1; // Motorcycles fixed to 1
+		}else{
+			$new_qty = max(1, $new_qty);
+		}
 		
 		// Update quantity
 		$sql = "UPDATE cart_list SET quantity = '{$new_qty}' WHERE id = '{$cart_id}' AND client_id = '{$client_id}'";

@@ -203,23 +203,11 @@ class Login extends DBConnection {
         }
         $_SESSION['last_reset_req'] = time();
 
-        // Check if email exists and verify additional factors
-        $emailEsc = $this->conn->real_escape_string($email);
-        $lnameEsc = isset($lastname) ? $this->conn->real_escape_string(trim($lastname)) : '';
-        $last4 = isset($contact_last4) ? preg_replace('/[^0-9]/', '', $contact_last4) : '';
-        $check = $this->conn->query("SELECT id, firstname, lastname, contact FROM client_list WHERE email = '{$emailEsc}' AND delete_flag = 0");
+		// Check if email exists
+		$emailEsc = $this->conn->real_escape_string($email);
+		$check = $this->conn->query("SELECT id FROM client_list WHERE email = '{$emailEsc}' AND delete_flag = 0");
 		if($check->num_rows > 0) {
 			$user = $check->fetch_assoc();
-            // Verify lastname (case-insensitive) and last 4 digits of contact
-            $lnameOk = empty($lnameEsc) ? false : (strcasecmp($lnameEsc, $user['lastname']) === 0);
-            $contactDigits = preg_replace('/[^0-9]/', '', (string)$user['contact']);
-            $contactOk = !empty($last4) && strlen($contactDigits) >= 4 && substr($contactDigits, -4) === $last4;
-            if(!$lnameOk || !$contactOk){
-                // Always reply generically to avoid user enumeration
-                $resp['status'] = 'success';
-                $resp['msg'] = 'If the details match our records, a reset option is now available.';
-                return json_encode($resp);
-            }
 			
 			// Generate reset token
 			$token = bin2hex(random_bytes(32));

@@ -88,80 +88,89 @@
 <script>
   $(document).ready(function(){
     end_loader();
+    
+    // Handle login form submission
+    $('#clogin-frm').submit(function(e){
+        e.preventDefault();
+        var _this = $(this);
+        // Prevent double submissions
+        if(_this.data('submitting') === true) return;
+        _this.data('submitting', true);
 
-    $('#login-frm').submit(function(e){
-      e.preventDefault();
-      var _this = $(this);
-      // prevent double submissions
-      if(_this.data('submitting') === true) return;
-      _this.data('submitting', true);
+      // Remove any legacy/duplicate alerts to prevent stacking
+      _this.find('.err_msg').remove();
+      _this.find('.alert.alert-danger, .alert.alert-danger').not('.err-msg').remove();
 
-      // single reusable error container
-      var $err = _this.find('.err-msg');
-      if($err.length === 0){
-        $err = $('<div>').addClass('alert alert-danger err-msg').hide();
-        _this.prepend($err);
-      }
-      $err.text('').removeClass('alert-warning').addClass('alert-danger').hide();
-
-      _this.find('.btn-primary').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Signing In...');
-      
-      $.ajax({
-        url: '../classes/Login.php?f=login',
-        data: $(this).serialize(),
-        method: 'POST',
-        dataType: 'json',
-        error: function(err) {
-          console.log(err);
-          $err.text('An error occurred. Please try again.').show('slow');
-          _this.find('.btn-primary').prop('disabled', false).html('Sign In');
-          _this.data('submitting', false);
-        },
-        success: function(resp) {
-          if(resp.status == 'success') {
-            location.replace('./');
-          } else if(resp.status == 'locked') {
-            $err.removeClass('alert-danger').addClass('alert-warning').html('<i class="fa fa-lock"></i> ' + (resp.msg || 'Account is locked.')).show('slow');
-            // countdown if provided
-            if (resp.locked_until_ts) {
-              (function startLockCountdown(){
-                try {
-                  var $form = $('#login-frm');
-                  var $btn = $form.find('.btn-primary');
-                  var endMs = parseInt(resp.locked_until_ts, 10) * 1000;
-                  $btn.prop('disabled', true).data('orig','Sign In').text('Locked');
-                  var timer = setInterval(function(){
-                    var remaining = Math.max(0, endMs - Date.now());
-                    var total = Math.floor(remaining/1000);
-                    var mm = String(Math.floor(total/60)).padStart(2,'0');
-                    var ss = String(total%60).padStart(2,'0');
-                    var base = $err.data('base') || $err.text();
-                    $err.data('base', base);
-                    $err.text(base.replace(/(\s*\(\d{2}:\d{2}\))?$/, '') + ' ('+mm+':'+ss+')');
-                    if (remaining <= 0) {
-                      clearInterval(timer);
-                      $btn.prop('disabled', false).text('Sign In');
-                      $err.hide();
-                    }
-                  }, 1000);
-                } catch(e) { console.log(e); }
-              })();
-            }
-            _this.find('.btn-primary').prop('disabled', false).html('Sign In');
-            _this.data('submitting', false);
-          } else if(resp.status == 'incorrect') {
-            $err.text('Incorrect username or password.').show('slow');
-            _this.find('.btn-primary').prop('disabled', false).html('Sign In');
-            _this.data('submitting', false);
-          } else {
-            $err.text(resp.msg || 'An error occurred. Please try again.').show('slow');
-            _this.find('.btn-primary').prop('disabled', false).html('Sign In');
-            _this.data('submitting', false);
-          }
+        // Reuse a single error element to avoid duplicates
+        var $err = _this.find('.err-msg');
+        if($err.length === 0){
+            $err = $('<div>').addClass('alert alert-danger err-msg').hide();
+            _this.prepend($err);
         }
-      });
+        $err.text('').removeClass('alert-danger').addClass('alert-danger').hide();
+      
+        $.ajax({
+            url: _base_url_ + 'classes/Login.php?f=login_client',
+            method: 'POST',
+            data: $(this).serialize(),
+            dataType: 'json',
+            beforeSend: function(){
+            // match admin spinner UX
+            _this.find('button[type="submit"]').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Signing In...');
+            },
+            success: function(resp){
+                console.log('Login response:', resp);
+                if(resp.status == 'success'){
+                    console.log('Login successful, redirecting...');
+                    // Add a small delay to ensure session is written
+                    setTimeout(function(){
+                        location.href = './';
+                    }, 100);
+          // } else if(resp.status == 'locked') {
+          //     // Clear any previous countdown
+          //     var existingTimer = _this.data('lock_timer');
+          //     if(existingTimer) { try{ clearInterval(existingTimer); }catch(e){} }
+
+          //     // Single danger container with countdown (mirror admin)
+          //     $err.removeClass('alert-danger').addClass('alert-danger').html('<i class="fa fa-lock"></i> ' + (resp.msg || 'Account is locked.')).show('slow');
+          //     if(resp.locked_until_ts){
+          //         try{
+          //             var $btn = _this.find('button[type="submit"]');
+          //             var endMs = parseInt(resp.locked_until_ts, 10) * 1000;
+          //             $btn.prop('disabled', true).data('orig','Sign In').text('Locked');
+          //             var timer = setInterval(function(){
+          //                 var remaining = Math.max(0, endMs - Date.now());
+          //                 var total = Math.floor(remaining/1000);
+          //                 var mm = String(Math.floor(total/60)).padStart(2,'0');
+          //                 var ss = String(total%60).padStart(2,'0');
+          //                 var base = $err.data('base') || $err.text();
+          //                 $err.data('base', base);
+          //                 $err.text(base.replace(/(\s*\(\d{2}:\d{2}\))?$/, '') + ' ('+mm+':'+ss+')');
+          //                 if(remaining <= 0){
+          //                     clearInterval(timer);
+          //                     _this.removeData('lock_timer');
+          //                     $btn.prop('disabled', false).text('Sign In');
+          //                     $err.hide();
+          //                 }
+          //             }, 1000);
+          //             _this.data('lock_timer', timer);
+          //         }catch(e){ console.log(e); }
+          //     }
+          // } else {
+                    $err.text(resp.msg || 'Login failed. Please try again.').show('slow');
+                }
+          _this.find('button[type="submit"]').prop('disabled', false).html('Sign In');
+                _this.data('submitting', false);
+            },
+            error: function(xhr, status, error) {
+                console.error('Login error:', error);
+                $err.text('An error occurred. Please try again.').show('slow');
+          _this.find('button[type="submit"]').prop('disabled', false).html('Sign In');
+                _this.data('submitting', false);
+            }
+        });
     });
-  });
+  })
 </script>
 </body>
 </html>
