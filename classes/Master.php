@@ -3311,6 +3311,98 @@ Class Master extends DBConnection {
         
         return json_encode($resp);
     }
+
+    function get_related_products(){
+        extract($_POST);
+        
+        // Validate inputs
+        if(empty($product_id)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = "Product ID is required.";
+            return json_encode($resp);
+        }
+        
+        // Sanitize inputs
+        $product_id = $this->conn->real_escape_string($product_id);
+        $category_id = !empty($category_id) ? $this->conn->real_escape_string($category_id) : null;
+        $brand_id = !empty($brand_id) ? $this->conn->real_escape_string($brand_id) : null;
+        $category_filter = !empty($category_filter) ? $this->conn->real_escape_string($category_filter) : 'all';
+        
+        // Build the query to get related products based on category
+        $where_conditions = ["p.delete_flag = 0", "p.status = 1", "p.id != '{$product_id}'"];
+        
+        // Add category-specific filtering
+        switch($category_filter) {
+            case 'motorcycles':
+                // Show motorcycles when viewing motorcycle parts or oils
+                $where_conditions[] = "p.category_id = 10"; // Motorcycles category
+                break;
+            case 'motorcycle_parts':
+                // Show motorcycle parts when viewing motorcycles or oils
+                $where_conditions[] = "p.category_id = 13"; // Motorcycle Parts category
+                break;
+            case 'oils':
+                // Show oils when viewing motorcycles or motorcycle parts
+                $where_conditions[] = "p.category_id = 15"; // Oils category
+                break;
+            default:
+                // Show same category products
+                if($category_id) {
+                    $where_conditions[] = "p.category_id = '{$category_id}'";
+                }
+                break;
+        }
+        
+        // Add brand filter if provided (for better relevance)
+        if($brand_id) {
+            $where_conditions[] = "p.brand_id = '{$brand_id}'";
+        }
+        
+        $where_clause = implode(" AND ", $where_conditions);
+        
+        // Get related products with stock information
+        $related_query = $this->conn->query("
+            SELECT p.*, b.name as brand, c.category,
+                   COALESCE(s.total_stock, 0) as current_stock,
+                   COALESCE(o.total_ordered, 0) as total_ordered,
+                   (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) as available_stock
+            FROM product_list p
+            LEFT JOIN brand_list b ON p.brand_id = b.id
+            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN (
+                SELECT product_id, SUM(quantity) as total_stock 
+                FROM stock_list 
+                WHERE type = 1 
+                GROUP BY product_id
+            ) s ON p.id = s.product_id
+            LEFT JOIN (
+                SELECT oi.product_id, SUM(oi.quantity) as total_ordered
+                FROM order_items oi
+                INNER JOIN order_list ol ON oi.order_id = ol.id
+                WHERE ol.status != 5
+                GROUP BY oi.product_id
+            ) o ON p.id = o.product_id
+            WHERE {$where_clause}
+            ORDER BY 
+                CASE WHEN p.brand_id = '{$brand_id}' THEN 1 ELSE 2 END,
+                CASE WHEN p.category_id = '{$category_id}' THEN 1 ELSE 2 END,
+                p.name ASC
+            LIMIT 6
+        ");
+        
+        if($this->capture_err())
+            return $this->capture_err();
+        
+        $related_products = [];
+        while($row = $related_query->fetch_assoc()){
+            $related_products[] = $row;
+        }
+        
+        $resp['status'] = 'success';
+        $resp['related_products'] = $related_products;
+        
+        return json_encode($resp);
+    }
     
     function update_cart_color(){
         extract($_POST);
@@ -3742,6 +3834,9 @@ $sysset = new SystemSettings();
 	break;
 	case 'get_related_motorcycles':
 		echo $Master->get_related_motorcycles();
+	break;
+	case 'get_related_products':
+		echo $Master->get_related_products();
 	break;
 	case 'update_cart_color':
 		echo $Master->update_cart_color();

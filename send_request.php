@@ -192,7 +192,7 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                     </div>
                 </div>
                 <div class="form-check mt-3">
-                    <input class="form-check-input" type="checkbox" name="terms_accepted" id="terms_accepted" required disabled>
+                    <input class="form-check-input" type="checkbox" name="terms_accepted" id="terms_accepted" required>
                     <label class="form-check-label" for="terms_accepted">
                         I have read and agree to the Terms and Conditions above *
                     </label>
@@ -404,21 +404,11 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
             }
         }
 
-        // Terms and conditions scroll validation
-        let hasScrolledToBottom = false;
-        $('#terms-content').on('scroll', function() {
-            const element = $(this);
-            const scrollTop = element.scrollTop();
-            const scrollHeight = element[0].scrollHeight;
-            const clientHeight = element.height();
-            
-            // Check if user has scrolled to bottom (with 10px tolerance)
-            if (scrollTop + clientHeight >= scrollHeight - 10) {
-                if (!hasScrolledToBottom) {
-                    hasScrolledToBottom = true;
-                    $('#terms_accepted').prop('disabled', false);
-                    alert_toast('Terms and conditions checkbox is now enabled. Please read and accept to continue.', 'info');
-                }
+        // Terms checkbox: keep validation only; no scroll gating
+        $('#terms_accepted').on('change', function(){
+            if($(this).is(':checked')){
+                $('#terms_accepted').removeClass('is-invalid').addClass('is-valid');
+                $('#terms_accepted_error').text('');
             }
         });
 

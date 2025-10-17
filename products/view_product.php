@@ -18,6 +18,31 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 while($cm = $cm_rs->fetch_assoc()) $compat_models[] = $cm['model_name'];
             }
         }
+        
+        // Determine product category and set related products title
+        $related_title = "Related Products";
+        $related_category_filter = "";
+        
+        if(isset($category_id)) {
+            switch($category_id) {
+                case 10: // Motorcycles
+                    $related_title = "Related Motorcycles";
+                    $related_category_filter = "motorcycles";
+                    break;
+                case 13: // Motorcycle Parts
+                    $related_title = "Related Motorcycle Parts";
+                    $related_category_filter = "motorcycle_parts";
+                    break;
+                case 15: // Oils
+                    $related_title = "Related Genuine Oils";
+                    $related_category_filter = "oils";
+                    break;
+                default:
+                    $related_title = "Related Products";
+                    $related_category_filter = "all";
+                    break;
+            }
+        }
     }else{
     echo "<script> alert('Unknown Product ID!'); location.replace('./?page=products');</script>";
 
@@ -76,6 +101,69 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         background: #dc3545;
         color: white;
     }
+    
+    /* Enhanced Star Rating Styles */
+    .rating-stars-container {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 5px;
+    }
+    
+    .rating-stars-container .star {
+        font-size: 2rem;
+        color: #ddd;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+        display: inline-block;
+        padding: 2px;
+        border-radius: 3px;
+    }
+    
+    .rating-stars-container .star:hover {
+        color: #ffc107;
+        transform: scale(1.1);
+        text-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
+    }
+    
+    .rating-stars-container .star.selected {
+        color: #ffc107;
+        text-shadow: 0 0 8px rgba(255, 193, 7, 0.8);
+    }
+    
+    .rating-stars-container .star.hovered {
+        color: #ffc107;
+        transform: scale(1.05);
+    }
+    
+    .rating-stars-container .star:not(.selected):not(.hovered) {
+        opacity: 0.3;
+    }
+    
+    .rating-stars-container .star:not(.selected):not(.hovered):hover {
+        opacity: 1;
+    }
+    
+    /* Review form validation styles */
+    .review-form .form-control.is-invalid {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+    }
+    
+    .review-form .invalid-feedback {
+        display: block;
+        width: 100%;
+        margin-top: 0.25rem;
+        font-size: 0.875rem;
+        color: #dc3545;
+    }
+    
+    .rating-error {
+        color: #dc3545;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        display: none;
+    }
 </style>
 <div class="content py-5 mt-3">
     <div class="container">
@@ -84,7 +172,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 <h4 class="card-title">Product Details</h4>
                 <div class="card-tools">
                     <?php if($available > 0): ?>
-                        <button class="btn btn-default border btn-sm btn-flat" type="button" id="add_to_cart">
+                        <button onclick="if('<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>' != 1){ Swal.fire({ title: 'Login Required', text: 'Please login first to add items to cart.', icon: 'warning', confirmButtonText: 'Login Now', showCancelButton: true, cancelButtonText: 'Cancel' }).then((result) => { if (result.isConfirmed) { location.href = './login.php'; } }); return false; } addToCart(<?= (int)$id ?>);" class="btn btn-default border btn-sm btn-flat" type="button">
                             <i class="fa fa-cart-plus"></i> Add to Cart
                         </button>
                     <?php else: ?>
@@ -431,36 +519,38 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 <div class="review-form">
                     <h6 class="mb-2">Leave a Review</h6>
                     <div class="form-group mb-2">
-                        <label class="mb-1">Rating</label>
-                        <div id="rating_stars">
-                            <span class="text-warning h5 mx-1 star" data-val="1">★</span>
-                            <span class="text-warning h5 mx-1 star" data-val="2">★</span>
-                            <span class="text-warning h5 mx-1 star" data-val="3">★</span>
-                            <span class="text-warning h5 mx-1 star" data-val="4">★</span>
-                            <span class="text-warning h5 mx-1 star" data-val="5">★</span>
+                        <label class="mb-1">Rating <span class="text-danger">*</span></label>
+                        <div id="rating_stars" class="rating-stars-container">
+                            <span class="star" data-val="1" title="1 star - Poor">★</span>
+                            <span class="star" data-val="2" title="2 stars - Fair">★</span>
+                            <span class="star" data-val="3" title="3 stars - Good">★</span>
+                            <span class="star" data-val="4" title="4 stars - Very Good">★</span>
+                            <span class="star" data-val="5" title="5 stars - Excellent">★</span>
                         </div>
+                        <small class="text-muted">Click on a star to rate this product</small>
+                        <div class="rating-error" id="rating_error">Please select a rating before submitting your review.</div>
                     </div>
                     <div class="form-group mb-2">
                         <label class="mb-1">Comment</label>
                         <textarea id="review_comment" class="form-control" rows="3" placeholder="Share your experience..."></textarea>
                     </div>
-                    <button id="submit_review" class="btn btn-sm btn-primary">Submit Review</button>
+                    <button onclick="if('<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>' != 1){ Swal.fire({ title: 'Login Required', text: 'Please login first to submit a review.', icon: 'warning', confirmButtonText: 'Login Now', showCancelButton: true, cancelButtonText: 'Cancel' }).then((result) => { if (result.isConfirmed) { location.href = './login.php'; } }); return false; } submitReviewForm();" class="btn btn-sm btn-primary">Submit Review</button>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Related Motorcycles Section -->
+<!-- Related Products Section -->
 <div class="content py-0">
     <div class="container">
         <div class="card card-outline rounded-0 card-info shadow">
             <div class="card-header">
-                <h5 class="card-title mb-0">Related Motorcycles</h5>
+                <h5 class="card-title mb-0"><?= $related_title ?></h5>
             </div>
             <div class="card-body">
-                <div id="related_motorcycles_container">
-                    <!-- Related motorcycles will be loaded here -->
+                <div id="related_products_container">
+                    <!-- Related products will be loaded here -->
                 </div>
             </div>
         </div>
@@ -468,40 +558,245 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 </div>
 
 <script>
+    // Global functions for add to cart functionality
+    function addToCart(productId) {
+        // Get product information from current page
+        var productName = '<?= isset($name) ? addslashes($name) : "" ?>';
+        var productPrice = '<?= isset($price) ? $price : 0 ?>';
+        var productPriceValue = productPrice;
+        
+        // Check if this is a motorcycle product
+        var category = '<?= isset($category) ? addslashes($category) : "" ?>'.toLowerCase();
+        var isMotorcycle = category.includes('motorcycle') || category.includes('bike');
+        
+        // Get product details (colors and price) from database
+        $.ajax({
+            url: _base_url_ + "classes/Master.php?f=get_product_details",
+            method: 'POST',
+            data: {
+                product_id: productId
+            },
+            dataType: 'json',
+            success: function(resp) {
+                if(resp.status === 'success') {
+                    // Use database values for price and colors
+                    var dbPrice = resp.price || productPriceValue;
+                    var dbColors = resp.colors || [];
+                    
+                    if(dbColors.length > 0) {
+                        // Product has colors, show color selection modal
+                        showColorSelectionModal(productId, productName, dbPrice, dbColors, isMotorcycle);
+                    } else {
+                        // No colors, add directly to cart
+                        addToCartDirect(productId, '', '', 1);
+                    }
+                } else {
+                    // Fallback to current page values
+                    var availableColors = [];
+                    <?php if(!empty($colors)): ?>
+                    availableColors = <?= json_encode($colors) ?>;
+                    <?php endif; ?>
+                    
+                    if(availableColors.length > 0) {
+                        showColorSelectionModal(productId, productName, productPriceValue, availableColors, isMotorcycle);
+                    } else {
+                        addToCartDirect(productId, '', '', 1);
+                    }
+                }
+            },
+            error: function() {
+                // Fallback to current page values on error
+                var availableColors = [];
+                <?php if(!empty($colors)): ?>
+                availableColors = <?= json_encode($colors) ?>;
+                <?php endif; ?>
+                
+                if(availableColors.length > 0) {
+                    showColorSelectionModal(productId, productName, productPriceValue, availableColors, isMotorcycle);
+                } else {
+                    addToCartDirect(productId, '', '', 1);
+                }
+            }
+        });
+    }
+
+    // Show color selection modal (similar to products/index.php)
+    function showColorSelectionModal(productId, productName, productPrice, availableColors, isMotorcycle) {
+        var colorOptionsHtml = '';
+        if(availableColors.length > 0) {
+            colorOptionsHtml = '<div class="form-group">';
+            colorOptionsHtml += '<label for="swal_color">Color:</label>';
+            colorOptionsHtml += '<select id="swal_color" class="form-control" required>';
+            colorOptionsHtml += '<option value="" selected disabled>Choose color</option>';
+            availableColors.forEach(function(color) {
+                colorOptionsHtml += '<option value="' + color + '">' + color + '</option>';
+            });
+            colorOptionsHtml += '</select>';
+            colorOptionsHtml += '</div>';
+        }
+        
+        Swal.fire({
+            title: 'Add to Cart',
+            html: `
+                <div class="text-center">
+                    <h5>${productName}</h5>
+                    <p class="text-muted">Price: ₱${parseFloat(productPrice || 0).toLocaleString()}</p>
+                    <p class="text-muted">Available: <?= $available ?> units</p>
+                    ${colorOptionsHtml}
+                    <div class="form-group">
+                        <label for="quantity">Quantity:</label>
+                        <input type="number" id="quantity" class="form-control" value="1" min="1" max="<?= $available ?>" style="width: 100px; margin: 0 auto;">
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Add to Cart',
+            cancelButtonText: 'Cancel',
+            preConfirm: () => {
+                const quantity = document.getElementById('quantity').value;
+                const color = document.getElementById('swal_color').value;
+                
+                if(availableColors.length > 0 && !color) {
+                    Swal.showValidationMessage('Please choose a color');
+                    return false;
+                }
+                
+                if (quantity < 1 || quantity > <?= $available ?>) {
+                    Swal.showValidationMessage('Please enter a valid quantity (1-<?= $available ?>)');
+                    return false;
+                }
+                
+                return {
+                    quantity: quantity,
+                    color: color || null
+                };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const quantity = result.value.quantity;
+                const color = result.value.color;
+                addToCartDirect(productId, color, '', quantity);
+            }
+        });
+    }
+
+    function addToCartDirect(productId, selectedColor, motorcycleUnit, quantity = 1) {
+        $.ajax({
+            url: _base_url_ + "classes/Master.php?f=save_to_cart",
+            method: 'POST',
+            data: {
+                product_id: productId,
+                quantity: quantity,
+                color: selectedColor
+            },
+            dataType: 'json',
+            beforeSend: function() {
+                // Show loading state
+                $('button[onclick*="addToCart(' + productId + ')"]').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Adding...');
+            },
+            success: function(resp) {
+                if(resp.status === 'success') {
+                    // Update cart count if available
+                    if(resp.cart_count) {
+                        update_cart_count(resp.cart_count);
+                    }
+                    // Show success modal similar to products/index.php
+                    Swal.fire({
+                        title: 'Success!',
+                        text: resp.msg,
+                        icon: 'success',
+                        confirmButtonText: 'Continue Shopping',
+                        showCancelButton: true,
+                        cancelButtonText: 'View Cart'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Stay on current page
+                        } else {
+                            location.href = './?p=cart';
+                        }
+                    });
+                } else if(resp.requires_color_selection) {
+                    alert_toast('Please select a color first!', 'warning');
+                } else {
+                    alert_toast(resp.msg || 'Failed to add product to cart', 'error');
+                }
+            },
+            error: function() {
+                alert_toast('An error occurred', 'error');
+            },
+            complete: function() {
+                $('button[onclick*="addToCart(' + productId + ')"]').prop('disabled', false).html('<i class="fa fa-cart-plus"></i> Add to Cart');
+            }
+        });
+    }
+
     $(function(){
         // Load product recommendations if out of stock
         <?php if($available <= 0): ?>
         loadProductRecommendations();
         <?php endif; ?>
         
-        // Load related motorcycles
-        loadRelatedMotorcycles();
+        // Load related products based on category
+        loadRelatedProducts();
 
         // Reviews
         loadReviews();
         let selectedRating = 0;
+        let isHovering = false;
+        
+        // Enhanced star rating functionality
         $('#rating_stars .star').on('mouseenter', function(){
+            isHovering = true;
             const v = parseInt($(this).data('val'));
-            highlightStars(v);
+            highlightStars(v, true);
         }).on('mouseleave', function(){
-            highlightStars(selectedRating);
+            isHovering = false;
+            highlightStars(selectedRating, false);
         }).on('click', function(){
             selectedRating = parseInt($(this).data('val'));
-            highlightStars(selectedRating);
+            highlightStars(selectedRating, false);
+            hideRatingError();
         });
-        function highlightStars(v){
+        
+        function highlightStars(v, isHover = false){
             $('#rating_stars .star').each(function(){
                 const s = parseInt($(this).data('val'));
-                $(this).css('opacity', s <= v ? 1 : 0.3);
+                const $star = $(this);
+                
+                // Remove all classes
+                $star.removeClass('selected hovered');
+                
+                if (isHover) {
+                    // During hover, show hover effect up to hovered star
+                    if (s <= v) {
+                        $star.addClass('hovered');
+                    }
+                } else {
+                    // When not hovering, show selected stars
+                    if (s <= v) {
+                        $star.addClass('selected');
+                    }
+                }
             });
         }
-        highlightStars(0);
+        
+        function showRatingError() {
+            $('#rating_error').show();
+        }
+        
+        function hideRatingError() {
+            $('#rating_error').hide();
+        }
+        
+        // Initialize with no rating selected
+        highlightStars(0, false);
 
-        $('#submit_review').click(function(){
+        // Define login validation function using the working pattern from footer.php
+        function validateLoginRequired(action = 'perform this action') {
             if("<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>" != 1){
                 Swal.fire({
                     title: 'Login Required',
-                    text: 'Please login to submit a review.',
+                    text: 'Please login first to ' + action + '.',
                     icon: 'warning',
                     confirmButtonText: 'Login Now',
                     showCancelButton: true,
@@ -511,13 +806,32 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                         location.href = './login.php';
                     }
                 });
-                return;
+                return false;
             }
+            return true;
+        }
+
+        // Function to handle review submission (called from onclick)
+        function submitReviewForm(){
+            // Clear previous validation errors
+            hideRatingError();
+            $('#review_comment').removeClass('is-invalid');
+            
+            // Validate rating selection
             if(selectedRating < 1){
-                alert_toast('Please select a rating.', 'warning');
+                showRatingError();
                 return;
             }
-            const comment = $('#review_comment').val();
+            
+            // Validate comment (optional but if provided, should not be empty)
+            const comment = $('#review_comment').val().trim();
+            if(comment.length > 0 && comment.length < 10){
+                $('#review_comment').addClass('is-invalid');
+                alert_toast('Please provide a more detailed comment (at least 10 characters) or leave it empty.', 'warning');
+                return;
+            }
+            
+            // Submit the review
             start_loader();
             $.ajax({
                 url:_base_url_+"classes/Master.php?f=save_review",
@@ -537,7 +851,8 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 success:function(resp){
                     if(resp.status =='success'){
                         $('#review_comment').val('');
-                        selectedRating = 0; highlightStars(0);
+                        selectedRating = 0; 
+                        highlightStars(0, false);
                         loadReviews();
                         alert_toast(resp.msg,'success');
                     }else if(!!resp.msg){
@@ -548,24 +863,11 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                     end_loader();
                 }
             });
-        });
+        }
         
-        $('#add_to_cart').click(function(){
-            if("<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>" != 1){
-                Swal.fire({
-                    title: 'Login Required',
-                    text: 'Please login first to add items to cart.',
-                    icon: 'warning',
-                    confirmButtonText: 'Login Now',
-                    showCancelButton: true,
-                    cancelButtonText: 'Cancel'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        location.href = './login.php';
-                    }
-                });
-                return false;
-            }
+
+        // Function to handle add to cart (called from onclick) - OLD FUNCTION
+        function addToCartForm(){
             
             if('<?= $available > 0 ?>' == 1){
                     // Show quantity selector
@@ -669,8 +971,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 } else {
                     alert_toast('Product is out of stock.','warning');
                 }
-        });
-    });
+        }
     // Swap main image when selecting a color with a swatch
     $(document).on('change','.color-radio', function(){
         var color = ($(this).val()||'').toLowerCase().trim();
@@ -843,13 +1144,31 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
     function generateReviewHTML(r){
         const name = r.reviewer_name ? r.reviewer_name : 'Customer';
         const stars = '★★★★★'.slice(0, r.rating) + '☆☆☆☆☆'.slice(0, 5 - r.rating);
-        var html = '<div class="mb-3 p-3 border rounded" style="background-color: #f8f9fa;">';
+        const ratingText = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][r.rating] || '';
+        const formattedDate = new Date(r.date_created).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        
+        var html = '<div class="mb-3 p-3 border rounded shadow-sm" style="background-color: #f8f9fa; border-left: 4px solid #dc3545;">';
         html += '<div class="d-flex justify-content-between align-items-start mb-2">';
-        html += '<div><strong>'+ name +'</strong> <span class="text-warning">'+ stars +'</span></div>';
-        html += '<small class="text-muted">'+ r.date_created +'</small>';
+        html += '<div>';
+        html += '<strong class="text-primary">'+ name +'</strong>';
+        html += '<div class="mt-1">';
+        html += '<span class="text-warning h5" style="font-size: 1.2rem;">'+ stars +'</span>';
+        html += '<span class="ml-2 text-muted small">('+ ratingText +')</span>';
         html += '</div>';
-        if(r.comment){ 
-            html += '<div class="text-muted">'+ $('<div>').text(r.comment).html() +'</div>'; 
+        html += '</div>';
+        html += '<small class="text-muted">'+ formattedDate +'</small>';
+        html += '</div>';
+        if(r.comment && r.comment.trim()){ 
+            html += '<div class="text-dark mt-2" style="line-height: 1.5;">';
+            html += '<i class="fa fa-quote-left text-muted mr-1"></i>';
+            html += $('<div>').text(r.comment).html();
+            html += '</div>'; 
+        } else {
+            html += '<div class="text-muted small mt-2"><em>No comment provided</em></div>';
         }
         html += '</div>';
         return html;
@@ -900,27 +1219,28 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         });
     }
     
-    function loadRelatedMotorcycles(){
+    function loadRelatedProducts(){
         $.ajax({
-            url: _base_url_ + "classes/Master.php?f=get_related_motorcycles",
+            url: _base_url_ + "classes/Master.php?f=get_related_products",
             method: "POST",
             data: {
                 product_id: '<?= isset($id) ? $id : "" ?>',
                 category_id: '<?= isset($category_id) ? $category_id : "" ?>',
-                brand_id: '<?= isset($brand_id) ? $brand_id : "" ?>'
+                brand_id: '<?= isset($brand_id) ? $brand_id : "" ?>',
+                category_filter: '<?= $related_category_filter ?>'
             },
             dataType: "json",
             error: err => {
                 console.log(err);
             },
             success: function(resp){
-                if(resp.status == 'success' && resp.related_motorcycles.length > 0){
+                if(resp.status == 'success' && resp.related_products.length > 0){
                     var html = '<div class="row">';
-                    $.each(resp.related_motorcycles, function(index, motorcycle){
+                    $.each(resp.related_products, function(index, product){
                         var stock_status = '';
-                        if(motorcycle.available_stock > 10){
+                        if(product.available_stock > 10){
                             stock_status = '<span class="badge badge-success">In Stock</span>';
-                        } else if(motorcycle.available_stock > 0){
+                        } else if(product.available_stock > 0){
                             stock_status = '<span class="badge badge-warning">Low Stock</span>';
                         } else {
                             stock_status = '<span class="badge badge-danger">Out of Stock</span>';
@@ -929,22 +1249,22 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                         html += '<div class="col-md-4 mb-3">';
                         html += '<div class="card h-100 shadow-sm">';
                         html += '<div class="position-relative">';
-                        html += '<img src="' + _base_url_ + motorcycle.image_path + '" class="card-img-top" style="height: 200px; object-fit: cover;" alt="' + motorcycle.name + '">';
+                        html += '<img src="' + _base_url_ + product.image_path + '" class="card-img-top" style="height: 200px; object-fit: cover;" alt="' + product.name + '">';
                         html += '<div class="position-absolute top-0 end-0 m-2">' + stock_status + '</div>';
                         html += '</div>';
                         html += '<div class="card-body d-flex flex-column">';
-                        html += '<h6 class="card-title">' + motorcycle.name + '</h6>';
-                        html += '<p class="card-text text-muted"><small>' + motorcycle.brand + ' - ' + motorcycle.category + '</small></p>';
-                        html += '<p class="card-text"><strong class="text-primary">₱' + parseFloat(motorcycle.price).toLocaleString() + '</strong></p>';
+                        html += '<h6 class="card-title">' + product.name + '</h6>';
+                        html += '<p class="card-text text-muted"><small>' + product.brand + ' - ' + product.category + '</small></p>';
+                        html += '<p class="card-text"><strong class="text-primary">₱' + parseFloat(product.price).toLocaleString() + '</strong></p>';
                         html += '<div class="mt-auto">';
-                        html += '<a href="./?p=products/view_product&id=' + motorcycle.id + '" class="btn btn-sm btn-primary w-100">View Details</a>';
+                        html += '<a href="./?p=products/view_product&id=' + product.id + '" class="btn btn-sm btn-primary w-100">View Details</a>';
                         html += '</div>';
                         html += '</div></div></div>';
                     });
                     html += '</div>';
-                    $('#related_motorcycles_container').html(html);
+                    $('#related_products_container').html(html);
                 } else {
-                    $('#related_motorcycles_container').html('<p class="text-muted text-center">No related motorcycles found.</p>');
+                    $('#related_products_container').html('<p class="text-muted text-center">No related products found.</p>');
                 }
             }
         });
@@ -1082,6 +1402,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
             closeImageModal();
         }
     });
+    }); // Close the $(function(){ that starts on line 536
 </script>
 
 <!-- Fullscreen Image Modal -->

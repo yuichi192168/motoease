@@ -8,6 +8,41 @@
      <?php require_once('inc/navigation.php') ?>
               
      <?php $page = isset($_GET['page']) ? $_GET['page'] : 'home';  ?>
+     <?php
+       // Centralized Role-Based Access Control for admin pages
+       $role_type = $_settings->userdata('role_type') ?: 'admin';
+
+       // Define allowed page sets per role
+       $always_allowed_pages = ['home'];
+       $service_allowed_pages = ['service_requests','appointments'];
+       $inventory_allowed_pages = ['products','inventory','inventory/abc_analysis'];
+
+       // Helper: check if a page is allowed for a role
+       $is_allowed = function($page, $role) use ($always_allowed_pages, $service_allowed_pages, $inventory_allowed_pages) {
+         if (in_array($page, $always_allowed_pages)) return true;
+         if ($role === 'admin') return true;
+         if ($role === 'service_admin') {
+           // Allow exact matches and prefixed sub-pages, e.g., appointments/*
+           foreach ($service_allowed_pages as $p) {
+             if ($page === $p || strpos($page, $p.'/') === 0) return true;
+           }
+           return false;
+         }
+         if ($role === 'inventory') {
+           foreach ($inventory_allowed_pages as $p) {
+             if ($page === $p || strpos($page, $p.'/') === 0) return true;
+           }
+           return false;
+         }
+         // Default deny for other roles/types
+         return false;
+       };
+
+       if (!$is_allowed($page, $role_type)) {
+         echo "<script>alert('Access denied for your role.');location.replace('./');</script>";
+         exit;
+       }
+     ?>
      <?php if($_settings->chk_flashdata('success')): ?>
       <script>
         alert_toast("<?php echo $_settings->flashdata('success') ?>",'success')

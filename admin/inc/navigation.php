@@ -45,7 +45,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 <!-- Notifications removed: using per-section indicators instead -->
                 
                 <!-- Role-based Menu Items -->
-                <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'admin_assistant'])): ?>
+                <?php if(in_array($role_type, ['admin'])): ?>
                 <!-- User Management -->
                 <li class="nav-item <?php echo in_array($page, ['user','clients']) ? 'menu-open' : '' ?>">
                     <a href="#" class="nav-link <?php echo in_array($page, ['user','clients']) ? 'active' : '' ?>">
@@ -75,7 +75,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 <?php endif; ?>
                 
                <!-- Inventory Management -->
-<?php if(in_array($role_type, ['admin', 'branch_supervisor', 'stock_admin'])): ?>
+<?php if(in_array($role_type, ['admin','inventory'])): ?>
 <li class="nav-item <?php echo in_array($page, ['products','inventory','inventory/abc_analysis']) ? 'menu-open' : '' ?>">
     <a href="#" class="nav-link <?php echo in_array($page, ['products','inventory','inventory/abc_analysis']) ? 'active' : '' ?>">
         <i class="nav-icon fas fa-boxes"></i>
@@ -108,7 +108,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
 <?php endif; ?>
                 
                 <!-- Service Management -->
-                <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'service_admin', 'mechanic'])): ?>
+                <?php if(in_array($role_type, ['admin','service_admin'])): ?>
                 <li class="nav-item <?php echo in_array($page, ['service_management','service_requests','appointments','mechanics']) ? 'menu-open' : '' ?>">
                     <a href="#" class="nav-link <?php echo in_array($page, ['service_management','service_requests','appointments','mechanics']) ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-tools"></i>
@@ -130,7 +130,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                                 <p>Appointments <span id="dot-appointments" class="sidebar-dot" style="display:none;"></span></p>
                             </a>
                         </li>
-                        <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'service_admin'])): ?>
+                        <?php if(in_array($role_type, ['admin'])): ?>
                         <li class="nav-item">
                             <a href="./?page=mechanics" class="nav-link <?php echo $page == 'mechanics' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
@@ -143,7 +143,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 <?php endif; ?>
                 
                 <!-- Order Management -->
-                <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'admin_assistant', 'service_admin'])): ?>
+                <?php if(in_array($role_type, ['admin'])): ?>
                 <li class="nav-item">
                     <a href="./?page=orders" data-href="./?page=orders&status=pending" id="link-orders" class="nav-link <?php echo $page == 'orders' ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-shopping-cart"></i>
@@ -153,7 +153,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 <?php endif; ?>
                 
                 <!-- Reports -->
-                <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'service_admin'])): ?>
+                <?php if(in_array($role_type, ['admin'])): ?>
                 <li class="nav-item <?php echo in_array($page, ['report', 'user_log_history']) ? 'menu-open' : '' ?>">
                     <a href="#" class="nav-link <?php echo in_array($page, ['report', 'user_log_history']) ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-chart-bar"></i>

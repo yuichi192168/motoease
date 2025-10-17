@@ -138,7 +138,9 @@ require_once('./inc/sess_auth.php');
                                 <select class="form-control" name="payment_method" id="payment_method" required>
                                     <option value="">-- Select Payment Method --</option>
                                     <option value="full_payment">Full Payment (Cash/Card)</option>
+                                    <?php if(isset($has_motorcycles) && $has_motorcycles): ?>
                                     <option value="installment">Installment Plan</option>
+                                    <?php endif; ?>
                                 </select>
                                 <div class="invalid-feedback" id="payment_method_error"></div>
                             </div>
@@ -290,6 +292,12 @@ require_once('./inc/sess_auth.php');
                 $('#payment_type').prop('required', true);
                 $('#installment_months, #down_payment').prop('required', false);
             } else if(paymentMethod === 'installment') {
+                if(!hasMotorcycles){
+                    // Prevent installment for parts-only carts
+                    $(this).val('full_payment').trigger('change');
+                    alert_toast('Installment is available only for motorcycle purchases.', 'info');
+                    return;
+                }
                 $('#installment_section').show();
                 $('#installment_months, #down_payment').prop('required', true);
                 $('#payment_type').prop('required', false);
@@ -346,8 +354,8 @@ require_once('./inc/sess_auth.php');
                 }
             }
             
-            // Validate installment section
-            if(paymentMethod === 'installment') {
+            // Validate installment section (only when motorcycles are present)
+            if(paymentMethod === 'installment' && hasMotorcycles) {
                 var months = $('#installment_months').val();
                 var downPayment = parseFloat($('#down_payment').val()) || 0;
                 var totalAmount = <?= $grand_total ?>;
@@ -374,13 +382,14 @@ require_once('./inc/sess_auth.php');
             
             // Contact number validation removed (already captured in customer profile)
             
-            // Validate terms acceptance
+            // Validate terms acceptance (aligned with send_request)
             if(!$('#terms_accepted').is(':checked')) {
                 $('#terms_accepted').addClass('is-invalid');
-                $('#terms_accepted_error').text('Please accept the terms and conditions.');
+                $('#terms_accepted_error').text('You must accept the terms and conditions');
                 isValid = false;
             } else {
                 $('#terms_accepted').addClass('is-valid');
+                $('#terms_accepted_error').text('');
             }
             
             return isValid;
@@ -404,6 +413,14 @@ require_once('./inc/sess_auth.php');
                 $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Advance Order');
             }
         }).trigger('change');
+
+        // Mirror send_request: update T&C validity on change
+        $('#terms_accepted').on('change', function(){
+            if($(this).is(':checked')){
+                $('#terms_accepted').removeClass('is-invalid').addClass('is-valid');
+                $('#terms_accepted_error').text('');
+            }
+        });
 
         // Submit order
         $('#place_order').submit(function(e){

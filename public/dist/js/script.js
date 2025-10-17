@@ -27,6 +27,7 @@ window.update_cart_count = function($count = 0) {
     }
 }
 
+
 $(document).ready(function() {
     function startLockCountdown($form, $alertEl, lockedUntilTs) {
         try {

@@ -233,7 +233,6 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                     </div>
                     <div class="card-body">
                         <button class="btn btn-info btn-sm" onclick="showVehicleInfo()">Update Vehicle Info</button>
-                        <button class="btn btn-warning btn-sm" onclick="showORCRUpload()">Upload OR/CR Document</button>
                     </div>
                 </div>
             </div>

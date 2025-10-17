@@ -47,7 +47,6 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 					<label for="role_type">Staff Position</label>
 					<select name="role_type" id="role_type" class="custom-select">
 						<option value="admin" <?php echo isset($meta['role_type']) && $meta['role_type'] == 'admin' ? 'selected' : '' ?>>Admin</option>
-						<option value="mechanic" <?php echo isset($meta['role_type']) && $meta['role_type'] == 'mechanic' ? 'selected' : '' ?>>Mechanic</option>
 						<option value="inventory" <?php echo isset($meta['role_type']) && $meta['role_type'] == 'inventory' ? 'selected' : '' ?>>Inventory</option>
 						<option value="service_admin" <?php echo isset($meta['role_type']) && $meta['role_type'] == 'service_admin' ? 'selected' : '' ?>>Service Receptionist</option>
 					</select>

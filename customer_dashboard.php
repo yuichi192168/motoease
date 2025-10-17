@@ -8,10 +8,11 @@ $client_id = $_settings->userdata('id');
 // Get customer data
 $customer = $conn->query("SELECT * FROM client_list WHERE id = '{$client_id}'")->fetch_assoc();
 
-// Get account balance and installment details
+// Get account balance and amounts per status, strictly for this client
 $account_balance = $conn->query("SELECT 
-    COALESCE(SUM(CASE WHEN payment_status = 'installment' THEN total_amount ELSE 0 END), 0) as installment_balance,
-    COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END), 0) as paid_amount
+    COALESCE(SUM(total_amount), 0) as total_balance,
+    COALESCE(SUM(CASE WHEN status IN (4,6) THEN total_amount ELSE 0 END), 0) as paid_amount,
+    COALESCE(SUM(CASE WHEN status IN (0,1,2,3) THEN total_amount ELSE 0 END), 0) as pending_amount
     FROM order_list 
     WHERE client_id = '{$client_id}' AND status != 5")->fetch_assoc();
 
@@ -19,19 +20,18 @@ $account_balance = $conn->query("SELECT
 $client_balance_row = $conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}' AND delete_flag = 0")->fetch_assoc();
 $client_account_balance = $client_balance_row ? (float)$client_balance_row['account_balance'] : 0;
 
-// Get installment details
+// Get order details for this client (using status instead of non-existent payment_status)
 $installments = $conn->query("SELECT 
+    ol.id,
     ol.ref_code,
     ol.total_amount,
-    ol.payment_status,
+    ol.status,
     ol.date_created,
-    ol.due_date,
-    DATEDIFF(CURDATE(), ol.due_date) as days_overdue
+    ol.date_updated
     FROM order_list ol
     WHERE ol.client_id = '{$client_id}' 
-    AND ol.payment_status = 'installment' 
     AND ol.status != 5
-    ORDER BY ol.due_date ASC");
+    ORDER BY ol.date_created DESC");
 
 // Get recent orders
 $orders = $conn->query("SELECT * FROM order_list WHERE client_id = '{$client_id}' ORDER BY date_created DESC LIMIT 5");
