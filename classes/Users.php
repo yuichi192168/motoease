@@ -71,14 +71,19 @@ Class Users extends DBConnection {
 			$qry = $this->conn->query("UPDATE users set $data where id = {$id}");
 			if($qry){
 				$this->settings->set_flashdata('success','User Details successfully updated.');
-				foreach($_POST as $k => $v){
-					if($k != 'id'){
-						if(!empty($data)) $data .=" , ";
-						$this->settings->set_userdata($k,$v);
+				
+				// Only update session data if updating current user's own profile
+				// Don't update session when admin is updating another user's role
+				if($this->settings->userdata('id') == $id){
+					foreach($_POST as $k => $v){
+						if($k != 'id'){
+							if(!empty($data)) $data .=" , ";
+							$this->settings->set_userdata($k,$v);
+						}
 					}
+					if(isset($fname) && isset($move))
+					$this->settings->set_userdata('avatar',$fname);
 				}
-				if(isset($fname) && isset($move))
-				$this->settings->set_userdata('avatar',$fname);
 
 				return json_encode(['status' => 'success', 'msg' => 'User Details successfully updated.']);
 			}else{

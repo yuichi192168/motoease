@@ -474,7 +474,9 @@ require_once('./inc/sess_auth.php');
             }
         });
         
-        $('.btn-minus').click(function(){
+        $(document).on('click', '.btn-minus', function(e){
+            e.preventDefault();
+            e.stopPropagation();
             var cart_id = $(this).attr('data-id');
             var current_qty = parseInt($(this).closest('.input-group').find('input').val());
             if(current_qty > 1){
@@ -484,11 +486,15 @@ require_once('./inc/sess_auth.php');
                 _conf("Remove this item from cart?", "remove_from_cart", [cart_id]);
             }
         })
-        $('.btn-plus').click(function(){
+        $(document).on('click', '.btn-plus', function(e){
+            e.preventDefault();
+            e.stopPropagation();
             var cart_id = $(this).attr('data-id');
             update_quantity(cart_id, "+ 1");
         })
-        $('.btn-remove').click(function(){
+        $(document).on('click', '.btn-remove', function(e){
+            e.preventDefault();
+            e.stopPropagation();
             var cartId = $(this).attr('data-id');
             _conf("Are you sure to remove this product from cart list?","remove_from_cart",[cartId])
         })

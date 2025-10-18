@@ -60,7 +60,7 @@
     }
 }
 
-#viewer_modal .btn-close {
+#viewer_modal .close {
     position: absolute;
     z-index: 999999;
     /*right: -4.5em;*/
@@ -69,6 +69,34 @@
     border: unset;
     font-size: 27px;
     top: 0;
+}
+
+/* Fix modal z-index and close button issues */
+.modal {
+    z-index: 1055 !important;
+}
+
+.modal-backdrop {
+    z-index: 1050 !important;
+}
+
+.modal-header .close {
+    z-index: 1056 !important;
+    pointer-events: auto !important;
+}
+
+/* Ensure modal content is clickable */
+.modal-content {
+    pointer-events: auto !important;
+}
+
+/* Fix for any overlay conflicts */
+.overlay, .cart-wrapper {
+    pointer-events: none;
+}
+
+.modal-content {
+    pointer-events: auto;
 }
 
 #viewer_modal .modal-dialog {
