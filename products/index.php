@@ -829,12 +829,10 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
     renderBar();
 })();
 
-// Add to Cart function
+// Global functions for add to cart functionality
 function addToCart(productId) {
-    // Find the product card containing this button
+    // Get product information from current page
     var productCard = $('button[onclick="addToCart(' + productId + ')"]').closest('.card');
-    
-    // Get product information from DOM as fallback
     var productName = productCard.find('.card-title b').text();
     var productPrice = productCard.find('.price-tag b').text();
     var productPriceValue = productPrice.replace('₱', '').replace(/,/g, '');
@@ -845,7 +843,7 @@ function addToCart(productId) {
     
     // Get product details (colors and price) from database
     $.ajax({
-        url: '<?= base_url ?>classes/Master.php?f=get_product_details',
+        url: _base_url_ + "classes/Master.php?f=get_product_details",
         method: 'POST',
         data: {
             product_id: productId
@@ -862,12 +860,12 @@ function addToCart(productId) {
                     showColorSelectionModal(productId, productName, dbPrice, dbColors, isMotorcycle);
                 } else {
                     // No colors, add directly to cart
-                    addToCartDirect(productId, '', '');
+                    addToCartDirect(productId, '', '', 1);
                 }
             } else {
-                // Fallback to DOM values
-    var colorOptions = productCard.find('.color-option');
+                // Fallback to current page values
                 var availableColors = [];
+                var colorOptions = productCard.find('.color-option');
                 if(colorOptions.length > 0) {
                     colorOptions.each(function() {
                         availableColors.push($(this).attr('data-color'));
@@ -877,15 +875,15 @@ function addToCart(productId) {
                 if(availableColors.length > 0) {
                     showColorSelectionModal(productId, productName, productPriceValue, availableColors, isMotorcycle);
                 } else {
-                    addToCartDirect(productId, '', '');
+                    addToCartDirect(productId, '', '', 1);
                 }
             }
         },
         error: function() {
-            // Fallback to DOM values on error
-            var colorOptions = productCard.find('.color-option');
+            // Fallback to current page values on error
             var availableColors = [];
-    if(colorOptions.length > 0) {
+            var colorOptions = productCard.find('.color-option');
+            if(colorOptions.length > 0) {
                 colorOptions.each(function() {
                     availableColors.push($(this).attr('data-color'));
                 });
@@ -894,13 +892,13 @@ function addToCart(productId) {
             if(availableColors.length > 0) {
                 showColorSelectionModal(productId, productName, productPriceValue, availableColors, isMotorcycle);
             } else {
-                addToCartDirect(productId, '', '');
+                addToCartDirect(productId, '', '', 1);
             }
         }
     });
 }
 
-// Show color selection modal (similar to view_product.php)
+// Show color selection modal (color only, no quantity)
 function showColorSelectionModal(productId, productName, productPrice, availableColors, isMotorcycle) {
     var colorOptionsHtml = '';
     if(availableColors.length > 0) {
@@ -915,17 +913,6 @@ function showColorSelectionModal(productId, productName, productPrice, available
         colorOptionsHtml += '</div>';
     }
     
-    // Only show quantity input for non-motorcycle products
-    var quantityHtml = '';
-    if (!isMotorcycle) {
-        quantityHtml = `
-            <div class="form-group">
-                <label for="quantity">Quantity:</label>
-                <input type="number" id="quantity" class="form-control" value="1" min="1" style="width: 100px; margin: 0 auto;">
-            </div>
-        `;
-    }
-    
     Swal.fire({
         title: 'Add to Cart',
         html: `
@@ -933,7 +920,6 @@ function showColorSelectionModal(productId, productName, productPrice, available
                 <h5>${productName}</h5>
                 <p class="text-muted">Price: ₱${parseFloat(productPrice || 0).toLocaleString()}</p>
                 ${colorOptionsHtml}
-                ${quantityHtml}
             </div>
         `,
         showCancelButton: true,
@@ -941,25 +927,14 @@ function showColorSelectionModal(productId, productName, productPrice, available
         cancelButtonText: 'Cancel',
         preConfirm: () => {
             const color = document.getElementById('swal_color') ? document.getElementById('swal_color').value : '';
-            let quantity = 1; // Default quantity for motorcycles
-            
-            // Only get quantity from input if it's not a motorcycle
-            if (!isMotorcycle) {
-                quantity = document.getElementById('quantity').value;
-            }
             
             if(availableColors.length > 0 && !color) {
                 Swal.showValidationMessage('Please choose a color');
                 return false;
             }
             
-            if (!isMotorcycle && quantity < 1) {
-                Swal.showValidationMessage('Please enter a valid quantity');
-                return false;
-            }
-            
             return {
-                quantity: quantity,
+                quantity: 1, // Always use quantity 1
                 color: color || null
             };
         }
@@ -974,7 +949,7 @@ function showColorSelectionModal(productId, productName, productPrice, available
 
 function addToCartDirect(productId, selectedColor, motorcycleUnit, quantity = 1) {
     $.ajax({
-        url: '<?= base_url ?>classes/Master.php?f=save_to_cart',
+        url: _base_url_ + "classes/Master.php?f=save_to_cart",
         method: 'POST',
         data: {
             product_id: productId,
