@@ -157,7 +157,8 @@ $available = $stocks - $out;
                     <?php endif; ?>
                 <?php endif; ?>
                 
-                <!-- Quantity Selection -->
+                <!-- Quantity Selection - Only show for non-motorcycle products -->
+                <?php if(!$is_motorcycle): ?>
                 <div class="mb-3">
                     <label class="form-label"><strong>Quantity:</strong></label>
                     <div class="input-group" style="width: 150px;">
@@ -174,6 +175,7 @@ $available = $stocks - $out;
                         </div>
                     </div>
                 </div>
+                <?php endif; ?>
                 
                 <!-- Add-ons Section - Only show for motorcycles -->
                 <?php 
@@ -267,23 +269,27 @@ $(function(){
     var selectedAddons = [];
     var selectedAddonDetails = [];
     
-    // Quantity controls
-    $('#qty_minus').click(function(){
-        var currentQty = parseInt($('#quantity').val());
-        if(currentQty > 1){
-            $('#quantity').val(currentQty - 1);
-            updateTotals();
-        }
-    });
+    // Quantity controls - only bind if elements exist (not for motorcycles)
+    if($('#qty_minus').length > 0) {
+        $('#qty_minus').click(function(){
+            var currentQty = parseInt($('#quantity').val());
+            if(currentQty > 1){
+                $('#quantity').val(currentQty - 1);
+                updateTotals();
+            }
+        });
+    }
     
-    $('#qty_plus').click(function(){
-        var currentQty = parseInt($('#quantity').val());
-        var maxQty = parseInt($('#quantity').attr('max'));
-        if(currentQty < maxQty){
-            $('#quantity').val(currentQty + 1);
-            updateTotals();
-        }
-    });
+    if($('#qty_plus').length > 0) {
+        $('#qty_plus').click(function(){
+            var currentQty = parseInt($('#quantity').val());
+            var maxQty = parseInt($('#quantity').attr('max'));
+            if(currentQty < maxQty){
+                $('#quantity').val(currentQty + 1);
+                updateTotals();
+            }
+        });
+    }
     
     // Add-ons change handler
     $('.addon-checkbox').change(function(){
@@ -291,7 +297,8 @@ $(function(){
     });
     
     function updateTotals(){
-        var quantity = parseInt($('#quantity').val()) || 1;
+        // For motorcycles, quantity is always 1. For other products, get from input
+        var quantity = <?= $is_motorcycle ? '1' : 'parseInt($("#quantity").val()) || 1' ?>;
         var subtotal = basePrice * quantity;
         var addonsTotal = 0;
         
@@ -320,10 +327,11 @@ $(function(){
     
     // Add to cart functionality
     $('#add_to_cart').click(function(){
-        var quantity = parseInt($('#quantity').val()) || 1;
+        // For motorcycles, quantity is always 1. For other products, get from input
+        var quantity = <?= $is_motorcycle ? '1' : 'parseInt($("#quantity").val()) || 1' ?>;
         var color = $('#color_selector').val() || '';
         
-        if(quantity <= 0){
+        if(!<?= $is_motorcycle ? 'true' : 'false' ?> && quantity <= 0){
             alert_toast('Please select a valid quantity', 'error');
             return;
         }

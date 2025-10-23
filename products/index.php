@@ -915,6 +915,17 @@ function showColorSelectionModal(productId, productName, productPrice, available
         colorOptionsHtml += '</div>';
     }
     
+    // Only show quantity input for non-motorcycle products
+    var quantityHtml = '';
+    if (!isMotorcycle) {
+        quantityHtml = `
+            <div class="form-group">
+                <label for="quantity">Quantity:</label>
+                <input type="number" id="quantity" class="form-control" value="1" min="1" style="width: 100px; margin: 0 auto;">
+            </div>
+        `;
+    }
+    
     Swal.fire({
         title: 'Add to Cart',
         html: `
@@ -922,25 +933,27 @@ function showColorSelectionModal(productId, productName, productPrice, available
                 <h5>${productName}</h5>
                 <p class="text-muted">Price: ₱${parseFloat(productPrice || 0).toLocaleString()}</p>
                 ${colorOptionsHtml}
-                <div class="form-group">
-                    <label for="quantity">Quantity:</label>
-                    <input type="number" id="quantity" class="form-control" value="1" min="1" style="width: 100px; margin: 0 auto;">
-                </div>
+                ${quantityHtml}
             </div>
         `,
         showCancelButton: true,
         confirmButtonText: 'Add to Cart',
         cancelButtonText: 'Cancel',
         preConfirm: () => {
-            const quantity = document.getElementById('quantity').value;
-            const color = document.getElementById('swal_color').value;
+            const color = document.getElementById('swal_color') ? document.getElementById('swal_color').value : '';
+            let quantity = 1; // Default quantity for motorcycles
+            
+            // Only get quantity from input if it's not a motorcycle
+            if (!isMotorcycle) {
+                quantity = document.getElementById('quantity').value;
+            }
             
             if(availableColors.length > 0 && !color) {
                 Swal.showValidationMessage('Please choose a color');
                 return false;
             }
             
-            if (quantity < 1) {
+            if (!isMotorcycle && quantity < 1) {
                 Swal.showValidationMessage('Please enter a valid quantity');
                 return false;
             }

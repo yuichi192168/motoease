@@ -324,8 +324,54 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
         </div>
 
         <div class="row mt-4">
-
-            <!-- Recent Appointments temporarily disabled -->
+            <!-- Recent Appointments -->
+            <div class="col-md-6">
+                <div class="card card-outline card-warning shadow rounded-0">
+                    <div class="card-header">
+                        <h4 class="card-title"><b>Recent Appointments</b></h4>
+                        <div class="card-tools">
+                            <a href="./?p=my_appointments" class="btn btn-sm btn-warning">View All</a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <?php if($appointments->num_rows > 0): ?>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>Service</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php while($appointment = $appointments->fetch_assoc()): ?>
+                                    <tr>
+                                        <td><?= date('M d, Y', strtotime($appointment['appointment_date'])) ?></td>
+                                        <td><?= $appointment['appointment_time'] ?></td>
+                                        <td>
+                                            <?php 
+                                            $service = $conn->query("SELECT service FROM service_list WHERE id = '{$appointment['service_type']}'")->fetch_assoc();
+                                            echo $service ? $service['service'] : 'N/A';
+                                            ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-<?= $appointment['status'] == 'confirmed' ? 'success' : ($appointment['status'] == 'pending' ? 'warning' : 'secondary') ?>">
+                                                <?= ucfirst($appointment['status']) ?>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <?php endwhile; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <?php else: ?>
+                        <p class="text-muted text-center">No appointments found.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Quick Actions -->
@@ -356,7 +402,21 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
                                 </a>
                             </div>
                             <div class="col-md-3 mb-3">
-                                <a href="./?p=manage_account" class="btn btn-info btn-block">
+                                <a href="./?p=my_services" class="btn btn-info btn-block">
+                                    <i class="fa fa-cogs fa-2x mb-2"></i><br>
+                                    My Services
+                                </a>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6 mb-3">
+                                <a href="./?p=my_orders" class="btn btn-secondary btn-block">
+                                    <i class="fa fa-shopping-bag fa-2x mb-2"></i><br>
+                                    My Orders
+                                </a>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <a href="./?p=manage_account" class="btn btn-dark btn-block">
                                     <i class="fa fa-user fa-2x mb-2"></i><br>
                                     Manage Account
                                 </a>

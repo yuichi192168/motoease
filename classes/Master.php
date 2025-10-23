@@ -3303,9 +3303,10 @@ Class Master extends DBConnection {
     function delete_appointment(){
         extract($_POST);
         $resp = [];
-        if(empty($id)){
+        // Validate ID: ensure it exists and is a positive integer
+        if(!isset($id) || $id === '' || !ctype_digit((string)$id) || (int)$id <= 0){
             $resp['status'] = 'failed';
-            $resp['msg'] = 'Missing appointment id.';
+            $resp['msg'] = 'Invalid appointment id.';
             return json_encode($resp);
         }
         $id = $this->conn->real_escape_string($id);
@@ -3342,6 +3343,49 @@ Class Master extends DBConnection {
         $resp['status'] = 'success';
         $resp['available'] = $count == 0;
         $resp['msg'] = $count == 0 ? "Time slot is available" : "Time slot is not available";
+        
+        return json_encode($resp);
+    }
+    
+    function cancel_appointment(){
+        extract($_POST);
+        
+        if(empty($id)){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Missing appointment id.';
+            return json_encode($resp);
+        }
+        
+        $id = $this->conn->real_escape_string($id);
+        
+        // Check if appointment exists and belongs to the current user
+        $currentClientId = $this->settings ? $this->settings->userdata('id') : null;
+        $check = $this->conn->query("SELECT * FROM appointments WHERE id = '{$id}' AND client_id = '{$currentClientId}'");
+        if($check->num_rows == 0){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Appointment not found or you do not have permission to cancel this appointment.';
+            return json_encode($resp);
+        }
+        
+        $appointment = $check->fetch_assoc();
+        
+        // Check if appointment can be cancelled (only pending appointments can be cancelled)
+        if($appointment['status'] != 'pending'){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Only pending appointments can be cancelled.';
+            return json_encode($resp);
+        }
+        
+        // Update appointment status to cancelled
+        $update = $this->conn->query("UPDATE appointments SET status = 'cancelled', date_updated = NOW() WHERE id = '{$id}'");
+        
+        if($update){
+            $resp['status'] = 'success';
+            $resp['msg'] = 'Appointment cancelled successfully.';
+        } else {
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Failed to cancel appointment.';
+        }
         
         return json_encode($resp);
     }
@@ -4017,6 +4061,9 @@ $sysset = new SystemSettings();
 	break;
 	case 'check_appointment_availability':
 		echo $Master->check_appointment_availability();
+	break;
+	case 'cancel_appointment':
+		echo $Master->cancel_appointment();
 	break;
 	case 'add_document':
 		echo $Master->add_document();

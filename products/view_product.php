@@ -687,6 +687,17 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
             colorOptionsHtml += '</div>';
         }
         
+        // Only show quantity input for non-motorcycle products
+        var quantityHtml = '';
+        if (!isMotorcycle) {
+            quantityHtml = `
+                <div class="form-group">
+                    <label for="quantity">Quantity:</label>
+                    <input type="number" id="quantity" class="form-control" value="1" min="1" max="<?= $available ?>" style="width: 100px; margin: 0 auto;">
+                </div>
+            `;
+        }
+        
         Swal.fire({
             title: 'Add to Cart',
             html: `
@@ -695,25 +706,27 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                     <p class="text-muted">Price: ₱${parseFloat(productPrice || 0).toLocaleString()}</p>
                     <p class="text-muted">Available: <?= $available ?> units</p>
                     ${colorOptionsHtml}
-                    <div class="form-group">
-                        <label for="quantity">Quantity:</label>
-                        <input type="number" id="quantity" class="form-control" value="1" min="1" max="<?= $available ?>" style="width: 100px; margin: 0 auto;">
-                    </div>
+                    ${quantityHtml}
                 </div>
             `,
             showCancelButton: true,
             confirmButtonText: 'Add to Cart',
             cancelButtonText: 'Cancel',
             preConfirm: () => {
-                const quantity = document.getElementById('quantity').value;
-                const color = document.getElementById('swal_color').value;
+                const color = document.getElementById('swal_color') ? document.getElementById('swal_color').value : '';
+                let quantity = 1; // Default quantity for motorcycles
+                
+                // Only get quantity from input if it's not a motorcycle
+                if (!isMotorcycle) {
+                    quantity = document.getElementById('quantity').value;
+                }
                 
                 if(availableColors.length > 0 && !color) {
                     Swal.showValidationMessage('Please choose a color');
                     return false;
                 }
                 
-                if (quantity < 1 || quantity > <?= $available ?>) {
+                if (!isMotorcycle && (quantity < 1 || quantity > <?= $available ?>)) {
                     Swal.showValidationMessage('Please enter a valid quantity (1-<?= $available ?>)');
                     return false;
                 }
@@ -1023,7 +1036,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                     </select>
                                 </div>
                                 <?php endif; ?>
-                                <div class="form-group">
+                                <div class="form-group" id="quantity-section">
                                     <label for="quantity">Quantity:</label>
                                     <input type="number" id="quantity" class="form-control" value="1" min="1" max="<?= $available ?>" style="width: 100px; margin: 0 auto;">
                                 </div>
@@ -1032,8 +1045,27 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                         showCancelButton: true,
                         confirmButtonText: 'Add to Cart',
                         cancelButtonText: 'Cancel',
+                        didOpen: () => {
+                            // Check if this is a motorcycle product and hide quantity section
+                            var category = '<?= isset($category) ? addslashes($category) : "" ?>'.toLowerCase();
+                            var isMotorcycle = category.includes('motorcycle') || category.includes('bike');
+                            
+                            if (isMotorcycle) {
+                                $('#quantity-section').hide();
+                            }
+                        },
                         preConfirm: () => {
-                            const quantity = document.getElementById('quantity').value;
+                            // Check if this is a motorcycle product
+                            var category = '<?= isset($category) ? addslashes($category) : "" ?>'.toLowerCase();
+                            var isMotorcycle = category.includes('motorcycle') || category.includes('bike');
+                            
+                            let quantity = 1; // Default quantity for motorcycles
+                            
+                            // Only get quantity from input if it's not a motorcycle
+                            if (!isMotorcycle) {
+                                quantity = document.getElementById('quantity').value;
+                            }
+                            
                             <?php if(!empty($colors)): ?>
                             const color = document.getElementById('swal_color').value;
                             if(!color){
@@ -1041,10 +1073,12 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                 return false;
                             }
                             <?php endif; ?>
-                            if (quantity < 1 || quantity > <?= $available ?>) {
+                            
+                            if (!isMotorcycle && (quantity < 1 || quantity > <?= $available ?>)) {
                                 Swal.showValidationMessage('Please enter a valid quantity (1-<?= $available ?>)');
                                 return false;
                             }
+                            
                             return {
                                 quantity: quantity,
                                 <?php if(!empty($colors)): ?>
