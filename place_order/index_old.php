@@ -115,33 +115,6 @@ require_once('../inc/sess_auth.php');
         background-color: #ffffff;
     }
     
-    .installment-requirements {
-        background-color: #fff3cd;
-        border: 1px solid #ffeaa7;
-        border-radius: 6px;
-        padding: 12px;
-        margin: 10px 0;
-    }
-    
-    .installment-requirements .fa-info-circle {
-        color: #856404;
-    }
-    
-    .installment-requirements h6 {
-        color: #856404;
-        margin-bottom: 8px;
-    }
-    
-    .installment-requirements ul {
-        margin-bottom: 0;
-        padding-left: 20px;
-    }
-    
-    .installment-requirements li {
-        color: #856404;
-        font-size: 13px;
-        margin-bottom: 4px;
-    }
     
     /* Mobile Responsive */
     @media (max-width: 768px) {
@@ -354,27 +327,12 @@ require_once('../inc/sess_auth.php');
                                 <select class="form-control" name="payment_method" id="payment_method" required>
                                     <option value="">-- Select Payment Method --</option>
                                     <option value="full_payment">Full Payment (Cash/Card)</option>
-                                    <?php if(isset($has_motorcycles) && $has_motorcycles): ?>
-                                    <option value="installment">Installment Plan</option>
-                                    <?php endif; ?>
                                 </select>
                                 <div class="invalid-feedback" id="payment_method_error">Please select a payment method.</div>
                                 
-                                <?php if(isset($has_motorcycles) && $has_motorcycles): ?>
-                                <div class="installment-requirements">
-                                    <h6><i class="fa fa-info-circle"></i> Installment Requirements</h6>
-                                    <ul>
-                                        <li>Minimum 20% down payment required</li>
-                                        <li>Credit application must be completed</li>
-                                        <li>Monthly payments due on the same date each month</li>
-                                        <li>Late payment fees may apply for overdue installments</li>
-                                    </ul>
-                                </div>
-                                <?php else: ?>
                                 <div class="alert alert-info mt-2">
-                                    <i class="fa fa-info-circle"></i> <strong>Motorcycle Parts Only:</strong> Installment plans are available only for motorcycle purchases. You can proceed directly to Advance Order.
+                                    <i class="fa fa-info-circle"></i> <strong>Payment Information:</strong> Full payment is required for all orders. You can proceed directly to Advance Order.
                                 </div>
-                                <?php endif; ?>
                             </div>
                             
                             <!-- Full Payment Option -->
@@ -388,32 +346,6 @@ require_once('../inc/sess_auth.php');
                                 <div class="invalid-feedback" id="payment_type_error"></div>
                             </div>
                             
-                            <!-- Installment Options -->
-                            <div id="installment_section" class="form-group" style="display: none;">
-                                <label for="installment_months" class="form-label"><strong>Installment Period *</strong></label>
-                                <select class="form-control" name="installment_months" id="installment_months">
-                                    <option value="">-- Select Installment Period --</option>
-                                    <option value="6">6 Months</option>
-                                    <option value="12">12 Months</option>
-                                    <option value="18">18 Months</option>
-                                    <option value="24">24 Months</option>
-                                </select>
-                                <div class="invalid-feedback" id="installment_months_error"></div>
-                                
-                                <div class="mt-2">
-                                    <label for="down_payment" class="form-label"><strong>Down Payment Amount *</strong></label>
-                                    <input type="number" class="form-control" name="down_payment" id="down_payment" 
-                                           min="0" step="0.01" placeholder="Enter down payment amount">
-                                    <small class="form-text text-muted">Minimum down payment: ₱<?= number_format($grand_total * 0.2, 2) ?></small>
-                                    <div class="invalid-feedback" id="down_payment_error"></div>
-                                </div>
-                                
-                                <div class="mt-2">
-                                    <label for="monthly_payment" class="form-label"><strong>Monthly Payment</strong></label>
-                                    <input type="text" class="form-control" name="monthly_payment" id="monthly_payment" 
-                                           readonly placeholder="Will be calculated automatically">
-                                </div>
-                            </div>
                             
                             <!-- Pickup-based orders: Delivery address removed. Show client info summary instead. -->
                             <div class="form-group">
@@ -469,9 +401,8 @@ require_once('../inc/sess_auth.php');
                 <h6>Payment Terms</h6>
                 <ul>
                     <li>Full Payment: Payment must be completed before delivery</li>
-                    <li>Installment: Minimum 20% down payment required</li>
-                    <li>Monthly payments are due on the same date each month</li>
-                    <li>Late payment fees may apply for overdue installments</li>
+                    <li>Cash or Card payments are accepted</li>
+                    <li>Payment confirmation required before order processing</li>
                 </ul>
                 
                 <h6>Delivery Terms</h6>
@@ -512,49 +443,18 @@ require_once('../inc/sess_auth.php');
             
             // Hide all sections first
             $('#full_payment_section').hide();
-            $('#installment_section').hide();
             
             // Clear validation states
-            $('#payment_type, #installment_months, #down_payment').removeClass('is-invalid is-valid');
-            $('#payment_type_error, #installment_months_error, #down_payment_error').text('');
+            $('#payment_type').removeClass('is-invalid is-valid');
+            $('#payment_type_error').text('');
             
             // Show relevant section
             if(paymentMethod === 'full_payment') {
                 $('#full_payment_section').show();
                 $('#payment_type').prop('required', true);
-                $('#installment_months, #down_payment').prop('required', false);
-            } else if(paymentMethod === 'installment') {
-                if(!hasMotorcycles){
-                    // Prevent installment for parts-only carts
-                    $(this).val('full_payment').trigger('change');
-                    alert_toast('Installment is available only for motorcycle purchases.', 'info');
-                    return;
-                }
-                $('#installment_section').show();
-                $('#installment_months, #down_payment').prop('required', true);
-                $('#payment_type').prop('required', false);
             }
         });
         
-        // Installment calculation
-        $('#installment_months, #down_payment').on('input change', function(){
-            calculateInstallment();
-        });
-        
-        function calculateInstallment() {
-            var months = parseInt($('#installment_months').val());
-            var downPayment = parseFloat($('#down_payment').val()) || 0;
-            var totalAmount = <?= $grand_total ?>;
-            var minimumDown = totalAmount * 0.2;
-            
-            if(months > 0 && downPayment >= minimumDown) {
-                var remainingAmount = totalAmount - downPayment;
-                var monthlyPayment = remainingAmount / months;
-                $('#monthly_payment').val('₱' + monthlyPayment.toFixed(2));
-            } else {
-                $('#monthly_payment').val('');
-            }
-        }
         
         // Form validation
         function validateForm() {
@@ -588,31 +488,6 @@ require_once('../inc/sess_auth.php');
                 }
             }
             
-            // Validate installment section (only when motorcycles are present)
-            if(paymentMethod === 'installment' && hasMotorcycles) {
-                var months = $('#installment_months').val();
-                var downPayment = parseFloat($('#down_payment').val()) || 0;
-                var totalAmount = <?= $grand_total ?>;
-                var minimumDown = totalAmount * 0.2;
-                
-                if(!months) {
-                    $('#installment_months').addClass('is-invalid');
-                    $('#installment_months_error').text('Please select an installment period.').show();
-                    isValid = false;
-                } else {
-                    $('#installment_months').addClass('is-valid');
-                    $('#installment_months_error').hide();
-                }
-                
-                if(!downPayment || downPayment < minimumDown) {
-                    $('#down_payment').addClass('is-invalid');
-                    $('#down_payment_error').text('Down payment must be at least ₱' + minimumDown.toFixed(2) + ' (20% of total amount)').show();
-                    isValid = false;
-                } else {
-                    $('#down_payment').addClass('is-valid');
-                    $('#down_payment_error').hide();
-                }
-            }
             
             // Delivery address validation removed (pickup-based orders)
             
