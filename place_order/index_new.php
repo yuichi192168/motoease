@@ -263,6 +263,7 @@ require_once('../inc/sess_auth.php');
                                 <select class="form-control" name="payment_method" id="payment_method" required>
                                     <option value="">-- Select Payment Method --</option>
                                     <option value="full_payment">Full Payment (Cash/Card)</option>
+                                    <option value="installment">Installment Plan (Motorcycle Orders Only)</option>
                                 </select>
                                 <div class="invalid-feedback" id="payment_method_error">Please select a payment method.</div>
                                 

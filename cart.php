@@ -137,7 +137,7 @@ require_once('./inc/sess_auth.php');
 </style>
 <div class="content py-5 mt-3">
     <div class="container">
-        <h3><b>My Shopping Cart</b></h3>
+        <h3><b>Advance Order Cart</b></h3>
         <hr>
         <div class="card card-outline card-primary shadow rounded-0">
             <div class="w-100 p-3">
@@ -396,7 +396,7 @@ require_once('./inc/sess_auth.php');
             </div>
             <div class="col-md-6 text-right">
                 <button class="btn btn-primary btn-lg" type="button" id="checkout" disabled>
-                    <i class="fa fa-shopping-cart"></i> Proceed to Checkout
+                    <i class="fa fa-shopping-cart"></i> Proceed to Advance Order
                 </button>
             </div>
         </div>

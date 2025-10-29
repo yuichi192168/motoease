@@ -77,9 +77,9 @@
                 <div class="nav-item">
                     <a href="./register.php" class="nav-link"><i class="fas fa-user-plus me-1"></i>Register</a>
                 </div>
-                <div class="nav-item">
+                <!-- <div class="nav-item">
                     <a href="./admin" class="nav-link"><i class="fas fa-cog me-1"></i>Admin</a>
-                </div>
+                </div> -->
             <?php endif; ?>
         </div>
     </div>
@@ -202,12 +202,12 @@
                             <span>Register</span>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="./admin">
+                    <!-- <li class="nav-item">
+                        <a class="nav-link" h   ref="./admin">
                             <i class="fas fa-cog"></i>
                             <span>Admin</span>
                         </a>
-                    </li>
+                    </li> -->
                 <?php endif; ?>
             </ul>
         </nav>
