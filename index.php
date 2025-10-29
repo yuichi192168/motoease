@@ -27,6 +27,9 @@
       <div class="modal-content  rounded-0">
         <div class="modal-header">
         <h5 class="modal-title"></h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
       </div>
       <div class="modal-body">
       </div>
@@ -54,7 +57,7 @@
   <div class="modal fade" id="viewer_modal" role='dialog'>
     <div class="modal-dialog modal-md" role="document">
       <div class="modal-content">
-              <button type="button" class="btn-close" data-dismiss="modal"><span class="fa fa-times"></span></button>
+              <button type="button" class="close" data-dismiss="modal"><span class="fa fa-times"></span></button>
               <img src="" alt="">
       </div>
     </div>
@@ -64,6 +67,9 @@
       <div class="modal-content">
         <div class="modal-header">
         <h5 class="modal-title">Confirmation</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
       </div>
       <div class="modal-body">
         <div id="delete_content"></div>
@@ -75,6 +81,8 @@
       </div>
     </div>
   </div>
+
+  <!-- NOTE: Removed Bootstrap 5 JS include to avoid conflicts with the project's Bootstrap/Modal scripts -->
 
 </body>
 </html>

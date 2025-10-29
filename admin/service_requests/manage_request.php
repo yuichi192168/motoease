@@ -1,9 +1,12 @@
 <?php 
 require_once('./../../config.php');
 if(isset($_GET['id'])){
-$qry = $conn->query("SELECT s.*,cc.category,concat(c.lastname,', ', c.firstname,' ',c.middlename) as fullname,c.email,c.contact, c.address FROM `service_requests` s inner join `categories` cc inner join client_list c on s.client_id = c.id where s.id = '{$_GET['id']}' ");
-foreach($qry->fetch_array() as $k => $v){
-    $$k = $v;
+$qry = $conn->query("SELECT s.*,concat(c.lastname,', ', c.firstname,' ',c.middlename) as fullname,c.email,c.contact FROM `service_requests` s inner join client_list c on s.client_id = c.id where s.id = '{$_GET['id']}' ");
+$request_data = $qry->fetch_assoc();
+if($request_data) {
+    foreach($request_data as $k => $v){
+        $$k = $v;
+    }
 }
 $meta = $conn->query("SELECT * FROM `request_meta` where request_id = '{$id}'");
 while($row = $meta->fetch_assoc()){
@@ -48,10 +51,7 @@ while($row = $meta->fetch_assoc()){
                     <label for="email" class="control-label">Owner Email</label>
                     <input type="email" name="" id="email" class="form-control form-control-sm rounded-0" value="<?php echo isset($email) ? $email : "" ?>" disabled>
                 </div>
-                <div class="form-group">
-                    <label for="address" class="control-label">Address</label>
-                    <textarea rows="3" name="" id="address" class="form-control form-control-sm rounded-0" style="resize:none" disabled><?php echo isset($address) ? $address : "" ?></textarea>
-                </div>
+                
             </div>
             <div class="col-md-6">
                 <div class="form-group">
@@ -78,17 +78,7 @@ while($row = $meta->fetch_assoc()){
                         <?php endwhile; ?>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label for="service_type" class="control-label">Request Type</label>
-                    <select name="service_type" id="service_type" class="form-select form-select-sm select2 rounded-0" required>
-                        <option <?php echo isset($service_type) && $service_type == 'Drop Off' ? "selected" : '' ?>>Drop Off</option>
-                        <option <?php echo isset($service_type) && $service_type == 'Pick Up' ? "selected" : '' ?>>Pick Up</option>
-                    </select>
-                </div>
-                <div class="form-group" <?php echo isset($service_type) && $service_type == 'Drop Off' ? 'style="display:none"' : '' ?>>
-                    <label for="pickup_address" class="control-label">Pick up Address</label>
-                    <textarea rows="3" name="pickup_address" id="pickup_address" class="form-control form-control-sm rounded-0" style="resize:none"><?php echo isset($pickup_address) ? $pickup_address : "" ?></textarea>
-                </div>
+                
             </div>
         </div>
         <hr class="border-light">
@@ -97,12 +87,12 @@ while($row = $meta->fetch_assoc()){
                 <div class="form-group " id="mechanic-holder">
                     <label for="mechanic_id" class="control-label">Assigned To:</label>
                     <select name="mechanic_id" id="mechanic_id" class="form-select form-select-sm rounded-0" required>
-                        <option disabled <?php echo !isset($mechenic_id) || (isset($mechanic_id) && empty($mechanic_id)) ? "selected" : "" ?>></option>
+                        <option disabled <?php echo !isset($mechanic_id) || (isset($mechanic_id) && empty($mechanic_id)) ? "selected" : "" ?>></option>
                         <?php 
                         $mechanic = $conn->query("SELECT * FROM `mechanics_list` where status = 1 order by `name` asc");
                         while($row = $mechanic->fetch_assoc()):
                         ?>
-                        <option value="<?php echo $row['id'] ?>" <?php echo isset($mechanic_id) && in_array($row['id'],explode(",",$mechanic_id))? "selected" : '' ?>><?php echo  $row['name'] ?></option>
+                        <option value="<?php echo $row['id'] ?>" <?php echo isset($mechanic_id) && $mechanic_id == $row['id'] ? "selected" : '' ?>><?php echo  $row['name'] ?></option>
                         <?php endwhile; ?>
                     </select>
                 </div>
@@ -139,27 +129,54 @@ while($row = $meta->fetch_assoc()){
             placeholder:"Please Select Here",
             dropdownParent: $('#mechanic-holder')
         })
-        $('#service_type').change(function(){
-            var type = $(this).val().toLowerCase()
-            if(type == 'pick up'){
-                $('#pickup_address').parent().show()
-                $('#pickup_address').attr('required',true)
-            }else{
-                $('#pickup_address').parent().hide()
-                $('#pickup_address').attr('required',false)
-            }
-                
-        })
+        // request type removed
         $('#request_form').submit(function(e){
             e.preventDefault()
             start_loader();
+            
+            var formData = new FormData($(this)[0]);
+            
             $.ajax({
                 url:_base_url_+'classes/Master.php?f=save_request',
                 method:'POST',
-                data:$(this).serialize(),
+                data: formData,
+                cache: false,
+                contentType: false,
+                processData: false,
                 dataType:'json',
                 error:err=>{
                     console.log(err)
+                    // Try to extract JSON from non-JSON response
+                    try{
+                        if(err && err.responseText){
+                            var parsed = null;
+                            try{ parsed = JSON.parse(err.responseText); }catch(e){ parsed = null; }
+                            if(!parsed){
+                                var txt = err.responseText;
+                                var s = txt.indexOf('{');
+                                var e = txt.lastIndexOf('}');
+                                if(s !== -1 && e !== -1 && e > s){
+                                    var sub = txt.substring(s, e+1);
+                                    try{ parsed = JSON.parse(sub); }catch(e2){ parsed = null; }
+                                }
+                            }
+                            if(parsed && parsed.status == 'success'){
+                                end_loader();
+                                alert_toast("Data successfully saved",'success');
+                                setTimeout(() => {
+                                    uni_modal("Service Request Details","service_requests/view_request.php?id="+parsed.id,'large')
+                                    $('#uni_modal').on('hidden.bs.modal',function(){
+                                        location.reload()
+                                    })
+                                }, 200);
+                                return;
+                            } else if(parsed && parsed.msg){
+                                end_loader();
+                                alert_toast(parsed.msg,'error');
+                                return;
+                            }
+                        }
+                    }catch(parseErr){ console.log('Response parse failed', parseErr); }
                     alert_toast("An error occured",'error');
                     end_loader()
                 },
@@ -174,7 +191,7 @@ while($row = $meta->fetch_assoc()){
                             })
                         }, 200);
                     }else{
-                        alert_toast("An error occured",'error');
+                        alert_toast(resp.msg || "An error occured",'error');
                     }
                 }
             })

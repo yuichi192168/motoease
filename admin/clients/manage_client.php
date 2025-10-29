@@ -13,7 +13,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 		<h3 class="card-title"><?php echo isset($id) ? "Update ": "Create New " ?> Client Details</h3>
 	</div>
 	<div class="card-body">
-		<form action="" id="client-form">
+		<form action="" id="client-form" enctype="multipart/form-data">
 			<input type="hidden" name ="id" value="<?php echo isset($id) ? $id : '' ?>">
 			<div class="form-group">
 				<label for="firstname" class="control-label">First Name</label>
@@ -47,6 +47,16 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 <input name="email" id="email" type="email" class="form-control rounded-0" value="<?php echo isset($email) ? $email : ''; ?>" required>
 			</div>
 			<div class="form-group">
+				<label for="" class="control-label">Avatar</label>
+				<div class="custom-file">
+		              <input type="file" class="custom-file-input rounded-circle" id="customFile" name="img" onchange="displayImg(this,$(this))">
+		              <label class="custom-file-label" for="customFile">Choose file</label>
+		            </div>
+			</div>
+			<div class="form-group d-flex justify-content-center">
+				<img src="<?php echo validate_image(isset($avatar) ? $avatar :'') ?>" alt="" id="cimg" class="img-fluid img-thumbnail">
+			</div>
+			<div class="form-group">
 				<label for="password" class="control-label">New Password</label>
 				<div class="input-group">
 					<input type="password" name="password" id="password" placeholder="" class="form-control">
@@ -67,10 +77,28 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 	</div>
 	<div class="card-footer">
 		<button class="btn btn-flat btn-primary" form="client-form">Save</button>
-		<a class="btn btn-flat btn-default" href="?page=client">Cancel</a>
+		<a class="btn btn-flat btn-default" href="./?page=clients">Cancel</a>
 	</div>
 </div>
+<style>
+	img#cimg{
+		height: 15vh;
+		width: 15vh;
+		object-fit: cover;
+		border-radius: 100% 100%;
+	}
+</style>
 <script>
+	function displayImg(input,_this) {
+	    if (input.files && input.files[0]) {
+	        var reader = new FileReader();
+	        reader.onload = function (e) {
+	        	$('#cimg').attr('src', e.target.result);
+	        }
+
+	        reader.readAsDataURL(input.files[0]);
+	    }
+	}
 	$(document).ready(function(){
 		$('.pass_type').click(function(){
             var type = $(this).attr('data-type')
@@ -107,7 +135,10 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 				},
 				success:function(resp){
 					if(typeof resp =='object' && resp.status == 'success'){
-						location.href = "./?page=clients";
+						alert_toast(resp.msg || "Client data saved successfully.", 'success');
+						setTimeout(() => {
+							location.href = "./?page=clients";
+						}, 1500);
 					}else if(resp.status == 'failed' && !!resp.msg){
                         var el = $('<div>')
                             el.addClass("alert alert-danger err-msg").text(resp.msg)

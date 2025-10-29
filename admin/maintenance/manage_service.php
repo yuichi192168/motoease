@@ -24,6 +24,11 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 <textarea name="description" id="" cols="30" rows="2" class="form-control form no-resize summernote"><?php echo isset($description) ? html_entity_decode(stripslashes($description)) : ''; ?></textarea>
 			</div>
             <div class="form-group">
+				<label for="estimated_hours" class="control-label">Estimated Time (Minutes)</label>
+                <input type="number" name="estimated_hours" id="estimated_hours" class="form-control" value="<?php echo isset($estimated_hours) ? ($estimated_hours * 60) : ''; ?>" step="0.5" min="0" placeholder="e.g., 150">
+                <small class="text-muted">Enter estimated completion time in minutes (e.g., 150 for 2 hours 30 minutes)</small>
+			</div>
+            <div class="form-group">
 				<label for="status" class="control-label">Status</label>
                 <select name="status" id="status" class="custom-select selevt">
                 <option value="1" <?php echo isset($status) && $status == 1 ? 'selected' : '' ?>>Active</option>
@@ -35,7 +40,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 	</div>
 	<div class="card-footer">
 		<button class="btn btn-flat btn-primary" form="service-form">Save</button>
-		<a class="btn btn-flat btn-default" href="?page=maintenance/service">Cancel</a>
+		<a class="btn btn-flat btn-default" href="./?page=maintenance/services">Cancel</a>
 	</div>
 </div>
 <script>
@@ -62,7 +67,10 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 				},
 				success:function(resp){
 					if(typeof resp =='object' && resp.status == 'success'){
-						location.href = "./?page=maintenance/services";
+						alert_toast(resp.msg || "Service data saved successfully.", 'success');
+						setTimeout(() => {
+							location.href = "./?page=maintenance/services";
+						}, 1500);
 					}else if(resp.status == 'failed' && !!resp.msg){
                         var el = $('<div>')
                             el.addClass("alert alert-danger err-msg").text(resp.msg)

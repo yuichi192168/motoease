@@ -34,11 +34,27 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 <option value="0" <?php echo isset($status) && $status == 0 ? 'selected' : '' ?>>Inactive</option>
                 </select>
 			</div>
+			<div class="form-group">
+				<label class="control-label">Profile Photo</label>
+				<div class="row">
+					<div class="col-md-6">
+						<div class="custom-file">
+							<input type="file" class="custom-file-input" id="mechanicAvatar" name="img" accept="image/*" onchange="displayMechImg(this,$(this))">
+							<label class="custom-file-label" for="mechanicAvatar">Choose file</label>
+						</div>
+					</div>
+					<div class="col-md-6">
+						<div class="d-flex justify-content-center">
+							<img src="<?php echo validate_image(isset($avatar) ? $avatar : '') ?>" alt="Avatar" id="mech_img_preview" class="img-fluid img-thumbnail" style="height: 120px; width: 120px; object-fit: cover; border-radius: 50%;">
+						</div>
+					</div>
+				</div>
+			</div>
 		</form>
 	</div>
 	<div class="card-footer">
 		<button class="btn btn-flat btn-primary" form="mechanic-form">Save</button>
-		<a class="btn btn-flat btn-default" href="?page=mechanic">Cancel</a>
+		<a class="btn btn-flat btn-default" href="./?page=mechanics">Cancel</a>
 	</div>
 </div>
 <script>
@@ -65,7 +81,10 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 				},
 				success:function(resp){
 					if(typeof resp =='object' && resp.status == 'success'){
-						location.href = "./?page=mechanics";
+						alert_toast(resp.msg || "Mechanic data saved successfully.", 'success');
+						setTimeout(() => {
+							location.href = "./?page=mechanics";
+						}, 1500);
 					}else if(resp.status == 'failed' && !!resp.msg){
                         var el = $('<div>')
                             el.addClass("alert alert-danger err-msg").text(resp.msg)
@@ -81,6 +100,20 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 				}
 			})
 		})
+
+		window.displayMechImg = function(input,_this){
+			if (input.files && input.files[0]) {
+				var reader = new FileReader();
+				reader.onload = function (e) {
+					$('#mech_img_preview').attr('src', e.target.result);
+					_this.siblings('.custom-file-label').html(input.files[0].name)
+				}
+				reader.readAsDataURL(input.files[0]);
+			}else{
+				$('#mech_img_preview').attr('src', "<?php echo validate_image(isset($avatar) ? $avatar : '') ?>");
+				_this.siblings('.custom-file-label').html("Choose file")
+			}
+		}
 
         $('.summernote').summernote({
 		        height: 200,

@@ -118,8 +118,17 @@ CREATE TABLE `client_list` (
   `status` tinyint(1) NOT NULL DEFAULT 1,
   `delete_flag` tinyint(1) NOT NULL DEFAULT 0,
   `date_created` datetime NOT NULL DEFAULT current_timestamp(),
-  `date_added` datetime DEFAULT NULL ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `date_added` datetime DEFAULT NULL ON UPDATE current_timestamp(),
+  `login_attempts` int(11) DEFAULT 0,
+  `is_locked` tinyint(4) DEFAULT 0,
+  `locked_until` datetime DEFAULT NULL,
+  `account_balance` decimal(10,2) DEFAULT 0.00,
+  `vehicle_plate_number` varchar(20) DEFAULT NULL,
+  `or_cr_number` varchar(50) DEFAULT NULL,
+  `or_cr_release_date` date DEFAULT NULL,
+  `or_cr_status` enum('pending','released','expired') DEFAULT 'pending',
+  `or_cr_file_path` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `client_list`
@@ -374,8 +383,14 @@ CREATE TABLE `users` (
   `last_login` datetime DEFAULT NULL,
   `type` tinyint(1) NOT NULL DEFAULT 0,
   `date_added` datetime NOT NULL DEFAULT current_timestamp(),
-  `date_updated` datetime DEFAULT NULL ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `date_updated` datetime DEFAULT NULL ON UPDATE current_timestamp(),
+  `login_attempts` int(11) DEFAULT 0,
+  `is_locked` tinyint(4) DEFAULT 0,
+  `locked_until` datetime DEFAULT NULL,
+  `role_type` enum('admin','branch_supervisor','admin_assistant','stock_admin','service_admin','mechanic') DEFAULT 'admin',
+  `branch_id` int(11) DEFAULT NULL,
+  `permissions` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `users`
@@ -385,6 +400,69 @@ INSERT INTO `users` (`id`, `firstname`, `lastname`, `username`, `password`, `ava
 (1, 'Adminstrator', 'Admin', 'admin', '0192023a7bbd73250516f069df18b500', 'uploads/1624240500_avatar.png', NULL, 1, '2021-01-20 14:02:37', '2021-06-21 09:55:07'),
 (6, 'Claire', 'Blake', 'cblake', 'cd74fae0a3adf459f73bbf187607ccea', 'uploads/1632990840_ava.jpg', NULL, 2, '2021-09-30 16:34:02', '2021-09-30 16:35:26');
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `branches`
+--
+
+CREATE TABLE `branches` (
+  `id` int(11) NOT NULL,
+  `name` varchar(250) NOT NULL,
+  `address` text NOT NULL,
+  `contact` varchar(50) NOT NULL,
+  `email` varchar(150) NOT NULL,
+  `status` tinyint(1) NOT NULL DEFAULT 1,
+  `date_created` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `branches`
+--
+
+INSERT INTO `branches` (`id`, `name`, `address`, `contact`, `email`, `status`, `date_created`) VALUES
+(1, 'Main Branch', '123 Main Street, City Center', '09123456789', 'main@motoease.com', 1, '2025-01-01 00:00:00'),
+(2, 'North Branch', '456 North Avenue, North District', '09123456790', 'north@motoease.com', 1, '2025-01-01 00:00:00');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `customer_transactions`
+--
+
+CREATE TABLE `customer_transactions` (
+  `id` int(11) NOT NULL,
+  `client_id` int(30) NOT NULL,
+  `transaction_type` enum('payment','refund','adjustment','order_payment') NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `description` text NOT NULL,
+  `reference_id` varchar(50) DEFAULT NULL,
+  `date_created` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `or_cr_documents`
+--
+
+CREATE TABLE `or_cr_documents` (
+  `id` int(11) NOT NULL,
+  `client_id` int(30) NOT NULL,
+  `document_type` enum('or','cr') NOT NULL,
+  `document_number` varchar(50) NOT NULL,
+  `plate_number` varchar(20) DEFAULT NULL,
+  `vehicle_model` varchar(100) DEFAULT NULL,
+  `vehicle_brand` varchar(100) DEFAULT NULL,
+  `release_date` date DEFAULT NULL,
+  `expiry_date` date DEFAULT NULL,
+  `status` enum('pending','released','expired') DEFAULT 'pending',
+  `file_path` text DEFAULT NULL,
+  `remarks` text DEFAULT NULL,
+  `date_created` datetime NOT NULL DEFAULT current_timestamp(),
+  `date_updated` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 --
 -- Indexes for dumped tables
 --
@@ -392,231 +470,4 @@ INSERT INTO `users` (`id`, `firstname`, `lastname`, `username`, `password`, `ava
 --
 -- Indexes for table `brand_list`
 --
-ALTER TABLE `brand_list`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `cart_list`
---
-ALTER TABLE `cart_list`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `client_id` (`client_id`),
-  ADD KEY `product_id` (`product_id`);
-
---
--- Indexes for table `categories`
---
-ALTER TABLE `categories`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `client_list`
---
-ALTER TABLE `client_list`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `email` (`email`) USING HASH;
-
---
--- Indexes for table `mechanics_list`
---
-ALTER TABLE `mechanics_list`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `order_items`
---
-ALTER TABLE `order_items`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `order_id` (`order_id`),
-  ADD KEY `product_id` (`product_id`);
-
---
--- Indexes for table `order_list`
---
-ALTER TABLE `order_list`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `client_id` (`client_id`);
-
---
--- Indexes for table `product_list`
---
-ALTER TABLE `product_list`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `brand_id` (`brand_id`),
-  ADD KEY `category_id` (`category_id`);
-
---
--- Indexes for table `request_meta`
---
-ALTER TABLE `request_meta`
-  ADD KEY `request_id` (`request_id`);
-
---
--- Indexes for table `service_list`
---
-ALTER TABLE `service_list`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `service_requests`
---
-ALTER TABLE `service_requests`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `client_id` (`client_id`),
-  ADD KEY `mechanic_id` (`mechanic_id`);
-
---
--- Indexes for table `stock_list`
---
-ALTER TABLE `stock_list`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `product_id` (`product_id`);
-
---
--- Indexes for table `system_info`
---
-ALTER TABLE `system_info`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `users`
---
-ALTER TABLE `users`
-  ADD PRIMARY KEY (`id`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `brand_list`
---
-ALTER TABLE `brand_list`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
-
---
--- AUTO_INCREMENT for table `cart_list`
---
-ALTER TABLE `cart_list`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
-
---
--- AUTO_INCREMENT for table `categories`
---
-ALTER TABLE `categories`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
-
---
--- AUTO_INCREMENT for table `client_list`
---
-ALTER TABLE `client_list`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
--- AUTO_INCREMENT for table `mechanics_list`
---
-ALTER TABLE `mechanics_list`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
-
---
--- AUTO_INCREMENT for table `order_items`
---
-ALTER TABLE `order_items`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
-
---
--- AUTO_INCREMENT for table `order_list`
---
-ALTER TABLE `order_list`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
-
---
--- AUTO_INCREMENT for table `product_list`
---
-ALTER TABLE `product_list`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
-
---
--- AUTO_INCREMENT for table `service_list`
---
-ALTER TABLE `service_list`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
-
---
--- AUTO_INCREMENT for table `service_requests`
---
-ALTER TABLE `service_requests`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
-
---
--- AUTO_INCREMENT for table `stock_list`
---
-ALTER TABLE `stock_list`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
-
---
--- AUTO_INCREMENT for table `system_info`
---
-ALTER TABLE `system_info`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
-
---
--- AUTO_INCREMENT for table `users`
---
-ALTER TABLE `users`
-  MODIFY `id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
-
---
--- Constraints for dumped tables
---
-
---
--- Constraints for table `cart_list`
---
-ALTER TABLE `cart_list`
-  ADD CONSTRAINT `cart_list_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `product_list` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `cart_list_ibfk_2` FOREIGN KEY (`client_id`) REFERENCES `client_list` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `order_items`
---
-ALTER TABLE `order_items`
-  ADD CONSTRAINT `order_items_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `order_list` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `order_items_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `product_list` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `order_list`
---
-ALTER TABLE `order_list`
-  ADD CONSTRAINT `order_list_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `client_list` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `product_list`
---
-ALTER TABLE `product_list`
-  ADD CONSTRAINT `tblproductlist_ibfk_1` FOREIGN KEY (`brand_id`) REFERENCES `brand_list` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `tblproductlist_ibfk_2` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `request_meta`
---
-ALTER TABLE `request_meta`
-  ADD CONSTRAINT `request_meta_ibfk_1` FOREIGN KEY (`request_id`) REFERENCES `service_requests` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION;
-
---
--- Constraints for table `service_requests`
---
-ALTER TABLE `service_requests`
-  ADD CONSTRAINT `service_requests_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `client_list` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `service_requests_ibfk_2` FOREIGN KEY (`mechanic_id`) REFERENCES `mechanics_list` (`id`) ON DELETE SET NULL;
-
---
--- Constraints for table `stock_list`
---
-ALTER TABLE `stock_list`
-  ADD CONSTRAINT `stock_list_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `product_list` (`id`) ON DELETE CASCADE;
-COMMIT;
-
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+ALTER TABLE `

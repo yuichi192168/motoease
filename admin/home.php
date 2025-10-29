@@ -1,217 +1,276 @@
 <h1 class="">Welcome to <?php echo $_settings->info('name') ?></h1>
 <hr>
 <div class="row">
-          <div class="col-12 col-sm-6 col-md-3">
-            <div class="info-box">
-              <span class="info-box-icon bg-gradient-dark elevation-1"><i class="fas fa-copyright"></i></span>
+  <!-- Total Brands -->
+  <!-- <div class="col-12 col-sm-6 col-md-3">
+    <div class="info-box">
+      <span class="info-box-icon bg-dark elevation-1"><i class="fas fa-copyright"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Total Brands</span>
+        <span class="info-box-number">
+          <?php 
+            $brands = $conn->query("SELECT COUNT(id) as total FROM brand_list WHERE delete_flag = 0")->fetch_assoc()['total'];
+            echo number_format($brands);
+          ?>
+        </span>
+      </div>
+    </div>
+  </div> -->
 
-              <div class="info-box-content">
-                <span class="info-box-text">Total Brands</span>
-                <span class="info-box-number">
-                  <?php 
-                    $inv = $conn->query("SELECT count(id) as total FROM brand_list where delete_flag = 0 ")->fetch_assoc()['total'];
-                    echo number_format($inv);
-                  ?>
-                  <?php ?>
-                </span>
-              </div>
-              <!-- /.info-box-content -->
-            </div>
-            <!-- /.info-box -->
+  <!-- Total Category -->
+  <!-- <div class="col-12 col-sm-6 col-md-3">
+    <div class="info-box">
+      <span class="info-box-icon bg-light elevation-1"><i class="fas fa-th-list"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Total Category</span>
+        <span class="info-box-number">
+          <?php 
+            $categories = $conn->query("SELECT COUNT(id) as total FROM categories WHERE delete_flag = 0")->fetch_assoc()['total'];
+            echo number_format($categories);
+          ?>
+        </span>
+      </div>
+    </div>
+  </div> -->
+
+  <!-- Mechanics -->
+  <div class="col-12 col-sm-6 col-md-3">
+    <div class="shadow info-box mb-3">
+      <span class="info-box-icon bg-gray elevation-1"><i class="fas fa-users-cog"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Mechanics</span>
+        <span class="info-box-number">
+          <?php 
+            $mechanics = $conn->query("SELECT COUNT(id) as total FROM mechanics_list WHERE status = 1")->fetch_assoc()['total'];
+            echo number_format($mechanics);
+          ?>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Services -->
+  <div class="col-12 col-sm-6 col-md-3">
+    <div class="shadow info-box mb-3">
+      <span class="info-box-icon bg-success elevation-1"><i class="fas fa-th-list"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Services</span>
+        <span class="info-box-number">
+          <?php 
+            $services = $conn->query("SELECT COUNT(id) as total FROM service_list WHERE status = 1")->fetch_assoc()['total'];
+            echo number_format($services);
+          ?>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Registered Clients -->
+  <div class="col-12 col-sm-6 col-md-3">
+    <div class="shadow info-box mb-3">
+      <span class="info-box-icon bg-white elevation-1"><i class="fas fa-users"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Registered Clients</span>
+        <span class="info-box-number">
+          <?php 
+            $clients = $conn->query("SELECT COUNT(id) as total FROM client_list WHERE status = 1 AND delete_flag = 0")->fetch_assoc()['total'];
+            echo number_format($clients);
+          ?>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pending Orders -->
+  <div class="col-12 col-sm-6 col-md-3">
+    <div class="shadow info-box mb-3">
+      <span class="info-box-icon bg-yellow elevation-1"><i class="fas fa-tasks"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Pending Orders</span>
+        <span class="info-box-number">
+          <?php 
+            $pending_orders = $conn->query("SELECT COUNT(id) as total FROM order_list WHERE status = 0")->fetch_assoc()['total'];
+            echo number_format($pending_orders);
+          ?>
+        </span>
+        <?php if($pending_orders > 0): ?>
+          <span class="badge badge-warning badge-pill">New</span>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmed Orders -->
+  <div class="col-12 col-sm-6 col-md-3">
+    <div class="shadow info-box mb-3">
+      <span class="info-box-icon bg-green elevation-1"><i class="fas fa-tasks"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Confirmed Orders</span>
+        <span class="info-box-number">
+          <?php 
+            $confirmed_orders = $conn->query("SELECT COUNT(id) as total FROM order_list WHERE status = 1")->fetch_assoc()['total'];
+            echo number_format($confirmed_orders);
+          ?>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cancelled Orders -->
+  <div class="col-12 col-sm-6 col-md-3">
+    <div class="shadow info-box mb-3">
+      <span class="info-box-icon bg-red elevation-1"><i class="fas fa-tasks"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Cancelled Orders</span>
+        <span class="info-box-number">
+          <?php 
+            $cancelled_orders = $conn->query("SELECT COUNT(id) as total FROM order_list WHERE status = 5")->fetch_assoc()['total'];
+            echo number_format($cancelled_orders);
+          ?>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Service Requests -->
+  <div class="col-12 col-sm-6 col-md-3">
+    <div class="shadow info-box mb-3">
+      <span class="info-box-icon bg-info elevation-1"><i class="fas fa-tools"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">New Service Requests</span>
+        <span class="info-box-number">
+          <?php 
+            $new_requests = $conn->query("SELECT COUNT(id) as total FROM service_requests WHERE status = 0")->fetch_assoc()['total'];
+            echo number_format($new_requests);
+          ?>
+        </span>
+        <?php if($new_requests > 0): ?>
+          <span class="badge badge-info badge-pill">New</span>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+
+  <!-- Finished Requests -->
+  <div class="col-12 col-sm-6 col-md-3">
+    <div class="shadow info-box mb-3">
+      <span class="info-box-icon bg-success elevation-1"><i class="fas fa-check-circle"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Finished Requests</span>
+        <span class="info-box-number">
+          <?php 
+            $finished_requests = $conn->query("SELECT COUNT(id) as total FROM service_requests WHERE status = 3")->fetch_assoc()['total'];
+            echo number_format($finished_requests);
+          ?>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Appointments -->
+  <div class="col-12 col-sm-6 col-md-3">
+    <div class="shadow info-box mb-3">
+      <span class="info-box-icon bg-warning elevation-1"><i class="fas fa-calendar-alt"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">New Appointments</span>
+        <span class="info-box-number">
+          <?php 
+            $new_appointments = $conn->query("SELECT COUNT(id) as total FROM appointments WHERE status = 'pending'")->fetch_assoc()['total'];
+            echo number_format($new_appointments);
+          ?>
+        </span>
+        <?php if($new_appointments > 0): ?>
+          <span class="badge badge-warning badge-pill">New</span>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmed Appointments -->
+  <div class="col-12 col-sm-6 col-md-3">
+    <div class="shadow info-box mb-3">
+      <span class="info-box-icon bg-primary elevation-1"><i class="fas fa-calendar-alt"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Confirmed Appointments</span>
+        <span class="info-box-number">
+          <?php 
+            $confirmed_appointments = $conn->query("SELECT COUNT(id) as total FROM appointments WHERE status = 'confirmed'")->fetch_assoc()['total'];
+            echo number_format($confirmed_appointments);
+          ?>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Actions Section -->
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="card card-outline card-primary">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="fas fa-bolt"></i> Quick Actions
+        </h3>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-4 col-sm-6 mb-3">
+            <a href="?page=products/manage_product" class="btn btn-primary btn-block btn-lg">
+              <i class="fas fa-plus"></i><br>
+              <strong>Add Product</strong><br>
+              <small>Add new motorcycle part</small>
+            </a>
           </div>
-          <!-- /.col -->
-          <div class="col-12 col-sm-6 col-md-3">
-            <div class="info-box">
-              <span class="info-box-icon bg-light elevation-1"><i class="fas fa-th-list"></i></span>
-
-              <div class="info-box-content">
-                <span class="info-box-text">Total Category</span>
-                <span class="info-box-number">
-                  <?php 
-                    $inv = $conn->query("SELECT count(id) as total FROM categories where delete_flag = 0 ")->fetch_assoc()['total'];
-                    echo number_format($inv);
-                  ?>
-                  <?php ?>
-                </span>
-              </div>
-              <!-- /.info-box-content -->
-            </div>
-            <!-- /.info-box -->
+          <div class="col-md-4 col-sm-6 mb-3">
+            <a href="?page=orders" class="btn btn-info btn-block btn-lg">
+              <i class="fas fa-shopping-cart"></i><br>
+              <strong>Manage Orders</strong><br>
+              <small>View and manage orders</small>
+            </a>
           </div>
-          <!-- /.col -->
-          <div class="col-12 col-sm-6 col-md-3">
-            <div class="shadow info-box mb-3">
-              <span class="info-box-icon bg-info elevation-1"><i class="fas fa-users-cog"></i></span>
-
-              <div class="info-box-content">
-                <span class="info-box-text">Mechanics</span>
-                <span class="info-box-number">
-                  <?php 
-                    $mechanics = $conn->query("SELECT sum(id) as total FROM `mechanics_list` where status = '1' ")->fetch_assoc()['total'];
-                    echo number_format($mechanics);
-                  ?>
-                </span>
-              </div>
-              <!-- /.info-box-content -->
-            </div>
-            <!-- /.info-box -->
-          </div>
-          <!-- /.col -->
-
-          <!-- fix for small devices only -->
-          <div class="clearfix hidden-md-up"></div>
-
-          <div class="col-12 col-sm-6 col-md-3">
-            <div class="shadow info-box mb-3">
-              <span class="info-box-icon bg-success elevation-1"><i class="fas fa-th-list"></i></span>
-
-              <div class="info-box-content">
-                <span class="info-box-text">Services</span>
-                <span class="info-box-number">
-                <?php 
-                    $services = $conn->query("SELECT sum(id) as total FROM `service_list` where status = 1 ")->fetch_assoc()['total'];
-                    echo number_format($services);
-                  ?>
-                </span>
-              </div>
-              <!-- /.info-box-content -->
-            </div>
-            <!-- /.info-box -->
-          </div>
-          <div class="col-12 col-sm-6 col-md-3">
-            <div class="shadow info-box mb-3">
-              <span class="info-box-icon bg-gradient-primary elevation-1"><i class="fas fa-users"></i></span>
-
-              <div class="info-box-content">
-                <span class="info-box-text">Registered Clients</span>
-                <span class="info-box-number">
-                <?php 
-                    $services = $conn->query("SELECT sum(id) as total FROM `client_list` where status = 1 and delete_flag = 0 ")->fetch_assoc()['total'];
-                    echo number_format($services);
-                  ?>
-                </span>
-              </div>
-              <!-- /.info-box-content -->
-            </div>
-            <!-- /.info-box -->
-          </div>
-          <div class="col-12 col-sm-6 col-md-3">
-            <div class="shadow info-box mb-3">
-              <span class="info-box-icon bg-gradient-secondary elevation-1"><i class="fas fa-tasks"></i></span>
-
-              <div class="info-box-content">
-                <span class="info-box-text">Pending Orders</span>
-                <span class="info-box-number">
-                <?php 
-                    $services = $conn->query("SELECT sum(id) as total FROM `order_list` where status = 0 ")->fetch_assoc()['total'];
-                    echo number_format($services);
-                  ?>
-                </span>
-              </div>
-              <!-- /.info-box-content -->
-            </div>
-            <!-- /.info-box -->
-          </div>
-          <div class="col-12 col-sm-6 col-md-3">
-            <div class="shadow info-box mb-3">
-              <span class="info-box-icon bg-gradient-primary elevation-1"><i class="fas fa-tasks"></i></span>
-
-              <div class="info-box-content">
-                <span class="info-box-text">Confirmed Orders</span>
-                <span class="info-box-number">
-                <?php 
-                    $services = $conn->query("SELECT sum(id) as total FROM `order_list` where status = 1 ")->fetch_assoc()['total'];
-                    echo number_format($services);
-                  ?>
-                </span>
-              </div>
-              <!-- /.info-box-content -->
-            </div>
-            <!-- /.info-box -->
-          </div>
-          <div class="col-12 col-sm-6 col-md-3">
-            <div class="shadow info-box mb-3">
-              <span class="info-box-icon bg-gradient-success elevation-1"><i class="fas fa-tasks"></i></span>
-
-              <div class="info-box-content">
-                <span class="info-box-text">Orders For Delivery</span>
-                <span class="info-box-number">
-                <?php 
-                    $services = $conn->query("SELECT sum(id) as total FROM `order_list` where status = 2 ")->fetch_assoc()['total'];
-                    echo number_format($services);
-                  ?>
-                </span>
-              </div>
-              <!-- /.info-box-content -->
-            </div>
-            <!-- /.info-box -->
-          </div>
-          <div class="col-12 col-sm-6 col-md-3">
-            <div class="shadow info-box mb-3">
-              <span class="info-box-icon bg-gradient-warning elevation-1"><i class="fas fa-tasks"></i></span>
-
-              <div class="info-box-content">
-                <span class="info-box-text">On the Way Orders</span>
-                <span class="info-box-number">
-                <?php 
-                    $services = $conn->query("SELECT sum(id) as total FROM `order_list` where status = 3 ")->fetch_assoc()['total'];
-                    echo number_format($services);
-                  ?>
-                </span>
-              </div>
-              <!-- /.info-box-content -->
-            </div>
-            <!-- /.info-box -->
-          </div>
-          <div class="col-12 col-sm-6 col-md-3">
-            <div class="shadow info-box mb-3">
-              <span class="info-box-icon bg-gradient-success elevation-1"><i class="fas fa-tasks"></i></span>
-
-              <div class="info-box-content">
-                <span class="info-box-text">Delivered Orders</span>
-                <span class="info-box-number">
-                <?php 
-                    $services = $conn->query("SELECT sum(id) as total FROM `order_list` where status = 4 ")->fetch_assoc()['total'];
-                    echo number_format($services);
-                  ?>
-                </span>
-              </div>
-              <!-- /.info-box-content -->
-            </div>
-            <!-- /.info-box -->
-          </div>
-          <div class="col-12 col-sm-6 col-md-3">
-            <div class="shadow info-box mb-3">
-              <span class="info-box-icon bg-gradient-danger elevation-1"><i class="fas fa-tasks"></i></span>
-
-              <div class="info-box-content">
-                <span class="info-box-text">Cancelled Orders</span>
-                <span class="info-box-number">
-                <?php 
-                    $services = $conn->query("SELECT sum(id) as total FROM `order_list` where status =5 ")->fetch_assoc()['total'];
-                    echo number_format($services);
-                  ?>
-                </span>
-              </div>
-              <!-- /.info-box-content -->
-            </div>
-            <!-- /.info-box -->
-          </div>
-          <div class="col-12 col-sm-6 col-md-3">
-            <div class="shadow info-box mb-3">
-              <span class="info-box-icon bg-warning elevation-1"><i class="fas fa-file-invoice"></i></span>
-
-              <div class="info-box-content">
-                <span class="info-box-text">Finished Requests</span>
-                <span class="info-box-number">
-                <?php 
-                    $services = $conn->query("SELECT sum(id) as total FROM `service_requests` where status = 3 ")->fetch_assoc()['total'];
-                    echo number_format($services);
-                  ?>
-                </span>
-              </div>
-              <!-- /.info-box-content -->
-            </div>
-            <!-- /.info-box -->
+          <div class="col-md-4 col-sm-6 mb-3">
+            <a href="?page=service_management" class="btn btn-success btn-block btn-lg">
+              <i class="fas fa-cogs"></i><br>
+              <strong>Service Management</strong><br>
+              <small>Manage requests & appointments</small>
+            </a>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.btn-block {
+  height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 15px;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.btn-block:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.btn-block i {
+  font-size: 1.5rem;
+  margin-bottom: 5px;
+}
+
+.btn-block strong {
+  font-size: 1rem;
+  margin-bottom: 3px;
+}
+
+.btn-block small {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+</style>

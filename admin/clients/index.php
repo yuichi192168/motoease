@@ -14,17 +14,21 @@
 				<colgroup>
 					<col width="5%">
 					<col width="15%">
-					<col width="30%">
-					<col width="25%">
-					<col width="10%">
+					<col width="5%">
+					<col width="20%">
+					<col width="20%">
 					<col width="15%">
+					<col width="10%">
+					<col width="10%">
 				</colgroup>
 				<thead>
 					<tr>
 						<th>#</th>
 						<th>Date Created</th>
+						<th>Avatar</th>
 						<th>Name</th>
 						<th>Contact</th>
+						<th>OR/CR</th>
 						<th>Status</th>
 						<th>Action</th>
 					</tr>
@@ -41,6 +45,9 @@
 						<tr>
 							<td class="text-center"><?php echo $i++; ?></td>
 							<td><?php echo date("Y-m-d H:i",strtotime($row['date_created'])) ?></td>
+							<td class="text-center">
+								<img src="<?php echo validate_image($row['avatar']) ?>" class="img-circle elevation-2" style="width: 40px; height: 40px; object-fit: cover;" alt="Avatar">
+							</td>
 							<td><?php echo ucwords($row['fullname']) ?></td>
 							<td>
 								<p class="m-0 lh-1">
@@ -48,7 +55,23 @@
 								<?php echo $row['email'] ?>
 								</p>
 							</td>
-							<td class="text-center">
+						<td>
+							<?php 
+							$doc = $conn->query("SELECT id, status FROM or_cr_documents WHERE client_id = '{$row['id']}' ORDER BY date_created DESC LIMIT 1");
+							if($doc && $doc->num_rows>0){
+								$or = $doc->fetch_assoc();
+								$badge = 'secondary';
+								if($or['status'] == 'released') $badge = 'success';
+								elseif($or['status'] == 'pending') $badge = 'warning';
+								elseif($or['status'] == 'expired') $badge = 'danger';
+								echo '<span class="badge badge-'. $badge .'">'. ucfirst($or['status']) .'</span> ';
+								echo '<a href="./?page=orcr_documents&client_id='. $row['id'] .'" class="btn btn-xs btn-info ml-2">View</a>';
+							}else{
+								echo '<span class="text-muted">No OR/CR</span> <a href="./?page=orcr_documents&client_id='. $row['id'] .'" class="btn btn-xs btn-outline-info ml-2">Add</a>';
+							}
+							?>
+						</td>
+						<td class="text-center">
                                 <?php if($row['status'] == 1): ?>
                                     <span class="badge badge-success rounded-pill px-3">Active</span>
                                 <?php else: ?>
@@ -61,7 +84,7 @@
 				                    <span class="sr-only">Toggle Dropdown</span>
 				                  </button>
 				                  <div class="dropdown-menu" role="menu">
-				                    <a class="dropdown-item" href="?page=clients/manage_client&id=<?php echo $row['id'] ?>"><span class="fa fa-edit text-primary"></span> Edit</a>
+				                    <a class="dropdown-item" href="./?page=clients/manage_client&id=<?php echo $row['id'] ?>"><span class="fa fa-edit text-primary"></span> Edit</a>
 				                    <div class="dropdown-divider"></div>
 				                    <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-trash text-danger"></span> Delete</a>
 				                  </div>

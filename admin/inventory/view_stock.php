@@ -1,4 +1,8 @@
 <?php
+// Ensure DB connection when accessed directly (e.g., from Inventory list links)
+if(!isset($conn)){
+    require_once(dirname(__DIR__,2).'/config.php');
+}
 if(isset($_GET['id']) && $_GET['id'] > 0){
     $qry = $conn->query("SELECT p.*, b.name as brand,c.category from `product_list` p inner join brand_list b on p.brand_id = b.id inner join categories c on p.category_id = c.id where p.id = '{$_GET['id']}' ");
     if($qry->num_rows > 0){
@@ -26,7 +30,6 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         <div class="card-header">
             <h4 class="card-title">Product Stock List</h4>
             <div class="card-tools">
-                <a href="javascript:void(0)" id="add_new" class="btn btn-flat btn-sm btn-primary"><span class="fas fa-plus"></span>  Add New Stock</a>
                 <a class="btn btn-default border btn-sm btn-flat" href="./?page=inventory"><i class="fa fa-angle-left"></i> Back</a>
             </div>
         </div>
@@ -41,8 +44,8 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                         </div>
                         <div class="row">
                             <div class="col-md-6">
-                                <small class="mx-2 text-muted">Brand Name</small>
-                                <div class="pl-4"><?= isset($brand) ? $brand : '' ?></div>
+                                <small class="mx-2 text-muted">Product Name</small>
+                                <div class="pl-4"><?= isset($name) ? $name : '' ?></div>
                             </div>
                             <div class="col-md-6">
                                 <small class="mx-2 text-muted">Category</small>
@@ -51,7 +54,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                         </div>
                         <div class="row">
                             <div class="col-md-12">
-                                <small class="mx-2 text-muted">Compatible Models</small>
+                                <small class="mx-2 text-muted">Compatible Motorcycle</small>
                                 <div class="pl-4"><?= isset($models) ? $models : '' ?></div>
                             </div>
                         </div>
@@ -89,21 +92,30 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                             </thead>
                             <tbody>
                                 <?php 
-                                $stocks = $conn->query("SELECT * FROM `stock_list` where `product_id` = '{$id}'");
+                                $stocks = $conn->query("SELECT * FROM `stock_list` where `product_id` = '{$id}' ORDER BY date_created DESC");
+                                $is_old_stock = true; // Flag to identify old stocks
                                 while($row=$stocks->fetch_assoc()):
+                                    // Check if this is an old stock entry (more than 1 day old)
+                                    $is_old = (strtotime($row['date_created']) < strtotime('-1 day'));
                                 ?>
-                                    <tr>
+                                    <tr <?php echo $is_old ? 'style="background-color: #f8f9fa;"' : ''; ?>>
                                         <td class="px-2 py-1 align-middle"><?= date('M d, Y H:i', strtotime($row['date_created'])) ?></td>
-                                        <td class="px-2 py-1 text-right align-middle"><?= number_format($row['quantity']) ?></td>
+                                        <td class="px-2 py-1 text-right align-middle">
+                                            <span class="badge badge-info"><?= number_format($row['quantity']) ?></span>
+                                        </td>
                                         <td class="px-2 py-1 align-middle">
-                                            <button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">
-                                            Action
-                                                <span class="sr-only">Toggle Dropdown</span>
-                                            </button>
-                                            <div class="dropdown-menu" role="menu">
-                                                <a class="dropdown-item edit_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-edit text-dark"></span> Edit</a>
-                                                <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-trash text-danger"></span> Delete</a>
-                                            </div>
+                                            <?php if($is_old): ?>
+                                                <span class="text-muted"><i class="fa fa-lock"></i> Read Only</span>
+                                            <?php else: ?>
+                                                <button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">
+                                                Action
+                                                    <span class="sr-only">Toggle Dropdown</span>
+                                                </button>
+                                                <div class="dropdown-menu" role="menu">
+                                                    <a class="dropdown-item edit_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-edit text-dark"></span> Edit</a>
+                                                    <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-trash text-danger"></span> Delete</a>
+                                                </div>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>
@@ -118,9 +130,6 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 
 <script>
     $(document).ready(function(){
-        $('#add_new').click(function(){
-			uni_modal("Add New Stock","inventory/manage_stock.php?pid=<?= isset($id) ? $id : "" ?>")
-		})
         $('.edit_data').click(function(){
 			uni_modal("Edit Stock","inventory/manage_stock.php?id="+$(this).attr('data-id'))
 		})

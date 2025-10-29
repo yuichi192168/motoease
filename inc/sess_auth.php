@@ -1,4 +1,7 @@
 <?php 
+// Include config.php to get the redirect function and other dependencies
+require_once(__DIR__ . '/../config.php');
+
 // if (session_status() == PHP_SESSION_NONE) {
 //     session_start();
 // }

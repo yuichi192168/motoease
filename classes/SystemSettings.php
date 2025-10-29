@@ -30,13 +30,18 @@ class SystemSettings extends DBConnection{
 	}
 	function update_settings_info(){
 		$data = "";
+		$success = true;
+		
 		foreach ($_POST as $key => $value) {
-			if(!in_array($key,array("about_us","privacy_policy")))
-			if(isset($_SESSION['system_info'][$key])){
-				$value = str_replace("'", "&apos;", $value);
-				$qry = $this->conn->query("UPDATE system_info set meta_value = '{$value}' where meta_field = '{$key}' ");
-			}else{
-				$qry = $this->conn->query("INSERT into system_info set meta_value = '{$value}', meta_field = '{$key}' ");
+			if(!in_array($key,array("about_us","privacy_policy"))){
+				if(isset($_SESSION['system_info'][$key])){
+					$value = str_replace("'", "&apos;", $value);
+					$qry = $this->conn->query("UPDATE system_info set meta_value = '{$value}' where meta_field = '{$key}' ");
+					if(!$qry) $success = false;
+				}else{
+					$qry = $this->conn->query("INSERT into system_info set meta_value = '{$value}', meta_field = '{$key}' ");
+					if(!$qry) $success = false;
+				}
 			}
 		}
 		if(isset($_POST['about_us'])){
@@ -48,29 +53,117 @@ class SystemSettings extends DBConnection{
 		if(isset($_FILES['img']) && $_FILES['img']['tmp_name'] != ''){
 			$fname = 'uploads/'.strtotime(date('y-m-d H:i')).'_'.$_FILES['img']['name'];
 			$move = move_uploaded_file($_FILES['img']['tmp_name'],'../'. $fname);
-			if(isset($_SESSION['system_info']['logo'])){
-				$qry = $this->conn->query("UPDATE system_info set meta_value = '{$fname}' where meta_field = 'logo' ");
-				if(is_file('../'.$_SESSION['system_info']['logo'])) unlink('../'.$_SESSION['system_info']['logo']);
+			if($move){
+				if(isset($_SESSION['system_info']['logo'])){
+					$qry = $this->conn->query("UPDATE system_info set meta_value = '{$fname}' where meta_field = 'logo' ");
+					if(!$qry) $success = false;
+					if(is_file('../'.$_SESSION['system_info']['logo'])) unlink('../'.$_SESSION['system_info']['logo']);
+				}else{
+					$qry = $this->conn->query("INSERT into system_info set meta_value = '{$fname}',meta_field = 'logo' ");
+					if(!$qry) $success = false;
+				}
 			}else{
-				$qry = $this->conn->query("INSERT into system_info set meta_value = '{$fname}',meta_field = 'logo' ");
+				$success = false;
 			}
 		}
 		if(isset($_FILES['cover']) && $_FILES['cover']['tmp_name'] != ''){
 			$fname = 'uploads/'.strtotime(date('y-m-d H:i')).'_'.$_FILES['cover']['name'];
 			$move = move_uploaded_file($_FILES['cover']['tmp_name'],'../'. $fname);
-			if(isset($_SESSION['system_info']['cover'])){
-				$qry = $this->conn->query("UPDATE system_info set meta_value = '{$fname}' where meta_field = 'cover' ");
-				if(is_file('../'.$_SESSION['system_info']['cover'])) unlink('../'.$_SESSION['system_info']['cover']);
+			if($move){
+				if(isset($_SESSION['system_info']['cover'])){
+					$qry = $this->conn->query("UPDATE system_info set meta_value = '{$fname}' where meta_field = 'cover' ");
+					if(!$qry) $success = false;
+					if(is_file('../'.$_SESSION['system_info']['cover'])) unlink('../'.$_SESSION['system_info']['cover']);
+				}else{
+					$qry = $this->conn->query("INSERT into system_info set meta_value = '{$fname}',meta_field = 'cover' ");
+					if(!$qry) $success = false;
+				}
 			}else{
-				$qry = $this->conn->query("INSERT into system_info set meta_value = '{$fname}',meta_field = 'cover' ");
+				$success = false;
+			}
+		}
+		if(isset($_FILES['main_logo']) && $_FILES['main_logo']['tmp_name'] != ''){
+			$fname = 'uploads/'.strtotime(date('y-m-d H:i')).'_'.$_FILES['main_logo']['name'];
+			$move = move_uploaded_file($_FILES['main_logo']['tmp_name'],'../'. $fname);
+			if($move){
+				if(isset($_SESSION['system_info']['main_logo'])){
+					$qry = $this->conn->query("UPDATE system_info set meta_value = '{$fname}' where meta_field = 'main_logo' ");
+					if(!$qry) $success = false;
+					if(is_file('../'.$_SESSION['system_info']['main_logo'])) unlink('../'.$_SESSION['system_info']['main_logo']);
+				}else{
+					$qry = $this->conn->query("INSERT into system_info set meta_value = '{$fname}',meta_field = 'main_logo' ");
+					if(!$qry) $success = false;
+				}
+			}else{
+				$success = false;
+			}
+		}
+		if(isset($_FILES['secondary_logo']) && $_FILES['secondary_logo']['tmp_name'] != ''){
+			$fname = 'uploads/'.strtotime(date('y-m-d H:i')).'_'.$_FILES['secondary_logo']['name'];
+			$move = move_uploaded_file($_FILES['secondary_logo']['tmp_name'],'../'. $fname);
+			if($move){
+				if(isset($_SESSION['system_info']['secondary_logo'])){
+					$qry = $this->conn->query("UPDATE system_info set meta_value = '{$fname}' where meta_field = 'secondary_logo' ");
+					if(!$qry) $success = false;
+					if(is_file('../'.$_SESSION['system_info']['secondary_logo'])) unlink('../'.$_SESSION['system_info']['secondary_logo']);
+				}else{
+					$qry = $this->conn->query("INSERT into system_info set meta_value = '{$fname}',meta_field = 'secondary_logo' ");
+					if(!$qry) $success = false;
+				}
+			}else{
+				$success = false;
+			}
+		}
+		
+		// Handle promo image uploads
+		if(isset($_FILES['promo_images']) && !empty($_FILES['promo_images']['name'][0])){
+			foreach($_FILES['promo_images']['name'] as $key => $filename){
+				if($_FILES['promo_images']['tmp_name'][$key] != ''){
+					$fname = 'uploads/promos/'.strtotime(date('y-m-d H:i')).'_'.$filename;
+					$upload_dir = '../uploads/promos/';
+					if(!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+					$move = move_uploaded_file($_FILES['promo_images']['tmp_name'][$key], '../'.$fname);
+					if($move){
+						$title = isset($_POST['promo_titles'][$key]) ? $_POST['promo_titles'][$key] : 'Promo Image';
+						$description = isset($_POST['promo_descriptions'][$key]) ? $_POST['promo_descriptions'][$key] : '';
+						$qry = $this->conn->query("INSERT into promo_images set title = '{$title}', description = '{$description}', image_path = '{$fname}' ");
+						if(!$qry) $success = false;
+					}else{
+						$success = false;
+					}
+				}
+			}
+		}
+		
+		// Handle customer purchase image uploads
+		if(isset($_FILES['customer_images']) && !empty($_FILES['customer_images']['name'][0])){
+			foreach($_FILES['customer_images']['name'] as $key => $filename){
+				if($_FILES['customer_images']['tmp_name'][$key] != ''){
+					$fname = 'uploads/customers/'.strtotime(date('y-m-d H:i')).'_'.$filename;
+					$upload_dir = '../uploads/customers/';
+					if(!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+					$move = move_uploaded_file($_FILES['customer_images']['tmp_name'][$key], '../'.$fname);
+					if($move){
+						$customer_name = isset($_POST['customer_names'][$key]) ? $_POST['customer_names'][$key] : 'Customer';
+						$motorcycle_model = isset($_POST['motorcycle_models'][$key]) ? $_POST['motorcycle_models'][$key] : 'Motorcycle';
+						$testimonial = isset($_POST['customer_testimonials'][$key]) ? $_POST['customer_testimonials'][$key] : '';
+						$purchase_date = isset($_POST['purchase_dates'][$key]) ? $_POST['purchase_dates'][$key] : date('Y-m-d');
+						$qry = $this->conn->query("INSERT into customer_purchase_images set customer_name = '{$customer_name}', motorcycle_model = '{$motorcycle_model}', testimonial = '{$testimonial}', purchase_date = '{$purchase_date}', image_path = '{$fname}' ");
+						if(!$qry) $success = false;
+					}else{
+						$success = false;
+					}
+				}
 			}
 		}
 		
 		$update = $this->update_system_info();
 		$flash = $this->set_flashdata('success','System Info Successfully Updated.');
-		if($update && $flash){
+		if($update && $flash && $success){
 			//var_dump($_SESSION);
-			return true;
+			return 1; // Success
+		}else{
+			return 0; // Error
 		}
 	}
 	function set_userdata($field='',$value=''){

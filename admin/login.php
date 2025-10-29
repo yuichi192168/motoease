@@ -13,6 +13,18 @@
           background-image:url('<?= validate_image($_settings->info('cover')) ?>');
           background-repeat: no-repeat;
           background-size:cover;
+          background-position:center center;
+          background-attachment:fixed;
+          background-color:#111; /* fallback */
+      }
+      .login-box{
+          width:100%;
+          max-width:420px;
+          margin:40px auto;
+      }
+      .card.card-outline.card-primary{
+          backdrop-filter: blur(2px);
+          background: rgba(255,255,255,0.92);
       }
       #logo-img{
           width:15em;
@@ -49,22 +61,20 @@
             </div>
           </div>
         </div>
-        <div class="row">
-          <div class="col-8">
-            <a href="<?php echo base_url ?>">Back to Shop</a>
+        <div class="row align-items-center">
+          <div class="col-12 col-sm-6 pr-sm-1 mb-2">
+            <a href="<?php echo base_url ?>" class="btn btn-outline-secondary btn-block"><i class="fa fa-store mr-1"></i> Back to Shop</a>
           </div>
-          <!-- /.col -->
-          <div class="col-4">
-            <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+          <div class="col-12 col-sm-6 pl-sm-1 mb-2">
+            <button type="submit" class="btn btn-primary btn-block"><i class="fa fa-sign-in-alt mr-1"></i> Sign In</button>
           </div>
-          <!-- /.col -->
         </div>
       </form>
       <!-- /.social-auth-links -->
 
-      <!-- <p class="mb-1">
-        <a href="forgot-password.html">I forgot my password</a>
-      </p> -->
+      <p class="mb-1 text-center">
+        <a href="../forgot_password.php" class="btn btn-link p-0">I forgot my password</a>
+      </p>
       
     </div>
     <!-- /.card-body -->
@@ -73,16 +83,93 @@
 </div>
 <!-- /.login-box -->
 
-<!-- jQuery -->
-<script src="plugins/jquery/jquery.min.js"></script>
-<!-- Bootstrap 4 -->
-<script src="plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
-<!-- AdminLTE App -->
-<script src="dist/js/adminlte.min.js"></script>
+<!-- Scripts are already included via admin/inc/header.php. Avoid reloading jQuery/AdminLTE to preserve event handlers. -->
 
 <script>
   $(document).ready(function(){
     end_loader();
+    
+    // Handle login form submission
+    $('#clogin-frm').submit(function(e){
+        e.preventDefault();
+        var _this = $(this);
+        // Prevent double submissions
+        if(_this.data('submitting') === true) return;
+        _this.data('submitting', true);
+
+      // Remove any legacy/duplicate alerts to prevent stacking
+      _this.find('.err_msg').remove();
+      _this.find('.alert.alert-danger, .alert.alert-danger').not('.err-msg').remove();
+
+        // Reuse a single error element to avoid duplicates
+        var $err = _this.find('.err-msg');
+        if($err.length === 0){
+            $err = $('<div>').addClass('alert alert-danger err-msg').hide();
+            _this.prepend($err);
+        }
+        $err.text('').removeClass('alert-danger').addClass('alert-danger').hide();
+      
+        $.ajax({
+            url: _base_url_ + 'classes/Login.php?f=login_client',
+            method: 'POST',
+            data: $(this).serialize(),
+            dataType: 'json',
+            beforeSend: function(){
+            // match admin spinner UX
+            _this.find('button[type="submit"]').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Signing In...');
+            },
+            success: function(resp){
+                console.log('Login response:', resp);
+                if(resp.status == 'success'){
+                    console.log('Login successful, redirecting...');
+                    // Add a small delay to ensure session is written
+                    setTimeout(function(){
+                        location.href = './';
+                    }, 100);
+          // } else if(resp.status == 'locked') {
+          //     // Clear any previous countdown
+          //     var existingTimer = _this.data('lock_timer');
+          //     if(existingTimer) { try{ clearInterval(existingTimer); }catch(e){} }
+
+          //     // Single danger container with countdown (mirror admin)
+          //     $err.removeClass('alert-danger').addClass('alert-danger').html('<i class="fa fa-lock"></i> ' + (resp.msg || 'Account is locked.')).show('slow');
+          //     if(resp.locked_until_ts){
+          //         try{
+          //             var $btn = _this.find('button[type="submit"]');
+          //             var endMs = parseInt(resp.locked_until_ts, 10) * 1000;
+          //             $btn.prop('disabled', true).data('orig','Sign In').text('Locked');
+          //             var timer = setInterval(function(){
+          //                 var remaining = Math.max(0, endMs - Date.now());
+          //                 var total = Math.floor(remaining/1000);
+          //                 var mm = String(Math.floor(total/60)).padStart(2,'0');
+          //                 var ss = String(total%60).padStart(2,'0');
+          //                 var base = $err.data('base') || $err.text();
+          //                 $err.data('base', base);
+          //                 $err.text(base.replace(/(\s*\(\d{2}:\d{2}\))?$/, '') + ' ('+mm+':'+ss+')');
+          //                 if(remaining <= 0){
+          //                     clearInterval(timer);
+          //                     _this.removeData('lock_timer');
+          //                     $btn.prop('disabled', false).text('Sign In');
+          //                     $err.hide();
+          //                 }
+          //             }, 1000);
+          //             _this.data('lock_timer', timer);
+          //         }catch(e){ console.log(e); }
+          //     }
+          // } else {
+                    $err.text(resp.msg || 'Login failed. Please try again.').show('slow');
+                }
+          _this.find('button[type="submit"]').prop('disabled', false).html('Sign In');
+                _this.data('submitting', false);
+            },
+            error: function(xhr, status, error) {
+                console.error('Login error:', error);
+                $err.text('An error occurred. Please try again.').show('slow');
+          _this.find('button[type="submit"]').prop('disabled', false).html('Sign In');
+                _this.data('submitting', false);
+            }
+        });
+    });
   })
 </script>
 </body>

@@ -45,7 +45,7 @@
 				<tbody>
 					<?php 
 					$i = 1;
-						$qry = $conn->query("SELECT *,concat(firstname,' ',lastname) as name from `users` where id != '1' and id != '{$_settings->userdata('id')}' and `type` != 3 order by concat(firstname,' ',lastname) asc ");
+						$qry = $conn->query("SELECT *, concat(firstname,' ',lastname) as name FROM `users` WHERE `type` != 3 ORDER BY concat(firstname,' ',lastname) ASC ");
 						while($row = $qry->fetch_assoc()):
 					?>
 						<tr>
@@ -53,7 +53,32 @@
 							<td class="text-center"><img src="<?php echo validate_image($row['avatar']) ?>" class="img-avatar img-thumbnail p-0 border-2" alt="user_avatar"></td>
 							<td><?php echo ucwords($row['name']) ?></td>
 							<td ><p class="m-0 truncate-1"><?php echo $row['username'] ?></p></td>
-							<td><?php echo ($row['type'] == 1) ? 'Administrator' : 'Staff' ?></td>
+                            <td>
+                                <?php 
+                                    $role = '';
+                                    if(isset($row['role_type']) && $row['role_type'] != ''){
+                                        switch(strtolower($row['role_type'])){
+                                            case 'admin':
+                                                $role = 'Administrator';
+                                            break;
+                                            case 'stock_admin':
+                                            case 'inventory_staff':
+                                                $role = 'Inventory Staff';
+                                            break;
+                                            case 'service_admin':
+                                            case 'service_receptionist':
+                                                $role = 'Service Receptionist';
+                                            break;
+                                            default:
+                                                $role = 'Staff';
+                                        }
+                                    } else {
+                                        // Fallback based on legacy `type` field
+                                        $role = ($row['type'] == 1) ? 'Administrator' : 'Staff';
+                                    }
+                                    echo $role;
+                                ?>
+                            </td>
 							<td align="center">
 								 <button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">
 				                  		Action

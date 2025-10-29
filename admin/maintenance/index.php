@@ -3,100 +3,193 @@
 	alert_toast("<?php echo $_settings->flashdata('success') ?>",'success')
 </script>
 <?php endif;?>
+
 <div class="card card-outline card-primary">
 	<div class="card-header">
-		<h3 class="card-title">List of Packages</h3>
-		<div class="card-tools">
-			<a href="?page=packages/manage" class="btn btn-flat btn-primary"><span class="fas fa-plus"></span>  Create New</a>
-		</div>
+		<h3 class="card-title">Maintenance Dashboard</h3>
 	</div>
 	<div class="card-body">
 		<div class="container-fluid">
-        <div class="container-fluid">
-			<table class="table table-bordered table-stripped">
-				<colgroup>
-					<col width="5%">
-					<col width="15%">
-					<col width="20%">
-					<col width="35%">
-					<col width="10%">
-					<col width="15%">
-				</colgroup>
-				<thead>
-					<tr>
-						<th>#</th>
-						<th>Date Created</th>
-						<th>Package</th>
-						<th>Description</th>
-						<th>Status</th>
-						<th>Action</th>
-					</tr>
-				</thead>
-				<tbody>
-					<?php 
-					$i = 1;
-						$qry = $conn->query("SELECT * from `packages` order by date(date_created) desc ");
-						while($row = $qry->fetch_assoc()):
-                            $row['description'] = strip_tags(stripslashes(html_entity_decode($row['description'])));
-					?>
-						<tr>
-							<td class="text-center"><?php echo $i++; ?></td>
-							<td><?php echo date("Y-m-d H:i",strtotime($row['date_created'])) ?></td>
-							<td><?php echo $row['title'] ?></td>
-							<td ><p class="truncate-1 m-0"><?php echo $row['description'] ?></p></td>
-							<td class="text-center">
-                                <?php if($row['status'] == 1): ?>
-                                    <span class="badge badge-success">Active</span>
-                                <?php else: ?>
-                                    <span class="badge badge-danger">Inactive</span>
-                                <?php endif; ?>
-                            </td>
-							<td align="center">
-								 <button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">
-				                  		Action
-				                    <span class="sr-only">Toggle Dropdown</span>
-				                  </button>
-				                  <div class="dropdown-menu" role="menu">
-				                    <a class="dropdown-item" href="?page=packages/manage&id=<?php echo $row['id'] ?>"><span class="fa fa-edit text-primary"></span> Edit</a>
-				                    <div class="dropdown-divider"></div>
-				                    <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-trash text-danger"></span> Delete</a>
-				                  </div>
-							</td>
-						</tr>
-					<?php endwhile; ?>
-				</tbody>
-			</table>
-		</div>
+			<div class="row">
+				<!-- <div class="col-md-3">
+					<div class="info-box bg-primary">
+						<span class="info-box-icon"><i class="fas fa-copyright"></i></span>
+						<div class="info-box-content">
+							<span class="info-box-text">Total Brands</span>
+							<span class="info-box-number">
+								<?php 
+									$brands = $conn->query("SELECT COUNT(id) as total FROM brand_list WHERE delete_flag = 0")->fetch_assoc()['total'];
+									echo number_format($brands);
+								?>
+							</span>
+						</div>
+					</div>
+				</div> -->
+				<div class="col-md-3">
+					<div class="info-box bg-success">
+						<span class="info-box-icon"><i class="fas fa-th-list"></i></span>
+						<div class="info-box-content">
+							<span class="info-box-text">Total Categories</span>
+							<span class="info-box-number">
+								<?php 
+									$categories = $conn->query("SELECT COUNT(id) as total FROM categories WHERE delete_flag = 0")->fetch_assoc()['total'];
+									echo number_format($categories);
+								?>
+							</span>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-3">
+					<div class="info-box bg-warning">
+						<span class="info-box-icon"><i class="fas fa-tools"></i></span>
+						<div class="info-box-content">
+							<span class="info-box-text">Total Services</span>
+							<span class="info-box-number">
+								<?php 
+									$services = $conn->query("SELECT COUNT(id) as total FROM service_list WHERE delete_flag = 0")->fetch_assoc()['total'];
+									echo number_format($services);
+								?>
+							</span>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-3">
+					<div class="info-box bg-info">
+						<span class="info-box-icon"><i class="fas fa-users-cog"></i></span>
+						<div class="info-box-content">
+							<span class="info-box-text">Total Mechanics</span>
+							<span class="info-box-number">
+								<?php 
+									$mechanics = $conn->query("SELECT COUNT(id) as total FROM mechanics_list WHERE delete_flag = 0")->fetch_assoc()['total'];
+									echo number_format($mechanics);
+								?>
+							</span>
+						</div>
+					</div>
+				</div>
+			</div>
+			
+			<div class="row mt-4">
+				<div class="col-md-6">
+					<div class="card card-outline card-primary">
+						<div class="card-header">
+							<h3 class="card-title">Quick Actions</h3>
+						</div>
+						<div class="card-body">
+							<div class="row">
+								<div class="col-md-6">
+									<a href="?page=maintenance/brands" class="btn btn-primary btn-block mb-2">
+										<i class="fas fa-copyright"></i> Manage Brands
+									</a>
+								</div>
+								<div class="col-md-6">
+									<a href="?page=maintenance/category" class="btn btn-success btn-block mb-2">
+										<i class="fas fa-th-list"></i> Manage Categories
+									</a>
+								</div>
+								<div class="col-md-6">
+									<a href="?page=maintenance/services" class="btn btn-warning btn-block mb-2">
+										<i class="fas fa-tools"></i> Manage Services
+									</a>
+								</div>
+								<div class="col-md-6">
+									<a href="?page=mechanics" class="btn btn-info btn-block mb-2">
+										<i class="fas fa-users-cog"></i> Manage Mechanics
+									</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-6">
+					<div class="card card-outline card-secondary">
+						<div class="card-header">
+							<h3 class="card-title">Recent Activity</h3>
+						</div>
+						<div class="card-body">
+							<div class="table-responsive">
+								<table class="table table-sm">
+									<thead>
+										<tr>
+											<th>Type</th>
+											<th>Name</th>
+											<th>Status</th>
+										</tr>
+									</thead>
+									<tbody>
+										<?php 
+										$recent_brands = $conn->query("SELECT name, status FROM brand_list WHERE delete_flag = 0 ORDER BY date_created DESC LIMIT 3");
+										while($brand = $recent_brands->fetch_assoc()):
+										?>
+										<tr>
+											<td><span class="badge badge-primary">Brand</span></td>
+											<td><?= $brand['name'] ?></td>
+											<td><?= $brand['status'] == 1 ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Inactive</span>' ?></td>
+										</tr>
+										<?php endwhile; ?>
+										
+										<?php 
+										$recent_categories = $conn->query("SELECT category, status FROM categories WHERE delete_flag = 0 ORDER BY date_created DESC LIMIT 3");
+										while($category = $recent_categories->fetch_assoc()):
+										?>
+										<tr>
+											<td><span class="badge badge-success">Category</span></td>
+											<td><?= $category['category'] ?></td>
+											<td><?= $category['status'] == 1 ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-danger">Inactive</span>' ?></td>
+										</tr>
+										<?php endwhile; ?>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 </div>
-<script>
-	$(document).ready(function(){
-		$('.delete_data').click(function(){
-			_conf("Are you sure to delete this package permanently?","delete_package",[$(this).attr('data-id')])
-		})
-		$('.table').dataTable();
-	})
-	function delete_package($id){
-		start_loader();
-		$.ajax({
-			url:_base_url_+"classes/Master.php?f=delete_package",
-			method:"POST",
-			data:{id: $id},
-			dataType:"json",
-			error:err=>{
-				console.log(err)
-				alert_toast("An error occured.",'error');
-				end_loader();
-			},
-			success:function(resp){
-				if(typeof resp== 'object' && resp.status == 'success'){
-					location.reload();
-				}else{
-					alert_toast("An error occured.",'error');
-					end_loader();
-				}
-			}
-		})
-	}
-</script>
+
+<style>
+/* Fix scrolling issues */
+.content-wrapper {
+    overflow-y: auto !important;
+    height: calc(100vh - 60px) !important;
+}
+
+.card-body {
+    overflow-x: auto;
+}
+
+.table-responsive {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+/* Ensure proper spacing */
+.info-box {
+    margin-bottom: 15px;
+}
+
+/* Fix modal scrolling */
+.modal-body {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* Improve table readability */
+.table th {
+    position: sticky;
+    top: 0;
+    background: #f4f6f9;
+    z-index: 10;
+}
+
+/* Better table styling */
+.table td {
+    vertical-align: middle;
+}
+
+.dropdown-menu {
+    min-width: 120px;
+}
+</style>

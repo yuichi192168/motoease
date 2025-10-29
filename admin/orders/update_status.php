@@ -17,10 +17,8 @@ if(isset($_GET['id'])){
             <label for="status" class="control-label">Status</label>
             <select name="status" id="status" class="custom-select form-control-sm">
                 <option value="0" <?= isset($status) && $status == 0 ? 'selected' : "" ?>>Pending</option>
-                <option value="1" <?= isset($status) && $status == 1 ? 'selected' : "" ?>>Packed</option>
-                <option value="2" <?= isset($status) && $status == 2 ? 'selected' : "" ?>>For Delivery</option>
-                <option value="3" <?= isset($status) && $status == 3 ? 'selected' : "" ?>>On the Way</option>
-                <option value="4" <?= isset($status) && $status == 4 ? 'selected' : "" ?>>Delivered</option>
+                <option value="1" <?= isset($status) && $status == 1 ? 'selected' : "" ?>>Ready for pickup</option>
+                <option value="6" <?= isset($status) && $status == 6 ? 'selected' : "" ?>>Claimed</option>
                 <option value="5" <?= isset($status) && $status == 5 ? 'selected' : "" ?>>Cancelled</option>
             </select>
         </div>
@@ -48,18 +46,21 @@ if(isset($_GET['id'])){
 					end_loader();
 				},
 				success:function(resp){
+					end_loader();
 					if(typeof resp =='object' && resp.status == 'success'){
-						location.reload();
+						$('#uni_modal').modal('hide');
+						alert_toast(resp.msg || "Order status updated successfully.", 'success');
+						setTimeout(() => {
+							location.reload();
+						}, 1500);
 					}else if(resp.status == 'failed' && !!resp.msg){
                         var el = $('<div>')
                             el.addClass("alert alert-danger err-msg").text(resp.msg)
                             _this.prepend(el)
                             el.show('slow')
                             $("html, body").animate({ scrollTop: _this.closest('.card').offset().top }, "fast");
-                            end_loader()
                     }else{
 						alert_toast("An error occured",'error');
-						end_loader();
                         console.log(resp)
 					}
 				}

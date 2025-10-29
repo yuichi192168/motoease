@@ -54,6 +54,154 @@
        $('#confirm_modal').modal('show')
     }
   })
+  
+  // Admin Notification functions
+  function loadAdminNotificationsCount(){
+    $.ajax({
+        url: _base_url_ + "classes/Master.php?f=get_admin_notifications_count",
+        method: "POST",
+        dataType: "json",
+        success: function(resp){
+            if(resp.status == 'success'){
+                $('#admin-notifications-count').text(resp.count);
+                if(resp.count > 0){
+                    $('#admin-notifications-count').show();
+                } else {
+                    $('#admin-notifications-count').hide();
+                }
+            }
+        }
+    });
+  }
+  
+  function loadAdminNotifications(){
+    $.ajax({
+        url: _base_url_ + "classes/Master.php?f=get_admin_notifications",
+        method: "POST",
+        data: {limit: 5},
+        dataType: "json",
+        success: function(resp){
+            if(resp.status == 'success'){
+                var html = '';
+                if(resp.data.length > 0){
+                    resp.data.forEach(function(notification){
+                        html += '<a href="#" class="dropdown-item notification-item ' + (notification.is_read == 0 ? 'unread' : '') + '" onclick="markAdminNotificationRead(' + notification.id + ')">';
+                        html += '<div class="d-flex align-items-start">';
+                        html += '<div class="notification-icon me-2">';
+                        html += '<i class="fas fa-bell text-warning"></i>';
+                        html += '</div>';
+                        html += '<div class="notification-content">';
+                        html += '<div class="notification-title">' + notification.title + '</div>';
+                        html += '<div class="notification-text">' + notification.description + '</div>';
+                        html += '<div class="notification-time">' + formatTimeAgo(notification.date_created) + '</div>';
+                        html += '</div>';
+                        html += '</div>';
+                        html += '</a>';
+                    });
+                } else {
+                    html = '<div class="text-center p-3 text-muted">No notifications</div>';
+                }
+                $('#admin-notifications-content').html(html);
+            }
+        }
+    });
+  }
+  
+  function markAdminNotificationRead(id){
+    $.ajax({
+        url: _base_url_ + "classes/Master.php?f=mark_admin_notification_read",
+        method: "POST",
+        data: {id: id},
+        dataType: "json",
+        success: function(resp){
+            if(resp.status == 'success'){
+                loadAdminNotificationsCount();
+                loadAdminNotifications();
+            }
+        }
+    });
+  }
+  
+  function formatTimeAgo(dateString){
+    var now = new Date();
+    var date = new Date(dateString);
+    var diff = now - date;
+    var seconds = Math.floor(diff / 1000);
+    var minutes = Math.floor(seconds / 60);
+    var hours = Math.floor(minutes / 60);
+    var days = Math.floor(hours / 24);
+    
+    if(days > 0) return days + ' day' + (days > 1 ? 's' : '') + ' ago';
+    if(hours > 0) return hours + ' hour' + (hours > 1 ? 's' : '') + ' ago';
+    if(minutes > 0) return minutes + ' minute' + (minutes > 1 ? 's' : '') + ' ago';
+    return 'Just now';
+  }
+  
+  function loadAllAdminNotifications(){
+    window.location.href = './?page=notifications';
+  }
+  
+  // Load admin notifications on page load
+  $(document).ready(function(){
+    loadAdminNotificationsCount();
+    loadAdminNotifications();
+    
+    // Refresh notifications every 30 seconds
+    setInterval(function(){
+        loadAdminNotificationsCount();
+    }, 30000);
+    
+    // Enhanced mobile sidebar functionality
+    $('[data-widget="pushmenu"]').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if ($(window).width() <= 991) {
+            // Toggle sidebar visibility
+            $('.main-sidebar').toggleClass('show');
+            $('body').toggleClass('sidebar-open');
+            
+            // Show/hide overlay
+            if ($('.main-sidebar').hasClass('show')) {
+                $('.sidebar-overlay').show();
+            } else {
+                $('.sidebar-overlay').hide();
+            }
+        }
+    });
+    
+    // Close sidebar when clicking overlay
+    $('.sidebar-overlay').on('click', function() {
+        $('.main-sidebar').removeClass('show');
+        $('body').removeClass('sidebar-open');
+        $('.sidebar-overlay').hide();
+    });
+    
+    // Close sidebar when clicking outside on mobile
+    $(document).on('click', function(e) {
+        if ($(window).width() <= 991) {
+            if (!$(e.target).closest('.main-sidebar, [data-widget="pushmenu"]').length) {
+                $('.main-sidebar').removeClass('show');
+                $('body').removeClass('sidebar-open');
+                $('.sidebar-overlay').hide();
+            }
+        }
+    });
+    
+    // Handle window resize
+    $(window).on('resize', function() {
+        if ($(window).width() > 991) {
+            $('.main-sidebar').removeClass('show');
+            $('body').removeClass('sidebar-open');
+            $('.sidebar-overlay').hide();
+        }
+    });
+    
+    // Ensure sidebar overlay exists
+    if ($('.sidebar-overlay').length === 0) {
+        $('body').append('<div class="sidebar-overlay"></div>');
+    }
+  });
 </script>
 <footer class="main-footer text-sm">
         <strong>Copyright © <?php echo date('Y') ?>. 
@@ -61,7 +209,7 @@
         </strong>
         All rights reserved.
         <div class="float-right d-none d-sm-inline-block">
-          <b><?php echo $_settings->info('short_name') ?> (by: <a href="mailto:aiah@gmail.com" target="blank">aiah</a> )</b> v1.0
+          <b><?php echo $_settings->info('short_name') ?></b> v1.0
         </div>
       </footer>
     </div>

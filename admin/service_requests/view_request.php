@@ -1,6 +1,6 @@
 <?php 
 require_once('./../../config.php');
-$qry = $conn->query("SELECT s.*,cc.category,concat(c.lastname,', ', c.firstname,' ',c.middlename) as fullname,c.email,c.contact, c.address FROM `service_requests` s inner join `categories` cc inner join client_list c on s.client_id = c.id where s.id = '{$_GET['id']}' ");
+$qry = $conn->query("SELECT s.*,concat(c.lastname,', ', c.firstname,' ',c.middlename) as fullname,c.email,c.contact FROM `service_requests` s inner join client_list c on s.client_id = c.id where s.id = '{$_GET['id']}' ");
 foreach($qry->fetch_array() as $k => $v){
     $$k = $v;
 }
@@ -8,7 +8,14 @@ $meta = $conn->query("SELECT * FROM `request_meta` where request_id = '{$id}'");
 while($row = $meta->fetch_assoc()){
     ${$row['meta_field']} = $row['meta_value'];
 }
-$services  = $conn->query("SELECT * FROM service_list where id in ({$service_id}) ");
+$services = null;
+if(isset($service_id) && !empty($service_id) && $service_id !== '0'){
+    $service_ids = array_filter(array_map('intval', explode(',', $service_id)));
+    if(!empty($service_ids)){
+        $service_ids_str = implode(',', $service_ids);
+        $services = $conn->query("SELECT * FROM service_list where id in ({$service_ids_str}) ");
+    }
+}
 ?>
 <style>
     #uni_modal .modal-footer{
@@ -20,17 +27,14 @@ $services  = $conn->query("SELECT * FROM service_list where id in ({$service_id}
         <div class="col-sm-6">
             <dl>
                 <dt><b>Vehicle Type</b></dt>
-                <dd class="pl-2"><?php echo $category ?></dd>
+                <dd class="pl-2"><?php echo isset($vehicle_type) ? $vehicle_type : 'N/A' ?></dd>
                 <dt><b>Client Name</b></dt>
                 <dd class="pl-2"><?php echo $fullname ?></dd>
                 <dt><b>Owner Contact</b></dt>
                 <dd class="pl-2"><?php echo $contact ?></dd>
                 <dt><b>Owner Email</b></dt>
                 <dd class="pl-2"><?php echo $email ?></dd>
-                <dt><b>Owner Address</b></dt>
-                <dd class="pl-2"><?php echo $address ?></dd>
-                <dt><b>Request Type</b></dt>
-                <dd class="pl-2"><?php echo $service_type ?></dd>
+                
                 <dt><b>Status</b></dt>
                 <dd class="pl-2">
                     <?php if($status == 1): ?>
@@ -55,8 +59,13 @@ $services  = $conn->query("SELECT * FROM service_list where id in ({$service_id}
                 <dd class="pl-2"><?php echo $vehicle_registration_number ?></dd>
                 <dt><b>Vehicle Model</b></dt>
                 <dd class="pl-2"><?php echo $vehicle_model ?></dd>
+                <?php if(isset($service_description) && !empty($service_description)): ?>
+                <dt><b>Service Description</b></dt>
+                <dd class="pl-2"><?php echo nl2br($service_description) ?></dd>
+                <?php endif; ?>
                 <dt><b>Service/s:</b></dt>
                 <dd class="pl-2">
+                    <?php if($services && $services->num_rows > 0): ?>
                     <ul>
                         <?php 
                         while($srow= $services->fetch_assoc()):
@@ -64,6 +73,9 @@ $services  = $conn->query("SELECT * FROM service_list where id in ({$service_id}
                         <li><?php echo $srow['service'] ?></li>
                         <?php endwhile; ?>
                     </ul>
+                    <?php else: ?>
+                    <span class="text-muted">No services found</span>
+                    <?php endif; ?>
                 </dd>
             </dl>
         </div>
