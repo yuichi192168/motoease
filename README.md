@@ -299,13 +299,4 @@ This project is proprietary software for internal use at Star Honda Calamba.
 **Developed for**: Star Honda Calamba  
 **Location**: Km. 50 National Highway, Parian, Calamba, Laguna
 
-## 📞 Support
-
-For technical support or questions, please contact your system administrator.
-
----
-
-**Version**: 5.2  
-**Last Updated**: January 2025  
 **Status**: Production Ready ✅
-
