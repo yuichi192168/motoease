@@ -194,13 +194,17 @@ $(document).ready(function(){
                                 status_class = 'badge badge-success';
                                 status_text = 'Paid';
                                 break;
-                            case 'unpaid':
-                                status_class = 'badge badge-warning';
-                                status_text = 'Unpaid';
+                            case 'late':
+                                status_class = 'badge badge-danger';
+                                status_text = 'Late';
                                 break;
                             case 'partial':
                                 status_class = 'badge badge-info';
                                 status_text = 'Partial';
+                                break;
+                            default:
+                                status_class = 'badge badge-warning';
+                                status_text = 'Pending';
                                 break;
                         }
 
@@ -210,7 +214,7 @@ $(document).ready(function(){
                         html += '<td>' + invoice.transaction_type.replace('_', ' ').toUpperCase() + '</td>';
                         html += '<td class="text-right">₱' + parseFloat(invoice.total_amount).toLocaleString() + '</td>';
                         html += '<td><span class="' + status_class + '">' + status_text + '</span></td>';
-                        html += '<td>' + (invoice.receipt_number ? '<span class="badge badge-success">' + invoice.receipt_number + '</span>' : '-') + '</td>';
+                        html += '<td>' + (invoice.receipt_date ? new Date(invoice.receipt_date).toLocaleDateString() : '-') + '</td>';
                         html += '<td>';
                         html += '<button class="btn btn-sm btn-primary view_invoice" data-id="' + invoice.id + '">View</button>';
                         html += '</td>';
@@ -278,9 +282,16 @@ $(document).ready(function(){
         html += '<p><strong>Due Date:</strong> ' + new Date(invoice.due_date).toLocaleDateString() + '</p>';
         html += '<p><strong>Transaction Type:</strong> ' + invoice.transaction_type.replace('_', ' ').toUpperCase() + '</p>';
         html += '</div>';
+        var statusClass = (invoice.payment_status == 'paid') ? 'success' : (invoice.payment_status == 'late' ? 'danger' : 'warning');
         html += '<div class="col-md-6 text-right">';
-        html += '<p><strong>Status:</strong> <span class="badge badge-' + (invoice.payment_status == 'paid' ? 'success' : 'warning') + '">' + invoice.payment_status.toUpperCase() + '</span></p>';
+        html += '<p><strong>Status:</strong> <span class="badge badge-' + statusClass + '">' + (invoice.payment_status || '').toUpperCase() + '</span></p>';
         html += '<p><strong>Total Amount:</strong> ₱' + parseFloat(invoice.total_amount).toLocaleString() + '</p>';
+        if(typeof invoice.balance_remaining !== 'undefined'){
+            html += '<p><strong>Balance Remaining:</strong> ₱' + parseFloat(invoice.balance_remaining).toLocaleString() + '</p>';
+        }
+        if(typeof invoice.late_fee_amount !== 'undefined' && parseFloat(invoice.late_fee_amount) > 0){
+            html += '<p><strong>Late Fee:</strong> ₱' + parseFloat(invoice.late_fee_amount).toLocaleString() + '</p>';
+        }
         html += '</div>';
         html += '</div>';
 

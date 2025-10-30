@@ -28,7 +28,6 @@
                         <tr>
 							<th>#</th>
 							<th>Customer</th>
-							<th>Total Balance</th>
 							<th>Installment Plan</th>
 							<th>Paid Amount</th>
 							<th>Unpaid Amount</th>
@@ -59,9 +58,6 @@
 								<td>
 									<strong><?php echo ucwords($row['lastname'] . ', ' . $row['firstname'] . ' ' . $row['middlename']) ?></strong><br>
 									<small class="text-muted"><?php echo $row['email'] ?></small>
-								</td>
-								<td class="text-right">
-									<strong>₱<?php echo number_format($row['total_balance'], 2) ?></strong>
 								</td>
 								<td class="text-center">
 									<small><?php echo $installment_plan ?></small>
@@ -136,9 +132,9 @@
 									</button>
 									<div class="dropdown-menu" role="menu">
 										<?php if($_settings->userdata('login_type') == 1): // Admin only ?>
-										<a class="dropdown-item adjust_balance" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
+										<!-- <a class="dropdown-item adjust_balance" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
 											<span class="fa fa-edit text-primary"></span> Adjust Balance
-										</a>
+										</a> -->
 										<div class="dropdown-divider"></div>
 										<?php endif; ?>
 										<a class="dropdown-item upload_orcr" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
@@ -190,8 +186,7 @@
 						<input type="text" class="form-control" id="adjust_customer_name" readonly>
 					</div>
 					<div class="form-group">
-						<label>Current Balance</label>
-						<input type="text" class="form-control" id="current_balance" readonly>
+						
 					</div>
 					<div class="form-group">
 						<label>Adjustment Type</label>
@@ -333,9 +328,9 @@
                     </div>
                     <div class="btn-group" role="group" aria-label="Actions">
                         <?php if($_settings->userdata('login_type') == 1): // Admin only ?>
-                        <button type="button" class="btn btn-sm btn-primary" id="vt_adjust_balance">
+                        <!-- <button type="button" class="btn btn-sm btn-primary" id="vt_adjust_balance">
                             <span class="fa fa-edit"></span> Adjust Balance
-                        </button>
+                        </button> -->
                         <?php endif; ?>
                         <button type="button" class="btn btn-sm btn-success" id="vt_upload_orcr">
                             <span class="fa fa-upload"></span> Upload OR/CR
@@ -401,8 +396,8 @@
 			var id = $(this).attr('data-id');
 			var name = $(this).attr('data-name');
 			
-			// Get current balance
-			$.ajax({
+						// Get client context before showing modal
+						$.ajax({
 				url: _base_url_ + "classes/Master.php?f=get_client_balance",
 				method: "POST",
 				data: {client_id: id},
@@ -410,8 +405,7 @@
 				success: function(resp){
 					if(resp.status == 'success'){
 						$('#adjust_client_id').val(id);
-						$('#adjust_customer_name').val(name);
-						$('#current_balance').val('₱' + parseFloat(resp.balance).toFixed(2));
+								$('#adjust_customer_name').val(name);
 						$('#adjustBalanceModal').modal('show');
 					}
 				}
@@ -479,12 +473,11 @@
                 data: {client_id: id},
                 dataType: "json",
                 success: function(resp){
-                    if(resp.status == 'success'){
-                        $('#adjust_client_id').val(id);
-                        $('#adjust_customer_name').val(name);
-                        $('#current_balance').val('₱' + parseFloat(resp.balance).toFixed(2));
-                        $('#adjustBalanceModal').modal('show');
-                    }
+						if(resp.status == 'success'){
+							$('#adjust_client_id').val(id);
+							$('#adjust_customer_name').val(name);
+							$('#adjustBalanceModal').modal('show');
+						}
                 }
             });
         });

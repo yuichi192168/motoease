@@ -106,7 +106,7 @@ class Invoice extends DBConnection {
             'subtotal' => $order['total_amount'],
             'vat_amount' => ($order['total_amount'] * $vat_rate) / 100,
             'total_amount' => $order['total_amount'] + (($order['total_amount'] * $vat_rate) / 100),
-            'payment_status' => 'unpaid',
+            'payment_status' => 'pending',
             'pickup_location' => $this->getSetting('pickup_location'),
             'payment_instructions' => $this->getSetting('payment_instructions'),
             'generated_by' => $staff_id,
@@ -183,11 +183,17 @@ class Invoice extends DBConnection {
         $values = "'" . implode("','", array_values($receipt_data)) . "'";
         
         if($this->conn->query("INSERT INTO receipts ({$fields}) VALUES ({$values})")) {
-            // Update invoice payment status
-            $this->conn->query("UPDATE invoices SET payment_status = 'paid' WHERE id = '{$invoice_id}'");
+            // Recompute invoice status based on financials view
+            $fin = $this->conn->query("SELECT computed_status FROM invoice_financials WHERE id = '{$invoice_id}'")->fetch_assoc();
+            if($fin && isset($fin['computed_status'])){
+                $new_status = $this->conn->real_escape_string($fin['computed_status']);
+                $this->conn->query("UPDATE invoices SET payment_status = '{$new_status}' WHERE id = '{$invoice_id}'");
+            }
             
-            // Update order status to claimed
-            $this->conn->query("UPDATE order_list SET status = 6 WHERE id = '{$invoice['order_id']}'");
+            // Update order status to claimed if fully paid
+            if(isset($fin['computed_status']) && $fin['computed_status'] === 'paid'){
+                $this->conn->query("UPDATE order_list SET status = 6 WHERE id = '{$invoice['order_id']}'");
+            }
             
             return [
                 'status' => 'success', 
@@ -205,10 +211,12 @@ class Invoice extends DBConnection {
      */
     public function getInvoice($invoice_id) {
         $invoice = $this->conn->query("SELECT i.*, c.firstname, c.lastname, c.middlename, c.email, c.contact,
-                                              u.firstname as staff_firstname, u.lastname as staff_lastname
+                                              u.firstname as staff_firstname, u.lastname as staff_lastname,
+                                              fin.total_paid, fin.payment_date, fin.balance_remaining, fin.computed_status, fin.late_fee_amount
                                       FROM invoices i
                                       INNER JOIN client_list c ON i.customer_id = c.id
                                       LEFT JOIN users u ON i.generated_by = u.id
+                                      LEFT JOIN invoice_financials fin ON fin.id = i.id
                                       WHERE i.id = '{$invoice_id}'")->fetch_assoc();
         
         if($invoice) {
@@ -227,6 +235,7 @@ class Invoice extends DBConnection {
             $invoice['receipt'] = $receipt;
         }
         
+        // Do not override stored payment_status; expose computed alongside
         return $invoice;
     }
     
@@ -234,9 +243,9 @@ class Invoice extends DBConnection {
      * Get customer invoices
      */
     public function getCustomerInvoices($customer_id, $limit = 10) {
-        $invoices = $this->conn->query("SELECT i.*, r.receipt_number, r.issued_at as receipt_date
+        $invoices = $this->conn->query("SELECT i.*, fin.total_paid, fin.payment_date as receipt_date, fin.balance_remaining, fin.computed_status, fin.late_fee_amount
                                        FROM invoices i
-                                       LEFT JOIN receipts r ON i.id = r.invoice_id
+                                       LEFT JOIN invoice_financials fin ON fin.id = i.id
                                        WHERE i.customer_id = '{$customer_id}'
                                        ORDER BY i.generated_at DESC
                                        LIMIT {$limit}");
@@ -272,10 +281,10 @@ class Invoice extends DBConnection {
         }
         
         $invoices = $this->conn->query("SELECT i.*, c.firstname, c.lastname, c.middlename, c.email,
-                                               r.receipt_number, r.issued_at as receipt_date
+                                               fin.total_paid, fin.payment_date as receipt_date, fin.balance_remaining, fin.computed_status, fin.late_fee_amount
                                        FROM invoices i
                                        INNER JOIN client_list c ON i.customer_id = c.id
-                                       LEFT JOIN receipts r ON i.id = r.invoice_id
+                                       LEFT JOIN invoice_financials fin ON fin.id = i.id
                                        WHERE {$where}
                                        ORDER BY i.generated_at DESC");
         
@@ -295,6 +304,29 @@ class Invoice extends DBConnection {
                                   VALUES ('{$key}', '{$value}') 
                                   ON DUPLICATE KEY UPDATE setting_value = '{$value}'");
     }
+
+    /**
+     * Update invoice payment status manually (admin action)
+     */
+    public function updateInvoiceStatus($invoice_id, $status) {
+        $allowed = ['pending','paid','partial','late'];
+        $status = strtolower(trim($status));
+        if(!in_array($status, $allowed)){
+            return ['status' => 'error', 'msg' => 'Invalid status'];
+        }
+        $invoice = $this->conn->query("SELECT id, order_id, customer_id FROM invoices WHERE id = '{$invoice_id}'")->fetch_assoc();
+        if(!$invoice){
+            return ['status' => 'error', 'msg' => 'Invoice not found'];
+        }
+        $ok = $this->conn->query("UPDATE invoices SET payment_status = '{$status}', updated_at = NOW() WHERE id = '{$invoice_id}'");
+        if(!$ok){
+            return ['status' => 'error', 'msg' => 'Failed to update status: '.$this->conn->error];
+        }
+        if($status === 'paid'){
+            $this->conn->query("UPDATE order_list SET status = 6 WHERE id = '{$invoice['order_id']}'");
+        }
+        return ['status' => 'success'];
+    }
     
     /**
      * Get invoice statistics
@@ -312,12 +344,12 @@ class Invoice extends DBConnection {
         
         $stats = $this->conn->query("SELECT 
                                         COUNT(*) as total_invoices,
-                                        SUM(CASE WHEN payment_status = 'paid' THEN 1 ELSE 0 END) as paid_invoices,
-                                        SUM(CASE WHEN payment_status = 'unpaid' THEN 1 ELSE 0 END) as unpaid_invoices,
-                                        SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END) as total_paid,
-                                        SUM(CASE WHEN payment_status = 'unpaid' THEN total_amount ELSE 0 END) as total_unpaid,
-                                        SUM(total_amount) as total_amount
-                                    FROM invoices 
+                                        SUM(CASE WHEN i.payment_status = 'paid' THEN 1 ELSE 0 END) as paid_invoices,
+                                        SUM(CASE WHEN i.payment_status IN ('pending','late','partial') THEN 1 ELSE 0 END) as unpaid_invoices,
+                                        SUM(CASE WHEN i.payment_status = 'paid' THEN i.total_amount ELSE 0 END) as total_paid,
+                                        SUM(CASE WHEN i.payment_status IN ('pending','late','partial') THEN i.total_amount ELSE 0 END) as total_unpaid,
+                                        SUM(i.total_amount) as total_amount
+                                    FROM invoices i
                                     WHERE {$where}")->fetch_assoc();
         
         return $stats;
@@ -367,6 +399,12 @@ if(isset($_GET['action'])) {
         case 'get_stats':
             $result = $invoice->getInvoiceStats($_GET['date_start'] ?? null, $_GET['date_end'] ?? null);
             echo json_encode(['status' => 'success', 'data' => $result]);
+            break;
+        case 'update_status':
+            if(isset($_POST['invoice_id']) && isset($_POST['status'])){
+                $result = $invoice->updateInvoiceStatus($_POST['invoice_id'], $_POST['status']);
+                echo json_encode($result);
+            }
             break;
     }
 }

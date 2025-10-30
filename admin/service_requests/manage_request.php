@@ -36,6 +36,22 @@ while($row = $meta->fetch_assoc()){
         <div class="row">
             <div class="col-md-6">
                 <div class="form-group">
+                    <label for="order_id" class="control-label">Order ID</label>
+                    <?php 
+                        $orders = [];
+                        if(isset($client_id) && !empty($client_id)){
+                            $oq = $conn->query("SELECT id, ref_code, date_created FROM order_list WHERE client_id = '".$client_id."' ORDER BY date_created DESC LIMIT 50");
+                            while($o = $oq->fetch_assoc()){ $orders[] = $o; }
+                        }
+                    ?>
+                    <select name="order_id" id="order_id" class="form-select form-select-sm rounded-0" required>
+                        <option value="" disabled <?php echo !isset($order_id) ? 'selected' : '' ?>>Select related order</option>
+                        <?php foreach($orders as $o): ?>
+                            <option value="<?php echo (int)$o['id']; ?>" <?php echo (isset($order_id) && (int)$order_id === (int)$o['id']) ? 'selected' : '' ?>>#<?php echo (int)$o['id']; ?> — <?php echo htmlspecialchars($o['ref_code']); ?> (<?php echo date('Y-m-d', strtotime($o['date_created'])); ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label for="vehicle_type" class="control-label">Vehicle Type</label>
                     <input type="text" name="vehicle_type" id="vehicle_type" class="form-control form-control-sm rounded-0" value="<?php echo isset($vehicle_type) ? $vehicle_type : "" ?>" required>
                 </div>
@@ -129,12 +145,21 @@ while($row = $meta->fetch_assoc()){
             placeholder:"Please Select Here",
             dropdownParent: $('#mechanic-holder')
         })
+        $('#order_id').select2({
+            placeholder:"Select related order",
+            dropdownParent: $('#uni_modal')
+        })
         // request type removed
         $('#request_form').submit(function(e){
             e.preventDefault()
             start_loader();
             
             var formData = new FormData($(this)[0]);
+            if(!$('#order_id').val()){
+                end_loader();
+                alert_toast('Order ID is required for service requests','error');
+                return;
+            }
             
             $.ajax({
                 url:_base_url_+'classes/Master.php?f=save_request',

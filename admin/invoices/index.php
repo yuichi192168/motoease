@@ -270,6 +270,78 @@
 	</div>
 </div>
 
+<!-- Upload OR/CR Modal (reused pattern from customer_accounts) -->
+<div class="modal fade" id="uploadOrcrModal" tabindex="-1" role="dialog">
+	<div class="modal-dialog modal-md" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h4 class="modal-title">Upload OR/CR Documents</h4>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<form id="uploadOrcrForm" enctype="multipart/form-data">
+					<input type="hidden" name="client_id" id="upload_client_id">
+					<div class="form-group">
+						<label>Customer Name</label>
+						<input type="text" class="form-control" id="upload_customer_name" readonly>
+					</div>
+					<div class="form-group">
+						<label>Document Number (Optional)</label>
+						<input type="text" name="document_number" class="form-control" placeholder="Enter document number">
+					</div>
+					<div class="form-group">
+						<label>Plate Number (Optional)</label>
+						<input type="text" name="plate_number" class="form-control" placeholder="Enter plate number">
+					</div>
+					<div class="form-group">
+						<label>Release Date (Optional)</label>
+						<input type="date" name="release_date" class="form-control">
+					</div>
+					<div class="form-group">
+						<label>Remarks (Optional)</label>
+						<textarea name="remarks" class="form-control" rows="2" placeholder="Remarks"></textarea>
+					</div>
+					<div class="form-group">
+						<label for="or_document">Official Receipt (OR)</label>
+						<input type="file" name="or_document" id="or_document" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+						<small class="form-text text-muted">Upload PDF, JPG, or PNG file</small>
+					</div>
+					<div class="form-group">
+						<label for="cr_document">Certificate of Registration (CR)</label>
+						<input type="file" name="cr_document" id="cr_document" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+						<small class="form-text text-muted">Upload PDF, JPG, or PNG file</small>
+					</div>
+				</form>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+				<button type="submit" form="uploadOrcrForm" class="btn btn-primary">Upload Documents</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- View OR/CR Modal -->
+<div class="modal fade" id="viewOrcrModal" tabindex="-1" role="dialog">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h4 class="modal-title">View OR/CR Documents</h4>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body">
+				<div id="orcr_documents"><!-- Documents will be loaded here --></div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+			</div>
+		</div>
+	</div>
+</div>
 <script>
 // Logo URLs for printing
 var mainLogoUrl = '<?php echo validate_image($_settings->info('main_logo')) ?: validate_image($_settings->info('logo')) ?>';
@@ -312,6 +384,30 @@ $(document).ready(function(){
 	$('#receipt_form').submit(function(e){
 		e.preventDefault();
 		createReceipt();
+	});
+
+	// Upload OR/CR form submission
+	$('#uploadOrcrForm').submit(function(e){
+		e.preventDefault();
+		start_loader();
+		$.ajax({
+			url: _base_url_ + "classes/Master.php?f=upload_client_orcr",
+			method: "POST",
+			data: new FormData($(this)[0]),
+			cache: false,
+			contentType: false,
+			processData: false,
+			dataType: 'json',
+			success: function(resp){
+				if(resp && resp.status === 'success'){
+					$('#uploadOrcrModal').modal('hide');
+					alert_toast(resp.msg || 'Documents uploaded','success');
+				}else{
+					alert_toast(resp.msg || 'Upload failed','error');
+				}
+				end_loader();
+			}
+		});
 	});
 
 	// Print invoice
@@ -380,6 +476,37 @@ $(document).ready(function(){
 		};
 	});
 
+	// OR/CR actions (aligned with customer_accounts)
+	$(document).on('click', '.upload_orcr', function(e){
+		e.preventDefault();
+		var clientId = $(this).data('client-id') || '';
+		var name = $(this).data('name') || '';
+		if(!clientId){ alert_toast('Customer not found for this invoice','error'); return; }
+		$('#upload_client_id').val(clientId);
+		$('#upload_customer_name').val(name);
+		$('#uploadOrcrModal').modal('show');
+	});
+
+	$(document).on('click', '.view_orcr', function(e){
+		e.preventDefault();
+		var clientId = $(this).data('client-id') || '';
+		if(!clientId){ alert_toast('Customer not found for this invoice','error'); return; }
+		$.ajax({
+			url: _base_url_ + "classes/Master.php?f=get_client_orcr",
+			method: "POST",
+			data: {client_id: clientId},
+			dataType: "json",
+			success: function(resp){
+				if(resp.status == 'success'){
+					$('#orcr_documents').html(resp.html);
+					$('#viewOrcrModal').modal('show');
+				} else {
+					alert_toast(resp.msg || 'Failed to load documents','error');
+				}
+			}
+		});
+	});
+
 	function loadInvoices(){
 		var filters = {
 			date_start: $('#date_start').val(),
@@ -404,13 +531,17 @@ $(document).ready(function(){
 								status_class = 'badge badge-success';
 								status_text = 'Paid';
 								break;
-							case 'unpaid':
-								status_class = 'badge badge-warning';
-								status_text = 'Unpaid';
+							case 'late':
+								status_class = 'badge badge-danger';
+								status_text = 'Late';
 								break;
 							case 'partial':
 								status_class = 'badge badge-info';
 								status_text = 'Partial';
+								break;
+							default:
+								status_class = 'badge badge-warning';
+								status_text = 'Pending';
 								break;
 						}
 
@@ -423,14 +554,26 @@ $(document).ready(function(){
 						html += '<td class="text-right">₱' + parseFloat(invoice.total_amount).toLocaleString() + '</td>';
 						html += '<td><span class="' + status_class + '">' + status_text + '</span></td>';
 						html += '<td>' + new Date(invoice.generated_at).toLocaleDateString() + '</td>';
-						html += '<td>' + (invoice.receipt_number ? '<span class="badge badge-success">' + invoice.receipt_number + '</span>' : '-') + '</td>';
-						html += '<td>';
-						html += '<button class="btn btn-sm btn-primary view_invoice" data-id="' + invoice.id + '"><i class="fa fa-eye"></i> View</button> ';
-						if(invoice.payment_status != 'paid'){
-							html += '<button class="btn btn-sm btn-success create_receipt" data-id="' + invoice.id + '" data-amount="' + invoice.total_amount + '"><i class="fa fa-receipt"></i> Receipt</button> ';
-							html += '<button class="btn btn-sm btn-danger delete_invoice" data-id="' + invoice.id + '"><i class="fa fa-trash"></i> Delete</button>';
-						}
-						html += '</td>';
+                        html += '<td>' + (invoice.receipt_date ? new Date(invoice.receipt_date).toLocaleDateString() : '-') + '</td>';
+                        html += '<td>';
+                        html += '<div class="btn-group">';
+                        html += '<button class="btn btn-sm btn-primary view_invoice" data-id="' + invoice.id + '"><i class="fa fa-eye"></i> View</button>';
+                        html += '<button class="btn btn-sm btn-secondary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="sr-only">Toggle Dropdown</span></button>';
+                        html += '<div class="dropdown-menu">';
+                        html += '<a class="dropdown-item set_status" href="#" data-id="' + invoice.id + '" data-status="paid">✅ Mark Paid</a>';
+                        html += '<a class="dropdown-item set_status" href="#" data-id="' + invoice.id + '" data-status="pending">⏳ Mark Pending</a>';
+                        html += '<a class="dropdown-item set_status" href="#" data-id="' + invoice.id + '" data-status="late">⚠️ Mark Late</a>';
+                        if(invoice.payment_status != 'paid'){
+                            html += '<div class="dropdown-divider"></div>';
+                            html += '<a class="dropdown-item create_receipt" href="#" data-id="' + invoice.id + '" data-amount="' + invoice.total_amount + '"><i class="fa fa-receipt"></i> Create Receipt</a>';
+                            html += '<a class="dropdown-item text-danger delete_invoice" href="#" data-id="' + invoice.id + '"><i class="fa fa-trash"></i> Delete</a>';
+                        }
+                        html += '<div class="dropdown-divider"></div>';
+                        html += '<a class="dropdown-item upload_orcr" href="#" data-client-id="' + (invoice.customer_id || '') + '" data-name="' + (invoice.firstname + ' ' + invoice.lastname) + '"><span class="fa fa-upload text-success"></span> Upload OR/CR</a>';
+                        html += '<a class="dropdown-item view_orcr" href="#" data-client-id="' + (invoice.customer_id || '') + '"><span class="fa fa-file-pdf text-warning"></span> View OR/CR</a>';
+                        html += '</div>';
+                        html += '</div>';
+                        html += '</td>';
 						html += '</tr>';
 
 						// Print table HTML
@@ -537,6 +680,29 @@ $(document).ready(function(){
 				} else {
 					alert_toast(resp.msg, 'error');
 				}
+
+    // Manual status update
+    $(document).on('click', '.set_status', function(e){
+        e.preventDefault();
+        var id = $(this).data('id');
+        var status = $(this).data('status');
+        $.ajax({
+            url: _base_url_ + 'classes/Invoice.php?action=update_status',
+            method: 'POST',
+            data: { invoice_id: id, status: status },
+            dataType: 'json',
+            success: function(resp){
+                if(resp && resp.status === 'success'){
+                    alert_toast('Invoice status updated to ' + status.toUpperCase(), 'success');
+                    loadInvoices();
+                    loadStats();
+                }else{
+                    alert_toast(resp.msg || 'Failed to update status', 'error');
+                }
+            },
+            error: function(){ alert_toast('Failed to update status', 'error'); }
+        });
+    });
 			}
 		});
 	}
@@ -604,10 +770,11 @@ $(document).ready(function(){
 		html += '<p><strong>Email:</strong> ' + invoice.email + '</p>';
 		html += '<p><strong>Contact:</strong> ' + invoice.contact + '</p>';
 		html += '</div>';
+		var statusClass = (invoice.payment_status == 'paid') ? 'success' : (invoice.payment_status == 'late' ? 'danger' : 'warning');
 		html += '<div class="col-md-6 text-right">';
 		html += '<p><strong>Date:</strong> ' + new Date(invoice.generated_at).toLocaleDateString() + '</p>';
 		html += '<p><strong>Due Date:</strong> ' + new Date(invoice.due_date).toLocaleDateString() + '</p>';
-		html += '<p><strong>Status:</strong> <span class="badge badge-' + (invoice.payment_status == 'paid' ? 'success' : 'warning') + '">' + invoice.payment_status.toUpperCase() + '</span></p>';
+		html += '<p><strong>Status:</strong> <span class="badge badge-' + statusClass + '">' + (invoice.payment_status || '').toUpperCase() + '</span></p>';
 		html += '</div>';
 		html += '</div>';
 
@@ -637,6 +804,12 @@ $(document).ready(function(){
 		html += '<p><strong>Subtotal:</strong> ₱' + parseFloat(invoice.subtotal).toLocaleString() + '</p>';
 		html += '<p><strong>VAT:</strong> ₱' + parseFloat(invoice.vat_amount).toLocaleString() + '</p>';
 		html += '<p><strong>Total Amount:</strong> ₱' + parseFloat(invoice.total_amount).toLocaleString() + '</p>';
+		if(typeof invoice.balance_remaining !== 'undefined'){
+			html += '<p><strong>Balance Remaining:</strong> ₱' + parseFloat(invoice.balance_remaining).toLocaleString() + '</p>';
+		}
+		if(typeof invoice.late_fee_amount !== 'undefined' && parseFloat(invoice.late_fee_amount) > 0){
+			html += '<p><strong>Late Fee:</strong> ₱' + parseFloat(invoice.late_fee_amount).toLocaleString() + '</p>';
+		}
 		html += '</div>';
 		html += '</div>';
 

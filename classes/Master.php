@@ -598,13 +598,30 @@ Class Master extends DBConnection {
 				throw new Exception("Failed to clear cart: " . $this->conn->error);
 			}
 			
-			// Commit transaction
-			$this->conn->commit();
-			
-			$resp['status'] = 'success';
-			$resp['msg'] = "Order placed successfully!";
-			$resp['ref_code'] = $ref_code;
-			$resp['order_id'] = $order_id;
+            // Commit transaction
+            $this->conn->commit();
+            
+            // Auto-generate invoice for the new order
+            try{
+                if(file_exists(base_app.'classes/Invoice.php')){
+                    require_once base_app.'classes/Invoice.php';
+                    $invoiceSvc = new Invoice();
+                    // Use staff_id = 0 to denote system-generated when placed by client
+                    $invRes = $invoiceSvc->createInvoiceFromOrder($order_id, 0);
+                    if(is_array($invRes) && isset($invRes['status']) && $invRes['status'] !== 'success'){
+                        // Non-fatal: log error
+                        error_log('Auto-invoice generation failed for order ' . $order_id . ': ' . ($invRes['msg'] ?? 'unknown error'));
+                    } else if(is_array($invRes)){
+                        $resp['invoice_id'] = $invRes['invoice_id'] ?? null;
+                        $resp['invoice_number'] = $invRes['invoice_number'] ?? null;
+                    }
+                }
+            } catch (Exception $e){ /* non-fatal */ }
+            
+            $resp['status'] = 'success';
+            $resp['msg'] = "Order placed successfully!";
+            $resp['ref_code'] = $ref_code;
+            $resp['order_id'] = $order_id;
 			
 			// Create notifications for client and admins
 			try {

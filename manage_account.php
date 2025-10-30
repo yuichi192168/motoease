@@ -116,46 +116,111 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="info-box bg-success">
-                                    <span class="info-box-icon"><i class="fas fa-check-circle"></i></span>
-                                    <div class="info-box-content">
-                                        <span class="info-box-text">Current Balance</span>
-                                        <span class="info-box-number">₱<?= number_format($current_balance, 2) ?></span>
-                                    </div>
-                                </div>
-                            </div>
+                            
                         </div>
                         
                         <!-- Payment Status Alert -->
                         </div>
                         
-                        <!-- Payment History Table -->
+                        <?php 
+                        // Invoices & Receipts summary aligned with Admin
+                        $invoices_rs = $conn->query("SELECT i.id, i.invoice_number, i.total_amount, i.payment_status, i.generated_at, i.due_date,
+                                                            COALESCE(SUM(r.amount_paid), 0) as total_paid,
+                                                            MAX(r.issued_at) as last_paid_at,
+                                                            COUNT(r.id) as receipt_count,
+                                                            MAX(r.receipt_number) as last_receipt_number
+                                                       FROM invoices i
+                                                       LEFT JOIN receipts r ON r.invoice_id = i.id
+                                                       WHERE i.customer_id = '{$client_id}'
+                                                       GROUP BY i.id
+                                                       ORDER BY i.generated_at DESC");
+                        ?>
+                        <!-- Payment History (Invoices & Receipts) -->
                         <div class="table-responsive mt-3">
                             <table class="table table-bordered table-striped">
                                 <thead class="thead-dark">
                                     <tr>
+                                        <th>Invoice #</th>
                                         <th>Payment Date</th>
-                                        <th>Amount</th>
+                                        <th>Amount Paid</th>
+                                        <th>Remaining Balance</th>
                                         <th>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    <?php if($invoices_rs && $invoices_rs->num_rows > 0): ?>
+                                        <?php while($inv = $invoices_rs->fetch_assoc()): 
+                                            $paid = (float)$inv['total_paid'];
+                                            $total = (float)$inv['total_amount'];
+                                            $remaining = max(0, $total - $paid);
+                                            $status = $remaining <= 0 ? 'Paid' : ($paid > 0 ? 'Partial' : ($inv['payment_status'] === 'unpaid' ? 'Unpaid' : ucfirst($inv['payment_status'])));
+                                            $badge = $remaining <= 0 ? 'success' : ($paid > 0 ? 'info' : 'warning');
+                                        ?>
+                                        <tr>
+                                            <td>
+                                                <strong><?= htmlspecialchars($inv['invoice_number']) ?></strong>
+                                                <?php if(!empty($inv['last_receipt_number'])): ?>
+                                                    <br><small class="text-muted">Receipt: <?= htmlspecialchars($inv['last_receipt_number']) ?><?= ($inv['receipt_count'] > 1 ? ' (+' . ((int)$inv['receipt_count']-1) . ' more)' : '') ?></small>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?php if(!empty($inv['last_paid_at'])): ?>
+                                                    <?= date('M d, Y H:i', strtotime($inv['last_paid_at'])) ?>
+                                                <?php else: ?>
+                                                    <span class="text-muted">—</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>₱<?= number_format($paid, 2) ?></td>
+                                            <td class="<?= $remaining > 0 ? 'text-danger' : 'text-success' ?>">₱<?= number_format($remaining, 2) ?></td>
+                                            <td><span class="badge badge-<?= $badge ?>"><?= $status ?></span></td>
+                                        </tr>
+                                        <?php endwhile; ?>
+                                    <?php else: ?>
+                                        <tr><td colspan="5" class="text-center text-muted">No invoices/receipts found.</td></tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <?php 
+                        // Balance adjustments/payment transactions (admin changes reflected here)
+                        $tx_rs = $conn->query("SELECT date_created, transaction_type, amount, description, reference_id
+                                                FROM customer_transactions 
+                                                WHERE client_id = '{$client_id}'
+                                                ORDER BY date_created DESC LIMIT 50");
+                        ?>
+                        <!-- Balance Adjustments & Payments -->
+                        <div class="table-responsive mt-3">
+                            <table class="table table-bordered table-striped">
+                                <thead>
                                     <tr>
-                                        <td>January 15, 2025</td>
-                                        <td>₱7,340</td>
-                                        <td><span class="badge badge-success">Paid</span></td>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Amount</th>
+                                        <th>Description</th>
+                                        <th>Reference</th>
                                     </tr>
-                                    <tr>
-                                        <td>December 15, 2024</td>
-                                        <td>₱7,340</td>
-                                        <td><span class="badge badge-success">Paid</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td>November 15, 2024</td>
-                                        <td>₱7,340</td>
-                                        <td><span class="badge badge-success">Paid</span></td>
-                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if($tx_rs && $tx_rs->num_rows > 0): ?>
+                                        <?php while($tx = $tx_rs->fetch_assoc()): ?>
+                                        <tr>
+                                            <td><?= date('M d, Y H:i', strtotime($tx['date_created'])) ?></td>
+                                            <td>
+                                                <span class="badge badge-<?= $tx['transaction_type'] === 'payment' ? 'success' : 'danger' ?>">
+                                                    <?= ucfirst($tx['transaction_type']) ?>
+                                                </span>
+                                            </td>
+                                            <td class="<?= $tx['transaction_type'] === 'payment' ? 'text-success' : 'text-danger' ?>">
+                                                <?= $tx['transaction_type'] === 'payment' ? '+' : '-' ?>₱<?= number_format((float)$tx['amount'], 2) ?>
+                                            </td>
+                                            <td><?= htmlspecialchars($tx['description']) ?></td>
+                                            <td><?= htmlspecialchars($tx['reference_id']) ?></td>
+                                        </tr>
+                                        <?php endwhile; ?>
+                                    <?php else: ?>
+                                        <tr><td colspan="5" class="text-center text-muted">No balance adjustments or payment entries.</td></tr>
+                                    <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>

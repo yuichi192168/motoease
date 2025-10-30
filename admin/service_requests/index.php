@@ -13,15 +13,17 @@
 			<table class="table table-bordered table-stripped">
 				<colgroup>
 					<col width="5%">
+					<col width="15%">
+					<col width="10%">
 					<col width="35%">
-					<col width="25%">
-					<col width="25%">
+					<col width="15%">
 					<col width="10%">
 				</colgroup>
 				<thead>
 					<tr>
 						<th>#</th>
 						<th>Date Created</th>
+						<th>Order ID</th>
 						<th>Client Name</th>
 						<th>Service</th>
 						<th>Status</th>
@@ -55,6 +57,7 @@
 						<tr>
 							<td class="text-center"><?php echo $i++; ?></td>
 							<td><?php echo date("Y-m-d H:i",strtotime($row['date_created'])) ?></td>
+							<td class="text-center"><?php echo isset($row['order_id']) && $row['order_id'] > 0 ? (int)$row['order_id'] : '<span class="text-muted">—</span>' ?></td>
 							<td><?php echo ucwords($row['fullname']) ?></td>
 							<td>
 								<p class="m-0 truncate-3">

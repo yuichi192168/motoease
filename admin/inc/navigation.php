@@ -181,18 +181,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                                 <p>Service Request Reports</p>
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a href="./?page=invoices" class="nav-link <?php echo $page == 'invoices' ? 'active' : '' ?>">
-                                <i class="far fa-circle nav-icon"></i>
-                                <p>Invoices & Receipts</p>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="./?page=orcr_documents" class="nav-link <?php echo $page == 'orcr_documents' ? 'active' : '' ?>">
-                                <i class="far fa-circle nav-icon"></i>
-                                <p>OR/CR Documents</p>
-                            </a>
-                        </li>
+                        
                         <li class="nav-item">
                             <a href="./?page=user_log_history" class="nav-link <?php echo $page == 'user_log_history' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
@@ -271,6 +260,18 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                             <a href="./?page=customer_accounts" class="nav-link <?php echo $page == 'customer_accounts' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Account Balances</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="./?page=invoices" class="nav-link <?php echo $page == 'invoices' ? 'active' : '' ?>">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Invoices & Receipts</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="./?page=orcr_documents" class="nav-link <?php echo $page == 'orcr_documents' ? 'active' : '' ?>">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>OR/CR Documents</p>
                             </a>
                         </li>
                     </ul>
