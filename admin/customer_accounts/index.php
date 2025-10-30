@@ -131,21 +131,15 @@
 										<span class="sr-only">Toggle Dropdown</span>
 									</button>
 									<div class="dropdown-menu" role="menu">
-										<?php if($_settings->userdata('login_type') == 1): // Admin only ?>
-										<!-- <a class="dropdown-item adjust_balance" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
-											<span class="fa fa-edit text-primary"></span> Adjust Balance
-										</a> -->
+										<a class="dropdown-item view_transactions" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
+											<span class="fa fa-list text-info"></span> View Transactions
+										</a>
 										<div class="dropdown-divider"></div>
-										<?php endif; ?>
 										<a class="dropdown-item upload_orcr" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
 											<span class="fa fa-upload text-success"></span> Upload OR/CR
 										</a>
 										<a class="dropdown-item view_orcr" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
 											<span class="fa fa-file-pdf text-warning"></span> View OR/CR
-										</a>
-										<div class="dropdown-divider"></div>
-                                        <a class="dropdown-item view_transactions" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
-											<span class="fa fa-list text-info"></span> View Transactions
 										</a>
 									</div>
 								</td>
@@ -627,6 +621,27 @@
 			if ($('.modal:visible').length > 0) {
 				$('body').addClass('modal-open');
 			}
+		});
+
+		$(document).on('click', '.mark-status', function(){
+			var id = $(this).data('id');
+			var status = $(this).data('status');
+			if(!id || !status) return;
+			$.ajax({
+				url: _base_url_ + 'classes/Invoice.php?action=update_status',
+				method: 'POST',
+				data: { invoice_id: id, status: status },
+				dataType: 'json',
+				success: function(resp){
+					if(resp && resp.status === 'success'){
+						alert_toast('Status updated to '+status.toUpperCase(),'success');
+						location.reload();
+					}else{
+						alert_toast(resp.msg || 'Failed to update status','error');
+					}
+				},
+				error: function(){ alert_toast('Failed to update status','error'); }
+			});
 		});
 	})
 </script>

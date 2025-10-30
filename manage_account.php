@@ -190,7 +190,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                                                 ORDER BY date_created DESC LIMIT 50");
                         ?>
                         <!-- Balance Adjustments & Payments -->
-                        <div class="table-responsive mt-3">
+                        <!-- <div class="table-responsive mt-3">
                             <table class="table table-bordered table-striped">
                                 <thead>
                                     <tr>
@@ -223,7 +223,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                                     <?php endif; ?>
                                 </tbody>
                             </table>
-                        </div>
+                        </div> -->
                     </div>
                 </div>
             </div>

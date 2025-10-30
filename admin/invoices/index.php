@@ -342,6 +342,37 @@
 		</div>
 	</div>
 </div>
+<!-- Edit Invoice Modal -->
+<div class="modal fade" id="editInvoiceModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-md" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">Edit Invoice Status</h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <form id="edit_invoice_form">
+        <div class="modal-body">
+          <input type="hidden" name="invoice_id" id="edit_invoice_id">
+          <div class="form-group">
+            <label>Payment Status</label>
+            <select class="form-control" name="status" id="edit_invoice_status" required>
+              <option value="pending">Pending</option>
+              <option value="paid">Paid</option>
+              <option value="partial">Partial</option>
+              <option value="late">Late</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Update Status</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 <script>
 // Logo URLs for printing
 var mainLogoUrl = '<?php echo validate_image($_settings->info('main_logo')) ?: validate_image($_settings->info('logo')) ?>';
@@ -507,6 +538,58 @@ $(document).ready(function(){
 		});
 	});
 
+	$(document).on('click', '.mark-status', function(e){
+    e.preventDefault();
+    var id = $(this).data('id');
+    var status = $(this).data('status');
+    if(!id || !status) return;
+    $.ajax({
+        url: _base_url_ + 'classes/Invoice.php?action=update_status',
+        method: 'POST',
+        data: { invoice_id: id, status: status },
+        dataType: 'json',
+        success: function(resp){
+            if(resp && resp.status === 'success'){
+                alert_toast('Status updated to '+status.toUpperCase(),'success');
+                loadInvoices();
+                loadStats();
+            }else{
+                alert_toast(resp.msg || 'Failed to update status','error');
+            }
+        },
+        error: function(){ alert_toast('Failed to update status','error'); }
+    });
+});
+
+	$(document).on('click', '.edit_invoice', function(e){
+  e.preventDefault();
+  var invoiceId = $(this).data('id');
+  $('#edit_invoice_id').val(invoiceId);
+  // Load current status via AJAX
+  $.get(_base_url_+'classes/Invoice.php', {action: 'get_invoice', invoice_id: invoiceId}, function(data){
+    if(data && data.status == 'success' && data.data.payment_status){
+      $('#edit_invoice_status').val(data.data.payment_status);
+    } else {
+      $('#edit_invoice_status').val('pending');
+    }
+    $('#editInvoiceModal').modal('show');
+  },'json');
+});
+$('#edit_invoice_form').submit(function(e){
+  e.preventDefault();
+  var formData = $(this).serialize();
+  $.post(_base_url_+'classes/Invoice.php?action=update_status', formData, function(resp){
+    if(resp && resp.status == 'success'){
+      $('#editInvoiceModal').modal('hide');
+      alert_toast('Status updated','success');
+      loadInvoices();
+      if(typeof loadStats !== 'undefined'){ loadStats(); }
+    } else {
+      alert_toast(resp.msg || 'Failed to update status','error');
+    }
+  },'json');
+});
+
 	function loadInvoices(){
 		var filters = {
 			date_start: $('#date_start').val(),
@@ -556,22 +639,13 @@ $(document).ready(function(){
 						html += '<td>' + new Date(invoice.generated_at).toLocaleDateString() + '</td>';
                         html += '<td>' + (invoice.receipt_date ? new Date(invoice.receipt_date).toLocaleDateString() : '-') + '</td>';
                         html += '<td>';
-                        html += '<div class="btn-group">';
-                        html += '<button class="btn btn-sm btn-primary view_invoice" data-id="' + invoice.id + '"><i class="fa fa-eye"></i> View</button>';
-                        html += '<button class="btn btn-sm btn-secondary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="sr-only">Toggle Dropdown</span></button>';
-                        html += '<div class="dropdown-menu">';
-                        html += '<a class="dropdown-item set_status" href="#" data-id="' + invoice.id + '" data-status="paid">✅ Mark Paid</a>';
-                        html += '<a class="dropdown-item set_status" href="#" data-id="' + invoice.id + '" data-status="pending">⏳ Mark Pending</a>';
-                        html += '<a class="dropdown-item set_status" href="#" data-id="' + invoice.id + '" data-status="late">⚠️ Mark Late</a>';
-                        if(invoice.payment_status != 'paid'){
-                            html += '<div class="dropdown-divider"></div>';
-                            html += '<a class="dropdown-item create_receipt" href="#" data-id="' + invoice.id + '" data-amount="' + invoice.total_amount + '"><i class="fa fa-receipt"></i> Create Receipt</a>';
-                            html += '<a class="dropdown-item text-danger delete_invoice" href="#" data-id="' + invoice.id + '"><i class="fa fa-trash"></i> Delete</a>';
-                        }
+                        html += '<button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">Action <span class="sr-only">Toggle Dropdown</span></button>';
+                        html += '<div class="dropdown-menu" role="menu">';
+                        html += '<a class="dropdown-item view_invoice" href="#" data-id="' + invoice.id + '"><span class="fa fa-eye text-primary"></span> View</a>';
                         html += '<div class="dropdown-divider"></div>';
-                        html += '<a class="dropdown-item upload_orcr" href="#" data-client-id="' + (invoice.customer_id || '') + '" data-name="' + (invoice.firstname + ' ' + invoice.lastname) + '"><span class="fa fa-upload text-success"></span> Upload OR/CR</a>';
-                        html += '<a class="dropdown-item view_orcr" href="#" data-client-id="' + (invoice.customer_id || '') + '"><span class="fa fa-file-pdf text-warning"></span> View OR/CR</a>';
-                        html += '</div>';
+                        html += '<a class="dropdown-item edit_invoice" href="#" data-id="' + invoice.id + '"><span class="fa fa-edit text-primary"></span> Edit</a>';
+                        html += '<div class="dropdown-divider"></div>';
+                        html += '<a class="dropdown-item delete_invoice" href="#" data-id="' + invoice.id + '"><span class="fa fa-trash text-danger"></span> Delete</a>';
                         html += '</div>';
                         html += '</td>';
 						html += '</tr>';
@@ -682,27 +756,7 @@ $(document).ready(function(){
 				}
 
     // Manual status update
-    $(document).on('click', '.set_status', function(e){
-        e.preventDefault();
-        var id = $(this).data('id');
-        var status = $(this).data('status');
-        $.ajax({
-            url: _base_url_ + 'classes/Invoice.php?action=update_status',
-            method: 'POST',
-            data: { invoice_id: id, status: status },
-            dataType: 'json',
-            success: function(resp){
-                if(resp && resp.status === 'success'){
-                    alert_toast('Invoice status updated to ' + status.toUpperCase(), 'success');
-                    loadInvoices();
-                    loadStats();
-                }else{
-                    alert_toast(resp.msg || 'Failed to update status', 'error');
-                }
-            },
-            error: function(){ alert_toast('Failed to update status', 'error'); }
-        });
-    });
+    // This block is now handled by the .mark-status buttons
 			}
 		});
 	}

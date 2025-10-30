@@ -14,7 +14,6 @@
 				<colgroup>
 					<col width="5%">
 					<col width="15%">
-					<col width="10%">
 					<col width="35%">
 					<col width="15%">
 					<col width="10%">
@@ -23,7 +22,6 @@
 					<tr>
 						<th>#</th>
 						<th>Date Created</th>
-						<th>Order ID</th>
 						<th>Client Name</th>
 						<th>Service</th>
 						<th>Status</th>
@@ -57,7 +55,6 @@
 						<tr>
 							<td class="text-center"><?php echo $i++; ?></td>
 							<td><?php echo date("Y-m-d H:i",strtotime($row['date_created'])) ?></td>
-							<td class="text-center"><?php echo isset($row['order_id']) && $row['order_id'] > 0 ? (int)$row['order_id'] : '<span class="text-muted">—</span>' ?></td>
 							<td><?php echo ucwords($row['fullname']) ?></td>
 							<td>
 								<p class="m-0 truncate-3">
@@ -89,17 +86,23 @@
 								<?php endif; ?>
 							</td>
 							<td align="center">
-								 <button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">
-				                  		Action
-				                    <span class="sr-only">Toggle Dropdown</span>
-				                  </button>
-				                  <div class="dropdown-menu" role="menu">
-				                    <a class="dropdown-item view_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-eye text-primary"></span> View</a>
-				                    <div class="dropdown-divider"></div>
-				                    <a class="dropdown-item edit_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-edit text-primary"></span> Edit</a>
-				                    <div class="dropdown-divider"></div>
-				                    <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-trash text-danger"></span> Delete</a>
-				                  </div>
+							 <button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">
+							   Action
+							   <span class="sr-only">Toggle Dropdown</span>
+							 </button>
+							 <div class="dropdown-menu" role="menu">
+							   <a class="dropdown-item view_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>">
+								 <span class="fa fa-eye text-primary"></span> View
+							   </a>
+							   <div class="dropdown-divider"></div>
+							   <a class="dropdown-item edit_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>">
+								 <span class="fa fa-edit text-primary"></span> Edit
+							   </a>
+							   <div class="dropdown-divider"></div>
+							   <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>">
+								 <span class="fa fa-trash text-danger"></span> Delete
+							   </a>
+							 </div>
 							</td>
 						</tr>
 					<?php endwhile; ?>
@@ -144,4 +147,24 @@
 			}
 		})
 	}
+	$(document).on('click', '.mark-status', function(){
+		var id = $(this).data('id');
+		var status = $(this).data('status');
+		if(!id || !status) return;
+		$.ajax({
+			url: _base_url_+'classes/Master.php?f=update_service_request_status',
+			method: 'POST',
+			data: { id: id, status: status },
+			dataType: 'json',
+			success: function(resp){
+				if(resp && resp.status == 'success'){
+					alert_toast('Status updated','success');
+					location.reload();
+				} else {
+					alert_toast(resp.msg || 'Failed to update status','error');
+				}
+			},
+			error: function(){ alert_toast('Failed to update status','error'); }
+		});
+	});
 </script>

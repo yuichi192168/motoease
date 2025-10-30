@@ -218,35 +218,9 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                     </ul>
                 </li>
                 <?php endif; ?>
-                
-                <!-- System Settings -->
-                <?php if(in_array($role_type, ['admin'])): ?>
-                <li class="nav-item">
-                    <a href="./?page=system_info" class="nav-link <?php echo $page == 'system_info' ? 'active' : '' ?>">
-                        <i class="nav-icon fas fa-cog"></i>
-                        <p>System Settings</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="./?page=promo_management" class="nav-link <?php echo $page == 'promo_management' ? 'active' : '' ?>">
-                        <i class="nav-icon fas fa-images"></i>
-                        <p>Promo & Customer Images</p>
-                    </a>
-                </li>
-                <?php endif; ?>
-                
-                <!-- Branch Management (Admin Only) -->
-                <!-- <?php if(in_array($role_type, ['admin'])): ?>
-                <li class="nav-item">
-                    <a href="./?page=branches" class="nav-link <?php echo $page == 'branches' ? 'active' : '' ?>">
-                        <i class="nav-icon fas fa-building"></i>
-                        <p>Branch Management</p>
-                    </a>
-                </li> -->
-                <?php endif; ?>
-                
-                <!-- Customer Account Management -->
-                <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'admin_assistant'])): ?>
+
+                 <!-- Customer Account Management -->
+                 <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'admin_assistant'])): ?>
                 <li class="nav-item <?php echo in_array($page, ['customer_accounts']) ? 'menu-open' : '' ?>">
                     <a href="#" class="nav-link <?php echo in_array($page, ['customer_accounts']) ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-user-cog"></i>
@@ -277,6 +251,34 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                     </ul>
                 </li>
                 <?php endif; ?>
+                
+                <!-- System Settings -->
+                <?php if(in_array($role_type, ['admin'])): ?>
+                <li class="nav-item">
+                    <a href="./?page=system_info" class="nav-link <?php echo $page == 'system_info' ? 'active' : '' ?>">
+                        <i class="nav-icon fas fa-cog"></i>
+                        <p>System Settings</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="./?page=promo_management" class="nav-link <?php echo $page == 'promo_management' ? 'active' : '' ?>">
+                        <i class="nav-icon fas fa-images"></i>
+                        <p>Promo & Customer Images</p>
+                    </a>
+                </li>
+                <?php endif; ?>
+                
+                <!-- Branch Management (Admin Only) -->
+                <!-- <?php if(in_array($role_type, ['admin'])): ?>
+                <li class="nav-item">
+                    <a href="./?page=branches" class="nav-link <?php echo $page == 'branches' ? 'active' : '' ?>">
+                        <i class="nav-icon fas fa-building"></i>
+                        <p>Branch Management</p>
+                    </a>
+                </li> -->
+                <?php endif; ?>
+                
+               
                 
                 
             </ul>
