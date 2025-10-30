@@ -1546,6 +1546,9 @@ Class Master extends DBConnection {
 		
 		$update = $this->conn->query("UPDATE `order_list` SET status = 5 WHERE id = '{$id}'");
 		if($update){
+			// TRIGGER: update invoices.updated_at and recalculate client balance
+			$this->conn->query("UPDATE invoices SET updated_at = NOW() WHERE order_id = '{$id}'");
+			$this->recalculateClientBalance($order['client_id']);
 			$resp['status'] = 'success';
 			$resp['msg'] = 'Order cancelled successfully.';
 			try {
@@ -3858,6 +3861,18 @@ Class Master extends DBConnection {
         $resp['status'] = 'success';
         $resp['html'] = $html;
         return json_encode($resp);
+    }
+
+    /**
+     * Recalculate client account balance based on invoice_financials
+     */
+    private function recalculateClientBalance($clientId) {
+        $sum = $this->conn->query(
+            "SELECT COALESCE(SUM(balance_remaining),0) as balance FROM invoice_financials WHERE customer_id = '{$clientId}'"
+        )->fetch_assoc()['balance'] ?? 0;
+        $this->conn->query(
+            "UPDATE client_list SET account_balance = '{$sum}' WHERE id = '{$clientId}'"
+        );
     }
 }
 

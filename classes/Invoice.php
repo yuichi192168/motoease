@@ -67,6 +67,18 @@ class Invoice extends DBConnection {
     }
     
     /**
+     * Recalculate client account balance based on invoice_financials
+     */
+    private function recalculateClientBalance($clientId) {
+        $sum = $this->conn->query(
+            "SELECT COALESCE(SUM(balance_remaining),0) as balance FROM invoice_financials WHERE customer_id = '{$clientId}'"
+        )->fetch_assoc()['balance'] ?? 0;
+        $this->conn->query(
+            "UPDATE client_list SET account_balance = '{$sum}' WHERE id = '{$clientId}'"
+        );
+    }
+    
+    /**
      * Create invoice from order
      */
     public function createInvoiceFromOrder($order_id, $staff_id) {
@@ -140,6 +152,10 @@ class Invoice extends DBConnection {
                 $this->conn->query("INSERT INTO invoice_items ({$item_fields}) VALUES ({$item_values})");
             }
             
+            // TRIGGER: Recalculate client balance
+            $customer_id = $invoice_data['customer_id'];
+            $this->recalculateClientBalance($customer_id);
+
             return [
                 'status' => 'success', 
                 'msg' => 'Invoice created successfully',
@@ -194,6 +210,10 @@ class Invoice extends DBConnection {
             if(isset($fin['computed_status']) && $fin['computed_status'] === 'paid'){
                 $this->conn->query("UPDATE order_list SET status = 6 WHERE id = '{$invoice['order_id']}'");
             }
+            
+            // TRIGGER: Update invoice and recalculate client balance
+            $this->conn->query("UPDATE invoices SET updated_at = NOW() WHERE id = '{$invoice_id}'");
+            $this->recalculateClientBalance($invoice['customer_id']);
             
             return [
                 'status' => 'success', 
