@@ -55,7 +55,7 @@
 				</div>
 			</div>
 
-			<!-- Filters -->
+			<!-- Filters
 			<div class="row mb-3">
 				<div class="col-md-12">
 					<div class="card card-outline card-secondary">
@@ -101,79 +101,7 @@
 						</div>
 					</div>
 				</div>
-			</div>
-
-			<!-- Printable Content -->
-			<div id="printable">
-				<!-- Header with dual logos -->
-				<div class="report-header" style="display:flex; justify-content: space-between; align-items: center; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:15px;">
-					<!-- Main Logo on the left -->
-					<div style="flex:0 0 auto; margin-right:20px;">
-						<img src="<?php echo validate_image($_settings->info('main_logo')) ?: validate_image($_settings->info('logo')) ?>" alt="Main Logo" style="width:100px; height:100px; object-fit:contain;">
-					</div>
-
-					<!-- Centered Organization Name -->
-					<div style="flex:1; text-align:center;">
-						<h2 style="margin:0; text-transform:uppercase; font-weight:bold;"><?php echo $_settings->info('name') ?></h2>
-						<h4 style="margin:0;"><b>Invoice Management Report</b></h4>
-						<p style="margin:0;">Generated on: <?php echo date('F d, Y \a\t H:i A') ?></p>
-					</div>
-
-					<!-- Secondary Logo on the right -->
-					<div style="flex:0 0 auto; margin-left:20px;">
-						<img src="<?php echo validate_image($_settings->info('secondary_logo')) ?: validate_image($_settings->info('logo')) ?>" alt="Secondary Logo" style="width:100px; height:100px; object-fit:contain;">
-					</div>
-				</div>
-
-				<!-- Statistics Section -->
-				<div class="stats-section" style="display:flex; justify-content:space-around; margin:20px 0; padding:15px; background-color:#f8f9fa; border:1px solid #dee2e6;">
-					<div class="stat-item" style="text-align:center;">
-						<div class="stat-number" style="font-size:24px; font-weight:bold; color:#007bff;" id="print_total_invoices">0</div>
-						<div class="stat-label" style="font-size:11px; color:#666; margin-top:5px;">Total Invoices</div>
-					</div>
-					<div class="stat-item" style="text-align:center;">
-						<div class="stat-number" style="font-size:24px; font-weight:bold; color:#007bff;" id="print_paid_invoices">0</div>
-						<div class="stat-label" style="font-size:11px; color:#666; margin-top:5px;">Paid Invoices</div>
-					</div>
-					<div class="stat-item" style="text-align:center;">
-						<div class="stat-number" style="font-size:24px; font-weight:bold; color:#007bff;" id="print_unpaid_invoices">0</div>
-						<div class="stat-label" style="font-size:11px; color:#666; margin-top:5px;">Unpaid Invoices</div>
-					</div>
-					<div class="stat-item" style="text-align:center;">
-						<div class="stat-number" style="font-size:24px; font-weight:bold; color:#007bff;" id="print_total_amount">₱0.00</div>
-						<div class="stat-label" style="font-size:11px; color:#666; margin-top:5px;">Total Amount</div>
-					</div>
-				</div>
-
-				<!-- Invoices Table -->
-				<table class="invoices-table" style="width:100%; border-collapse:collapse; margin:20px 0;">
-					<thead>
-						<tr>
-							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">#</th>
-							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Invoice No.</th>
-							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Customer</th>
-							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Transaction Type</th>
-							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Total Amount</th>
-							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Payment Status</th>
-							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Generated Date</th>
-							<th style="border:1px solid #ddd; padding:8px; text-align:center; font-weight:bold; background-color:#f8f9fa;">Receipt</th>
-						</tr>
-					</thead>
-					<tbody id="print_invoices_table">
-						<!-- Data will be populated by JavaScript -->
-					</tbody>
-				</table>
-
-				<!-- Footer Information -->
-				<div class="footer-info" style="margin-top:30px; padding:15px; border-top:1px solid #ddd; text-align:center; font-size:10px; color:#666;">
-					<p><strong>Company Information:</strong></p>
-					<p>📍 National Highway Brgy. Parian, Calamba City, Laguna</p>
-					<p>📞 0948-235-3207 | ✉️ starhondacalamba55@gmail.com</p>
-					<p>📘 Facebook: @starhondacalambabranch</p>
-					<hr style="margin: 10px 0;">
-					<p>This report was generated on <?= date('F d, Y \a\t H:i A') ?> by <?= ucwords($_settings->userdata('firstname') . ' ' . $_settings->userdata('lastname')) ?></p>
-				</div>
-			</div>
+			</div> -->
 
 			<!-- Invoices Table -->
 			<div class="table-responsive">
@@ -582,8 +510,9 @@ $('#edit_invoice_form').submit(function(e){
     if(resp && resp.status == 'success'){
       $('#editInvoiceModal').modal('hide');
       alert_toast('Status updated','success');
-      loadInvoices();
-      if(typeof loadStats !== 'undefined'){ loadStats(); }
+      location.reload(); // <-- force a full reload for accurate table display
+      // loadInvoices();
+      // if(typeof loadStats !== 'undefined'){ loadStats(); }
     } else {
       alert_toast(resp.msg || 'Failed to update status','error');
     }
@@ -644,6 +573,10 @@ $('#edit_invoice_form').submit(function(e){
                         html += '<a class="dropdown-item view_invoice" href="#" data-id="' + invoice.id + '"><span class="fa fa-eye text-primary"></span> View</a>';
                         html += '<div class="dropdown-divider"></div>';
                         html += '<a class="dropdown-item edit_invoice" href="#" data-id="' + invoice.id + '"><span class="fa fa-edit text-primary"></span> Edit</a>';
+                        if(invoice.payment_status !== 'paid'){
+                          html += '<div class="dropdown-divider"></div>';
+                          html += '<a class="dropdown-item create_receipt" href="#" data-id="' + invoice.id + '" data-amount="' + invoice.total_amount + '"><span class="fa fa-receipt text-success"></span> Create Receipt</a>';
+                        }
                         html += '<div class="dropdown-divider"></div>';
                         html += '<a class="dropdown-item delete_invoice" href="#" data-id="' + invoice.id + '"><span class="fa fa-trash text-danger"></span> Delete</a>';
                         html += '</div>';

@@ -12,7 +12,7 @@
 </style>
 
 <?php 
-$date_start = isset($_GET['date_start']) ? $_GET['date_start'] :  date("Y-m-d",strtotime("-7 days"));
+$date_start = isset($_GET['date_start']) ? $_GET['date_start'] :  '2025-01-01' ;
 $date_end = isset($_GET['date_end']) ? $_GET['date_end'] :  date("Y-m-d");
 ?>
 

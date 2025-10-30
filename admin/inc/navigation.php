@@ -181,6 +181,12 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                                 <p>Service Request Reports</p>
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a href="./?page=report/invoices" class="nav-link <?php echo $page == 'report/invoices' ? 'active' : '' ?>">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Invoice Report</p>
+                            </a>
+                        </li>
                         
                         <li class="nav-item">
                             <a href="./?page=user_log_history" class="nav-link <?php echo $page == 'user_log_history' ? 'active' : '' ?>">

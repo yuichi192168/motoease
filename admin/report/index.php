@@ -112,6 +112,7 @@ $date_end = isset($_GET['date_end']) ? $_GET['date_end'] :  date("Y-m-d") ;
         </div>
     </div>
 </div>
+<li><a href="./?page=report/invoices" class="nav-link">Invoice Management Report</a></li>
 <noscript>
     <style>
         .m-0{
@@ -155,3 +156,10 @@ $date_end = isset($_GET['date_end']) ? $_GET['date_end'] :  date("Y-m-d") ;
         })
     })
 </script>
+
+<?php if($_settings->chk_flashdata('success')): ?>
+<script>
+	alert_toast("<?php echo $_settings->flashdata('success') ?>",'success')
+</script>
+<?php endif;?>
+
