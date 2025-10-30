@@ -99,7 +99,7 @@
 											<span class="fa fa-file-pdf text-warning"></span> View OR/CR
 										</a>
 										<div class="dropdown-divider"></div>
-										<a class="dropdown-item view_transactions" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>">
+                                        <a class="dropdown-item view_transactions" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
 											<span class="fa fa-list text-info"></span> View Transactions
 										</a>
 									</div>
@@ -277,11 +277,29 @@
 					<span aria-hidden="true">&times;</span>
 				</button>
 			</div>
-			<div class="modal-body">
-				<div id="transactions_list">
-					<!-- Transactions will be loaded here -->
-				</div>
-			</div>
+            <div class="modal-body">
+                <div class="mb-2 d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>Customer:</strong> <span id="vt_customer_name">-</span>
+                    </div>
+                    <div class="btn-group" role="group" aria-label="Actions">
+                        <?php if($_settings->userdata('login_type') == 1): // Admin only ?>
+                        <button type="button" class="btn btn-sm btn-primary" id="vt_adjust_balance">
+                            <span class="fa fa-edit"></span> Adjust Balance
+                        </button>
+                        <?php endif; ?>
+                        <button type="button" class="btn btn-sm btn-success" id="vt_upload_orcr">
+                            <span class="fa fa-upload"></span> Upload OR/CR
+                        </button>
+                        <button type="button" class="btn btn-sm btn-warning" id="vt_view_orcr">
+                            <span class="fa fa-file-pdf"></span> View OR/CR
+                        </button>
+                    </div>
+                </div>
+                <div id="transactions_list">
+                    <!-- Transactions will be loaded here -->
+                </div>
+            </div>
 			<div class="modal-footer">
 				<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
 			</div>
@@ -380,10 +398,14 @@
 			});
 		});
 		
-		$('.view_transactions').click(function(){
-			var id = $(this).attr('data-id');
-			
-			$.ajax({
+        $('.view_transactions').click(function(){
+            var id = $(this).attr('data-id');
+            var name = $(this).attr('data-name') || '';
+            // store context for modal action buttons
+            $('#viewTransactionsModal').data('client-id', id);
+            $('#viewTransactionsModal').data('client-name', name);
+            $('#vt_customer_name').text(name || '-');
+            $.ajax({
 				url: _base_url_ + "classes/Master.php?f=get_client_transactions",
 				method: "POST",
 				data: {client_id: id},
@@ -396,6 +418,55 @@
 				}
 			});
 		});
+
+        // Actions inside View Transactions modal
+        $('#vt_adjust_balance').click(function(){
+            var id = $('#viewTransactionsModal').data('client-id') || '';
+            var name = $('#viewTransactionsModal').data('client-name') || '';
+            if(!id) return;
+            $.ajax({
+                url: _base_url_ + "classes/Master.php?f=get_client_balance",
+                method: "POST",
+                data: {client_id: id},
+                dataType: "json",
+                success: function(resp){
+                    if(resp.status == 'success'){
+                        $('#adjust_client_id').val(id);
+                        $('#adjust_customer_name').val(name);
+                        $('#current_balance').val('₱' + parseFloat(resp.balance).toFixed(2));
+                        $('#adjustBalanceModal').modal('show');
+                    }
+                }
+            });
+        });
+
+        $('#vt_upload_orcr').click(function(){
+            var id = $('#viewTransactionsModal').data('client-id') || '';
+            var name = $('#viewTransactionsModal').data('client-name') || '';
+            if(!id) return;
+            $('#upload_client_id').val(id);
+            $('#upload_customer_name').val(name);
+            $('#uploadOrcrModal').modal('show');
+        });
+
+        $('#vt_view_orcr').click(function(){
+            var id = $('#viewTransactionsModal').data('client-id') || '';
+            if(!id) return;
+            $.ajax({
+                url: _base_url_ + "classes/Master.php?f=get_client_orcr",
+                method: "POST",
+                data: {client_id: id},
+                dataType: "json",
+                success: function(resp){
+                    if(resp.status == 'success'){
+                        $('#orcr_documents').html(resp.html);
+                        $('#viewOrcrModal').modal('show');
+                    } else {
+                        alert_toast(resp.msg, 'error');
+                    }
+                }
+            });
+        });
 		
 		$('#adjustBalanceForm').submit(function(e){
 			e.preventDefault();
@@ -493,6 +564,27 @@
 		
 		$('#print_reports').click(function(){
 			var nw = window.open("print_customer_accounts.php","_blank","width=800,height=600")
+		});
+
+		// Handle multiple stacked modals so new ones sit above previous
+		$(document).on('show.bs.modal', '.modal', function () {
+			// Ensure modal is not trapped inside a lower z-index stacking context
+			$(this).appendTo('body');
+			// Compute z-index above any currently visible modals
+			var zIndex = 1050 + (10 * $('.modal:visible').length);
+			$(this).css('z-index', zIndex);
+			setTimeout(function() {
+				$('.modal-backdrop').not('.modal-stack')
+					.css('z-index', zIndex - 1)
+					.addClass('modal-stack');
+			}, 0);
+		});
+
+		// When a modal is hidden, if others remain open, keep body from jumping
+		$(document).on('hidden.bs.modal', '.modal', function () {
+			if ($('.modal:visible').length > 0) {
+				$('body').addClass('modal-open');
+			}
 		});
 	})
 </script>
