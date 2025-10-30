@@ -984,4 +984,3 @@ $('#edit_invoice_form').submit(function(e){
 	}
 });
 </script>
-

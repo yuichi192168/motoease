@@ -52,12 +52,11 @@ table td, table th {
             <table class="table table-bordered">
                 <colgroup>
                     <col width="5%">
-                    <col width="12%">
+                    <col width="15%">
                     <col width="20%">
                     <col width="16%">
                     <col width="12%">
                     <col width="13%">
-                    <col width="11%">
                     <col width="11%">
                 </colgroup>
                 <thead>
@@ -69,7 +68,6 @@ table td, table th {
                         <th>Total Amount</th>
                         <th>Payment Status</th>
                         <th>Date Created</th>
-                        <th>Receipt Date</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -91,12 +89,11 @@ table td, table th {
                             <?php echo ucwords($ps); ?></span>
                         </td>
                         <td><?php echo date('Y-m-d', strtotime($row['generated_at'])) ?></td>
-                        <td><?php echo !empty($row['payment_date']) ? date('Y-m-d', strtotime($row['payment_date'])) : '-' ?></td>
                     </tr>
                     <?php endwhile; ?>
                     <?php if($qry->num_rows <= 0): ?>
                     <tr>
-                        <td class="text-center" colspan="8">No Data...</td>
+                        <td class="text-center" colspan="7">No Data...</td>
                     </tr>
                     <?php endif; ?>
                 </tbody>

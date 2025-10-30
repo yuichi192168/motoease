@@ -238,7 +238,6 @@ class Invoice extends DBConnection {
                                       LEFT JOIN users u ON i.generated_by = u.id
                                       LEFT JOIN invoice_financials fin ON fin.id = i.id
                                       WHERE i.id = '{$invoice_id}'")->fetch_assoc();
-        
         if($invoice) {
             // Get invoice items
             $items = $this->conn->query("SELECT * FROM invoice_items WHERE invoice_id = '{$invoice_id}'");
@@ -246,17 +245,18 @@ class Invoice extends DBConnection {
             while($item = $items->fetch_assoc()) {
                 $invoice['items'][] = $item;
             }
-            
-            // Get receipt if exists
-            $receipt = $this->conn->query("SELECT r.*, u.firstname as staff_firstname, u.lastname as staff_lastname
-                                          FROM receipts r
-                                          LEFT JOIN users u ON r.received_by = u.id
-                                          WHERE r.invoice_id = '{$invoice_id}'")->fetch_assoc();
-            $invoice['receipt'] = $receipt;
+            // Removed: Do not fetch or attach receipt.
         }
-        
-        // Do not override stored payment_status; expose computed alongside
         return $invoice;
+    }
+    
+    /**
+     * Get receipt details for a given invoice
+     */
+    public function getReceipt($invoice_id) {
+        // Fetch the most recent receipt for the invoice
+        $receipt = $this->conn->query("SELECT r.*, u.firstname as staff_firstname, u.lastname as staff_lastname FROM receipts r LEFT JOIN users u ON r.received_by = u.id WHERE r.invoice_id = '{$invoice_id}' ORDER BY r.id DESC LIMIT 1")->fetch_assoc();
+        return $receipt ?: null;
     }
     
     /**
@@ -310,6 +310,7 @@ class Invoice extends DBConnection {
         
         $result = [];
         while($invoice = $invoices->fetch_assoc()) {
+            // If there was a receipt assigned here, REMOVE IT so only invoice info is used.
             $result[] = $invoice;
         }
         
@@ -399,6 +400,17 @@ if(isset($_GET['action'])) {
             if(isset($_GET['invoice_id'])) {
                 $result = $invoice->getInvoice($_GET['invoice_id']);
                 echo json_encode(['status' => 'success', 'data' => $result]);
+            }
+            break;
+            
+        case 'get_receipt':
+            if(isset($_GET['invoice_id'])) {
+                $result = $invoice->getReceipt($_GET['invoice_id']);
+                if($result) {
+                    echo json_encode(['status' => 'success', 'data' => $result]);
+                } else {
+                    echo json_encode(['status' => 'error', 'msg' => 'Receipt not found']);
+                }
             }
             break;
             
