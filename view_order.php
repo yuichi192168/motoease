@@ -72,7 +72,7 @@ if(isset($_GET['id'])){
                             <?php if($status == 0): ?>
                                 <span class="badge badge-secondary px-3 rounded-pill">Pending</span>
                             <?php elseif($status == 1): ?>
-                                <span class="badge badge-primary px-3 rounded-pill">Ready for pickup</span>
+                                <span class="badge badge-primary px-3 rounded-pill">Approved Order</span>
                             <?php elseif($status == 2): ?>
                                 <span class="badge badge-success px-3 rounded-pill">For Delivery</span>
                             <?php elseif($status == 3): ?>
@@ -167,9 +167,9 @@ if(isset($_GET['id'])){
                         <h5><i class="fa fa-info-circle"></i> Order Status Information</h5>
                         <?php if(isset($status)): ?>
                             <?php if($status == 0): ?>
-                                <p class="mb-0">Your order is currently <strong>pending</strong>. We will process it shortly and notify you when it's ready for pickup or delivery.</p>
+                                <p class="mb-0">Your order is currently <strong>pending</strong>. We will process it shortly and notify you when it's Approved Order or delivery.</p>
                             <?php elseif($status == 1): ?>
-                                <p class="mb-0">Your order is <strong>ready for pickup</strong>! Please visit our store to claim your items. Bring a valid ID and your reference code: <strong><?= $ref_code ?></strong></p>
+                                <p class="mb-0">Your order is <strong>Approved Order</strong>! Please visit our store to claim your items. Bring a valid ID and your reference code: <strong><?= $ref_code ?></strong></p>
                             <?php elseif($status == 2): ?>
                                 <p class="mb-0">Your order is <strong>being prepared for delivery</strong>. We will contact you soon with delivery details.</p>
                             <?php elseif($status == 3): ?>

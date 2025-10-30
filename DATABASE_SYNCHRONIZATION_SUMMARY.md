@@ -8,12 +8,12 @@ This document summarizes the database alignment and query synchronization fixes 
 ### 1. Order Status Inconsistencies ✅ FIXED
 **Problem**: Different status labels and values between client and admin views
 - Admin showed "Processing" for status 2, client showed "For Delivery"
-- Admin showed "Ready for Pickup" for status 3, client showed "On the Way"
+- Admin showed "Approved Order" for status 3, client showed "On the Way"
 - Admin showed "Completed" for status 4, client showed "Delivered"
 
 **Solution**: Standardized all status labels across both sides:
 - Status 0: Pending
-- Status 1: Ready for pickup
+- Status 1: Approved Order
 - Status 2: For Delivery
 - Status 3: On the Way
 - Status 4: Delivered

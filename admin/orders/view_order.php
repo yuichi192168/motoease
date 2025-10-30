@@ -46,7 +46,7 @@ if(isset($_GET['id'])){
                             <?php if($status == 0): ?>
                                 <span class="badge badge-secondary px-3 rounded-pill">Pending</span>
                             <?php elseif($status == 1): ?>
-                                <span class="badge badge-primary px-3 rounded-pill">Ready for pickup</span>
+                                <span class="badge badge-primary px-3 rounded-pill">Approved Order</span>
                             <?php elseif($status == 2): ?>
                                 <span class="badge badge-success px-3 rounded-pill">For Delivery</span>
                             <?php elseif($status == 3): ?>

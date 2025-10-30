@@ -87,7 +87,7 @@ SELECT
     o.status,
     CASE 
         WHEN o.status = 0 THEN 'Pending'
-        WHEN o.status = 1 THEN 'Ready for Pickup'
+        WHEN o.status = 1 THEN 'Approved Order'
         WHEN o.status = 2 THEN 'For Delivery'
         WHEN o.status = 3 THEN 'On the Way'
         WHEN o.status = 4 THEN 'Delivered'

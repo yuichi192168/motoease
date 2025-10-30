@@ -207,7 +207,7 @@ class Notification extends DBConnection {
     private function getOrderStatusText($status) {
         $statuses = [
             0 => 'Pending',
-            1 => 'Ready for pickup',
+            1 => 'Approved Order',
             2 => 'For Delivery',
             3 => 'On the Way',
             4 => 'Delivered',

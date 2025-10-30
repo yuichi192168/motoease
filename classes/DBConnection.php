@@ -4,11 +4,12 @@ if(!defined('DB_SERVER')){
 }
 
 class DBConnection {
-    private $host = "localhost";
-    private $username = "root";
-    private $password = "";           // XAMPP default = empty string
-    private $database = "motoease_db";
-    private $port = 3306;
+    // private $host = "localhost";
+    // private $username = "root";
+    // private $password = "";           // XAMPP default = empty string
+    // private $database = "motoease_db";
+    // private $port = 3307;
+
     private $host = DB_SERVER;
     private $username = DB_USERNAME;
     

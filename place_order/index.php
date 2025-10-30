@@ -860,7 +860,7 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                         title: 'Application Marked as Completed!',
                         text: 'You can now proceed with your motorcycle order.',
                         icon: 'success',
-                        confirmButtonText: 'Place Order Now'
+                        confirmButtonText: 'Proceed to Advance Order Cart'
                     }).then(() => {
                         // Refresh the page to update application status
                         location.reload();

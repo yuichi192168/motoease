@@ -40,7 +40,7 @@ $installments = $conn->query("SELECT
     ol.date_updated,
     CASE 
         WHEN ol.status = 0 THEN 'Pending'
-        WHEN ol.status = 1 THEN 'Ready for Pickup'
+        WHEN ol.status = 1 THEN 'Approved Order'
         WHEN ol.status = 2 THEN 'For Delivery'
         WHEN ol.status = 3 THEN 'On the Way'
         WHEN ol.status = 4 THEN 'Delivered'

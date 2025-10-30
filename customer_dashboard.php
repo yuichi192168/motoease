@@ -258,7 +258,7 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
                                         <td>₱<?= number_format($order['total_amount'], 2) ?></td>
                                         <td>
                                             <span class="badge badge-<?= $order['status'] == 0 ? 'secondary' : ($order['status'] == 1 ? 'primary' : ($order['status'] == 4 ? 'success' : 'danger')) ?>">
-                                                <?= $order['status'] == 0 ? 'Pending' : ($order['status'] == 1 ? 'Ready for pickup' : ($order['status'] == 4 ? 'Delivered' : 'Cancelled')) ?>
+                                                <?= $order['status'] == 0 ? 'Pending' : ($order['status'] == 1 ? 'Approved Order' : ($order['status'] == 4 ? 'Delivered' : 'Cancelled')) ?>
                                             </span>
                                         </td>
                                         <td><?= date('M d, Y', strtotime($order['date_created'])) ?></td>
