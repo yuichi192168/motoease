@@ -24,14 +24,14 @@
     --bs-yellow: #ffc107;
     --bs-green: #198754;
     --bs-teal: #20c997;
-    --bs-cyan: #0dcaf0;
+    --bs-cyan: #0D6EFD;
     --bs-white: #fff;
     --bs-gray: #6c757d;
     --bs-gray-dark: #343a40;
     --bs-primary: #dc3545;
     --bs-secondary: #6c757d;
     --bs-success: #198754;
-    --bs-info: #0dcaf0;
+    --bs-info: #0D6EFD;
     --bs-warning: #ffc107;
     --bs-danger: #dc3545;
     --bs-light: #f8f9fa;
@@ -3086,8 +3086,8 @@ fieldset:disabled .btn {
 
 .btn-info {
     color: #000;
-    background-color: #0dcaf0;
-    border-color: #0dcaf0;
+    background-color: #0D6EFD;
+    border-color: #0D6EFD;
 }
 
 .btn-info:hover {
@@ -3125,8 +3125,8 @@ fieldset:disabled .btn {
 .btn-info:disabled,
 .btn-info.disabled {
     color: #000;
-    background-color: #0dcaf0;
-    border-color: #0dcaf0;
+    background-color: #0D6EFD;
+    border-color: #0D6EFD;
 }
 
 .btn-warning {
@@ -3430,14 +3430,14 @@ fieldset:disabled .btn {
 }
 
 .btn-outline-info {
-    color: #0dcaf0;
-    border-color: #0dcaf0;
+    color: #0D6EFD;
+    border-color: #0D6EFD;
 }
 
 .btn-outline-info:hover {
     color: #000;
-    background-color: #0dcaf0;
-    border-color: #0dcaf0;
+    background-color: #0D6EFD;
+    border-color: #0D6EFD;
 }
 
 .btn-check:focus+.btn-outline-info,
@@ -3451,8 +3451,8 @@ fieldset:disabled .btn {
 .btn-outline-info.active,
 .btn-outline-info.dropdown-toggle.show {
     color: #000;
-    background-color: #0dcaf0;
-    border-color: #0dcaf0;
+    background-color: #0D6EFD;
+    border-color: #0D6EFD;
 }
 
 .btn-check:checked+.btn-outline-info:focus,
@@ -3465,7 +3465,7 @@ fieldset:disabled .btn {
 
 .btn-outline-info:disabled,
 .btn-outline-info.disabled {
-    color: #0dcaf0;
+    color: #0D6EFD;
     background-color: transparent;
 }
 
@@ -6704,7 +6704,7 @@ fieldset:disabled .btn {
 }
 
 .link-info {
-    color: #0dcaf0;
+    color: #0D6EFD;
 }
 
 .link-info:hover,
@@ -7115,7 +7115,7 @@ fieldset:disabled .btn {
 }
 
 .border-info {
-    border-color: #0dcaf0 !important;
+    border-color: #0D6EFD !important;
 }
 
 .border-warning {
@@ -7948,7 +7948,7 @@ fieldset:disabled .btn {
 }
 
 .text-info {
-    color: #0dcaf0 !important;
+    color: #0D6EFD !important;
 }
 
 .text-warning {
@@ -8004,7 +8004,7 @@ fieldset:disabled .btn {
 }
 
 .bg-info {
-    background-color: #0dcaf0 !important;
+    background-color: #0D6EFD !important;
 }
 
 .bg-warning {
