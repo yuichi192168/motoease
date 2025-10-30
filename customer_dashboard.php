@@ -20,15 +20,21 @@ $account_balance = $conn->query("SELECT
 $client_balance_row = $conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}' AND delete_flag = 0")->fetch_assoc();
 $client_account_balance = $client_balance_row ? (float)$client_balance_row['account_balance'] : 0;
 
-// Get order details for this client (using status instead of non-existent payment_status)
+// Installment schedule with due dates and delay/penalty computed from invoices or 30-day rule
 $installments = $conn->query("SELECT 
     ol.id,
     ol.ref_code,
     ol.total_amount,
-    ol.status,
+    ol.status as order_status,
     ol.date_created,
-    ol.date_updated
+    COALESCE(i.due_date, DATE_ADD(ol.date_created, INTERVAL 30 DAY)) as due_date,
+    CASE 
+        WHEN COALESCE(i.payment_status, CASE WHEN ol.status IN (4,6) THEN 'paid' ELSE 'unpaid' END) = 'paid' THEN 0
+        ELSE DATEDIFF(CURDATE(), COALESCE(i.due_date, DATE_ADD(ol.date_created, INTERVAL 30 DAY)))
+    END as days_overdue,
+    COALESCE(i.payment_status, CASE WHEN ol.status IN (4,6) THEN 'paid' ELSE 'unpaid' END) as payment_status
     FROM order_list ol
+    LEFT JOIN invoices i ON i.order_id = ol.id
     WHERE ol.client_id = '{$client_id}' 
     AND ol.status != 5
     ORDER BY ol.date_created DESC");
@@ -99,7 +105,7 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
                                     <span class="info-box-icon"><i class="fas fa-credit-card"></i></span>
                                     <div class="info-box-content">
                                         <span class="info-box-text">Installment Balance</span>
-                                        <span class="info-box-number">₱<?= number_format($account_balance['installment_balance'], 2) ?></span>
+                                        <span class="info-box-number">₱<?= number_format($account_balance['pending_amount'], 2) ?></span>
                                     </div>
                                 </div>
                             </div>
@@ -183,11 +189,19 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
                                         <th>Amount</th>
                                         <th>Due Date</th>
                                         <th>Status</th>
-                                        <th>Days Overdue</th>
+                                        <th>Delay</th>
+                                        <th>Late Fee</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php while($installment = $installments->fetch_assoc()): ?>
+                                    <?php 
+                                    $late_fee_rate = 0.03; // 3% per month overdue
+                                    while($installment = $installments->fetch_assoc()): 
+                                        $days_overdue = (int)$installment['days_overdue'];
+                                        $is_paid = ($installment['payment_status'] === 'paid');
+                                        $months_overdue = $days_overdue > 0 ? floor($days_overdue / 30) : 0;
+                                        $late_fee_amount = (!$is_paid && $months_overdue > 0) ? ($installment['total_amount'] * $late_fee_rate * $months_overdue) : 0;
+                                    ?>
                                     <tr>
                                         <td>
                                             <a href="./?p=view_order&id=<?= $installment['ref_code'] ?>" class="text-primary">
@@ -197,21 +211,32 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
                                         <td>₱<?= number_format($installment['total_amount'], 2) ?></td>
                                         <td><?= date('M d, Y', strtotime($installment['due_date'])) ?></td>
                                         <td>
-                                            <?php if($installment['days_overdue'] > 0): ?>
-                                                <span class="badge badge-danger">Overdue</span>
-                                            <?php elseif($installment['days_overdue'] == 0): ?>
-                                                <span class="badge badge-warning">Due Today</span>
+                                            <?php if($is_paid): ?>
+                                                <span class="badge badge-success">🟢 Paid</span>
+                                            <?php elseif($days_overdue > 0): ?>
+                                                <span class="badge badge-danger">🔴 Late Payment</span>
+                                            <?php elseif($days_overdue == 0 || $days_overdue > -3): ?>
+                                                <span class="badge badge-warning">🟡 Pending / Due Soon</span>
                                             <?php else: ?>
-                                                <span class="badge badge-success">Up to Date</span>
+                                                <span class="badge badge-info">On Track</span>
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php if($installment['days_overdue'] > 0): ?>
-                                                <span class="text-danger"><?= $installment['days_overdue'] ?> days</span>
-                                            <?php elseif($installment['days_overdue'] == 0): ?>
+                                            <?php if($is_paid): ?>
+                                                <span class="text-success">No delay</span>
+                                            <?php elseif($days_overdue > 0): ?>
+                                                <span class="text-danger"><?= $days_overdue ?> day(s) overdue</span>
+                                            <?php elseif($days_overdue == 0): ?>
                                                 <span class="text-warning">Due today</span>
                                             <?php else: ?>
-                                                <span class="text-success"><?= abs($installment['days_overdue']) ?> days remaining</span>
+                                                <span class="text-success"><?= abs($days_overdue) ?> day(s) remaining</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if(!$is_paid && $months_overdue > 0): ?>
+                                                <span class="text-danger">+<?= ($late_fee_rate * 100) ?>%/mo = ₱<?= number_format($late_fee_amount, 2) ?></span>
+                                            <?php else: ?>
+                                                <span class="text-muted">—</span>
                                             <?php endif; ?>
                                         </td>
                                     </tr>

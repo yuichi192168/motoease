@@ -21,8 +21,8 @@
 						<col width="15%">
 						<col width="15%">
 						<col width="15%">
-                        <col width="10%">
-                        <col width="15%">
+                        <col width="12%">
+                        <col width="18%">
 					</colgroup>
 					<thead>
                         <tr>
@@ -32,6 +32,7 @@
 							<th>Installment Plan</th>
 							<th>Paid Amount</th>
 							<th>Unpaid Amount</th>
+                            <th>Status</th>
                             <th>Credit App</th>
                             <th>Action</th>
 						</tr>
@@ -65,12 +66,60 @@
 								<td class="text-center">
 									<small><?php echo $installment_plan ?></small>
 								</td>
-								<td class="text-right text-success">
+                                <td class="text-right text-success">
 									<strong>₱<?php echo number_format($row['paid_amount'], 2) ?></strong>
 								</td>
                             <td class="text-right text-danger">
 									<strong>₱<?php echo number_format($row['unpaid_amount'], 2) ?></strong>
 								</td>
+                            <?php 
+                                // Compute next due and delay/penalty summary for this client
+                                $late_fee_rate = 0.03; // 3% per month
+                                $client_id = (int)$row['id'];
+                                $due_q = $conn->query("SELECT 
+                                        ol.id,
+                                        ol.total_amount,
+                                        COALESCE(i.payment_status, CASE WHEN ol.status IN (4,6) THEN 'paid' ELSE 'unpaid' END) as payment_status,
+                                        COALESCE(i.due_date, DATE_ADD(ol.date_created, INTERVAL 30 DAY)) as due_date,
+                                        CASE 
+                                            WHEN COALESCE(i.payment_status, CASE WHEN ol.status IN (4,6) THEN 'paid' ELSE 'unpaid' END) = 'paid' THEN 0
+                                            ELSE DATEDIFF(CURDATE(), COALESCE(i.due_date, DATE_ADD(ol.date_created, INTERVAL 30 DAY)))
+                                        END as days_overdue
+                                    FROM order_list ol
+                                    LEFT JOIN invoices i ON i.order_id = ol.id
+                                    WHERE ol.client_id = '{$client_id}' AND ol.status != 5");
+                                $max_overdue = 0; $any_unpaid = false; $next_due = null; $penalty_total = 0; $all_paid = true; 
+                                if($due_q){
+                                    while($d = $due_q->fetch_assoc()){
+                                        $is_paid = ($d['payment_status'] === 'paid');
+                                        if(!$is_paid){
+                                            $all_paid = false;
+                                            $any_unpaid = true;
+                                            $due_dt = $d['due_date'];
+                                            if($next_due === null || strtotime($due_dt) < strtotime($next_due)){
+                                                $next_due = $due_dt;
+                                            }
+                                            $days = (int)$d['days_overdue'];
+                                            if($days > $max_overdue) $max_overdue = $days;
+                                            $months_overdue = $days > 0 ? floor($days / 30) : 0;
+                                            if($months_overdue > 0){
+                                                $penalty_total += ((float)$d['total_amount']) * $late_fee_rate * $months_overdue;
+                                            }
+                                        }
+                                    }
+                                }
+                                $status_badge = '';
+                                if($all_paid || (!$any_unpaid && $row['unpaid_amount'] <= 0)){
+                                    $status_badge = '<span class="badge badge-success">🟢 Paid</span>';
+                                } elseif($max_overdue > 0){
+                                    $status_badge = '<span class="badge badge-danger">🔴 Late: '.(int)$max_overdue.'d</span> <small class=\'text-danger\'>+'.(int)($late_fee_rate*100)."%/mo ₱".number_format($penalty_total,2).'</small>';
+                                } else {
+                                    $status_badge = '<span class="badge badge-warning">🟡 Pending / Due '.($next_due ? date('M d, Y', strtotime($next_due)) : '—').'</span>';
+                                }
+                            ?>
+                            <td class="text-center">
+                                <?php echo $status_badge; ?>
+                            </td>
                             <td class="text-center">
                                 <?php if(isset($row['credit_application_completed'])): ?>
                                     <span class="badge <?php echo $row['credit_application_completed'] ? 'badge-success' : 'badge-warning' ?>">
