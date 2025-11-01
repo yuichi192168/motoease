@@ -1,0 +1,189 @@
+-- ====================================================================
+-- MotoEase Final Complete Database Structure
+-- Star Honda Calamba - Motorcycle Management System
+-- Version: 1.0
+-- Date: 2025
+-- ====================================================================
+-- This file creates the complete database with all tables and
+-- foreign key constraints properly aligned
+-- ====================================================================
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+-- Create database (uncomment if needed)
+-- CREATE DATABASE IF NOT EXISTS `if0_40141531_motoease_7` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+-- USE `if0_40141531_motoease_7`;
+
+-- ====================================================================
+-- INSTALLMENT SYSTEM TABLES
+-- ====================================================================
+
+-- Create installment_plans table
+CREATE TABLE IF NOT EXISTS `installment_plans` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `plan_name` VARCHAR(100) NOT NULL,
+    `description` TEXT,
+    `number_of_installments` INT(11) NOT NULL,
+    `interest_rate` DECIMAL(5,2) DEFAULT 0.00 COMMENT 'Interest rate in percentage',
+    `down_payment_percentage` DECIMAL(5,2) DEFAULT 0.00 COMMENT 'Down payment percentage',
+    `status` ENUM('active', 'inactive') DEFAULT 'active',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Create installment_contracts table
+CREATE TABLE IF NOT EXISTS `installment_contracts` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `contract_number` VARCHAR(50) NOT NULL,
+    `invoice_id` INT(11) NOT NULL,
+    `customer_id` INT(30) NOT NULL,
+    `installment_plan_id` INT(11) NOT NULL,
+    `total_amount` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    `down_payment_amount` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    `remaining_balance` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    `start_date` DATE NOT NULL,
+    `end_date` DATE NOT NULL,
+    `status` ENUM('active', 'completed', 'defaulted', 'cancelled') DEFAULT 'active',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `contract_number` (`contract_number`),
+    KEY `invoice_id` (`invoice_id`),
+    KEY `customer_id` (`customer_id`),
+    KEY `installment_plan_id` (`installment_plan_id`),
+    KEY `status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Create installment_schedule table
+CREATE TABLE IF NOT EXISTS `installment_schedule` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `contract_id` INT(11) NOT NULL,
+    `installment_number` INT(11) NOT NULL,
+    `due_date` DATE NOT NULL,
+    `amount_due` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    `principal_amount` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    `interest_amount` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    `status` ENUM('pending', 'paid', 'overdue', 'partial') DEFAULT 'pending',
+    `paid_amount` DECIMAL(15,2) DEFAULT 0.00,
+    `paid_date` DATETIME NULL,
+    `late_fee` DECIMAL(15,2) DEFAULT 0.00,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `contract_id` (`contract_id`),
+    KEY `due_date` (`due_date`),
+    KEY `status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Create installment_payments table
+CREATE TABLE IF NOT EXISTS `installment_payments` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT,
+    `payment_reference` VARCHAR(50) NOT NULL,
+    `schedule_id` INT(11) NOT NULL,
+    `contract_id` INT(11) NOT NULL,
+    `amount_paid` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    `payment_date` DATETIME NOT NULL,
+    `payment_method` ENUM('cash', 'card', 'bank_transfer', 'check', 'online') NOT NULL DEFAULT 'cash',
+    `receipt_number` VARCHAR(50) NULL,
+    `notes` TEXT,
+    `created_by` INT(30) NULL COMMENT 'Staff who processed the payment',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `payment_reference` (`payment_reference`),
+    KEY `schedule_id` (`schedule_id`),
+    KEY `contract_id` (`contract_id`),
+    KEY `receipt_number` (`receipt_number`),
+    KEY `created_by` (`created_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ====================================================================
+-- FOREIGN KEY CONSTRAINTS FOR INSTALLMENT SYSTEM
+-- ====================================================================
+
+-- Add foreign keys for installment_contracts
+ALTER TABLE `installment_contracts`
+    ADD CONSTRAINT `fk_installment_contracts_invoice` 
+    FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`id`) 
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+    
+    ADD CONSTRAINT `fk_installment_contracts_customer` 
+    FOREIGN KEY (`customer_id`) REFERENCES `client_list` (`id`) 
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+    
+    ADD CONSTRAINT `fk_installment_contracts_plan` 
+    FOREIGN KEY (`installment_plan_id`) REFERENCES `installment_plans` (`id`) 
+    ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- Add foreign keys for installment_schedule
+ALTER TABLE `installment_schedule`
+    ADD CONSTRAINT `fk_installment_schedule_contract` 
+    FOREIGN KEY (`contract_id`) REFERENCES `installment_contracts` (`id`) 
+    ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Add foreign keys for installment_payments
+ALTER TABLE `installment_payments`
+    ADD CONSTRAINT `fk_installment_payments_schedule` 
+    FOREIGN KEY (`schedule_id`) REFERENCES `installment_schedule` (`id`) 
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+    
+    ADD CONSTRAINT `fk_installment_payments_contract` 
+    FOREIGN KEY (`contract_id`) REFERENCES `installment_contracts` (`id`) 
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+    
+    ADD CONSTRAINT `fk_installment_payments_created_by` 
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) 
+    ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- ====================================================================
+-- INSERT DEFAULT DATA
+-- ====================================================================
+
+-- Insert default installment plans
+INSERT IGNORE INTO `installment_plans` (`plan_name`, `description`, `number_of_installments`, `interest_rate`, `down_payment_percentage`, `status`) VALUES
+('3 Months - No Interest', '3 monthly installments with no interest', 3, 0.00, 30.00, 'active'),
+('6 Months - No Interest', '6 monthly installments with no interest', 6, 0.00, 30.00, 'active'),
+('12 Months - Low Interest', '12 monthly installments with 2% interest', 12, 2.00, 20.00, 'active'),
+('18 Months - Standard', '18 monthly installments with 5% interest', 18, 5.00, 20.00, 'active'),
+('24 Months - Standard', '24 monthly installments with 5% interest', 24, 5.00, 20.00, 'active');
+
+-- ====================================================================
+-- COMMIT TRANSACTION
+-- ====================================================================
+
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+-- ====================================================================
+-- DATABASE CREATION COMPLETE
+-- ====================================================================
+-- 
+-- Summary:
+-- - Created 4 installment system tables
+-- - Added 7 foreign key constraints
+-- - Inserted 5 default installment plans
+-- - All relationships properly aligned
+-- 
+-- Foreign Key Relationships:
+-- 1. installment_contracts -> invoices (invoice_id)
+-- 2. installment_contracts -> client_list (customer_id)
+-- 3. installment_contracts -> installment_plans (installment_plan_id)
+-- 4. installment_schedule -> installment_contracts (contract_id)
+-- 5. installment_payments -> installment_schedule (schedule_id)
+-- 6. installment_payments -> installment_contracts (contract_id)
+-- 7. installment_payments -> users (created_by)
+-- 
+-- Note: This script should be run AFTER the main motoease_db.sql
+-- to ensure all parent tables exist first.
+-- ====================================================================
+

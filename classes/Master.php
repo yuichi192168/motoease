@@ -3874,6 +3874,57 @@ Class Master extends DBConnection {
             "UPDATE client_list SET account_balance = '{$sum}' WHERE id = '{$clientId}'"
         );
     }
+
+    /**
+     * Get all installment contracts
+     */
+    function get_all_installment_contracts() {
+        $result = $this->conn->query(
+            "SELECT ic.*, ip.plan_name, ip.number_of_installments,
+                    c.firstname, c.lastname, c.email,
+                    i.invoice_number, i.transaction_type
+             FROM installment_contracts ic
+             JOIN installment_plans ip ON ic.installment_plan_id = ip.id
+             JOIN invoices i ON ic.invoice_id = i.id
+             JOIN client_list c ON ic.customer_id = c.id
+             ORDER BY ic.created_at DESC"
+        );
+        
+        $contracts = [];
+        while ($row = $result->fetch_assoc()) {
+            $contracts[] = $row;
+        }
+        
+        $resp['status'] = 'success';
+        $resp['data'] = $contracts;
+        return json_encode($resp);
+    }
+
+    /**
+     * Get installment statistics
+     */
+    function get_installment_stats() {
+        $stats = $this->conn->query(
+            "SELECT 
+                COUNT(CASE WHEN status = 'active' THEN 1 END) as active,
+                COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
+                SUM(CASE WHEN status = 'active' THEN remaining_balance ELSE 0 END) as total_balance
+            FROM installment_contracts"
+        )->fetch_assoc();
+        
+        // Get overdue count
+        $overdue = $this->conn->query(
+            "SELECT COUNT(*) as count
+            FROM installment_schedule
+            WHERE due_date < CURDATE() AND status IN ('pending', 'partial')"
+        )->fetch_assoc()['count'] ?? 0;
+        
+        $stats['overdue'] = $overdue;
+        
+        $resp['status'] = 'success';
+        $resp['data'] = $stats;
+        return json_encode($resp);
+    }
 }
 
 $Master = new Master();
@@ -4105,6 +4156,12 @@ $sysset = new SystemSettings();
 	break;
 	case 'manual_cart_cleanup':
 		echo $Master->manual_cart_cleanup();
+	break;
+	case 'get_all_installment_contracts':
+		echo $Master->get_all_installment_contracts();
+	break;
+	case 'get_installment_stats':
+		echo $Master->get_installment_stats();
 	break;
 	default:
 		break;
