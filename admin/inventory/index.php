@@ -72,11 +72,18 @@
 						}
 						$qry = $conn->query("SELECT p.*, c.category FROM `product_list` p INNER JOIN categories c ON p.category_id = c.id {$where} ORDER BY (p.`name`) ASC ");
 						while($row = $qry->fetch_assoc()):
-							$row['stocks'] = $conn->query("SELECT SUM(quantity) FROM stock_list where product_id = '{$row['id']}'")->fetch_array()[0];
-							$row['out'] = $conn->query("SELECT SUM(quantity) FROM order_items where product_id = '{$row['id']}' and order_id in (SELECT id FROM order_list where `status` != 5) ")->fetch_array()[0];
-							$row['stocks'] = $row['stocks'] > 0 ? $row['stocks'] : 0;
-        					$row['out'] = $row['out'] > 0 ? $row['out'] : 0;
-							$row['available'] = $row['stocks'] - $row['out'];
+							// Calculate stock the same way as ABC Analysis: IN entries - OUT entries - ordered stock
+							$stock_in = $conn->query("SELECT COALESCE(SUM(quantity), 0) FROM stock_list WHERE product_id = '{$row['id']}' AND type = 1")->fetch_array()[0];
+							$stock_out = $conn->query("SELECT COALESCE(SUM(quantity), 0) FROM stock_list WHERE product_id = '{$row['id']}' AND type = 2")->fetch_array()[0];
+							$ordered = $conn->query("SELECT COALESCE(SUM(quantity), 0) FROM order_items WHERE product_id = '{$row['id']}' AND order_id IN (SELECT id FROM order_list WHERE `status` != 5)")->fetch_array()[0];
+							
+							$stock_in = $stock_in > 0 ? $stock_in : 0;
+							$stock_out = $stock_out > 0 ? $stock_out : 0;
+							$ordered = $ordered > 0 ? $ordered : 0;
+							
+							$row['stocks'] = $stock_in - $stock_out; // Current stock (IN - OUT)
+							$row['out'] = $ordered; // Ordered stock
+							$row['available'] = $row['stocks'] - $row['out']; // Available stock (Current - Ordered)
 							
 							// Determine stock status and color
 							$stock_status = '';

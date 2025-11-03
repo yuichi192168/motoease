@@ -9,11 +9,17 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         foreach($qry->fetch_assoc() as $k => $v){
             $$k=stripslashes($v);
         }
-        $stocks = $conn->query("SELECT SUM(quantity) FROM stock_list where product_id = '$id'")->fetch_array()[0];
-        $out = $conn->query("SELECT SUM(quantity) FROM order_items where product_id = '{$id}' and order_id in (SELECT id FROM order_list where `status` != 5) ")->fetch_array()[0];
-        $stocks = $stocks > 0 ? $stocks : 0;
-        $out = $out > 0 ? $out : 0;
-        $available = $stocks - $out;
+        // Calculate stock the same way as stock management: IN entries - OUT entries - ordered stock
+        $stock_in = $conn->query("SELECT COALESCE(SUM(quantity), 0) FROM stock_list WHERE product_id = '$id' AND type = 1")->fetch_array()[0];
+        $stock_out = $conn->query("SELECT COALESCE(SUM(quantity), 0) FROM stock_list WHERE product_id = '$id' AND type = 2")->fetch_array()[0];
+        $ordered = $conn->query("SELECT COALESCE(SUM(quantity), 0) FROM order_items WHERE product_id = '{$id}' AND order_id IN (SELECT id FROM order_list WHERE `status` != 5)")->fetch_array()[0];
+        
+        $stock_in = $stock_in > 0 ? $stock_in : 0;
+        $stock_out = $stock_out > 0 ? $stock_out : 0;
+        $ordered = $ordered > 0 ? $ordered : 0;
+        
+        $stocks = $stock_in - $stock_out; // Current stock (IN - OUT)
+        $available = $stocks - $ordered; // Available stock (Current - Ordered)
     }
 }
 ?>
@@ -79,43 +85,24 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                         <h3>Stock-in History</h3>
                         <table class="table table-bordered table-stripped">
                             <colgroup>
-                                <col width="50%">
-                                <col width="30%">
-                                <col width="20%">
+                                <col width="60%">
+                                <col width="40%">
                             </colgroup>
                             <thead>
                                 <tr class="bg-light text-light">
                                     <th class="py-1 text-center">Date Added</th>
                                     <th class="py-1 text-center">Quantity</th>
-                                    <th class="py-1 text-center"></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php 
                                 $stocks = $conn->query("SELECT * FROM `stock_list` where `product_id` = '{$id}' ORDER BY date_created DESC");
-                                $is_old_stock = true; // Flag to identify old stocks
                                 while($row=$stocks->fetch_assoc()):
-                                    // Check if this is an old stock entry (more than 1 day old)
-                                    $is_old = (strtotime($row['date_created']) < strtotime('-1 day'));
                                 ?>
-                                    <tr <?php echo $is_old ? 'style="background-color: #f8f9fa;"' : ''; ?>>
+                                    <tr>
                                         <td class="px-2 py-1 align-middle"><?= date('M d, Y H:i', strtotime($row['date_created'])) ?></td>
                                         <td class="px-2 py-1 text-right align-middle">
                                             <span class="badge badge-info"><?= number_format($row['quantity']) ?></span>
-                                        </td>
-                                        <td class="px-2 py-1 align-middle">
-                                            <?php if($is_old): ?>
-                                                <span class="text-muted"><i class="fa fa-lock"></i> Read Only</span>
-                                            <?php else: ?>
-                                                <button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">
-                                                Action
-                                                    <span class="sr-only">Toggle Dropdown</span>
-                                                </button>
-                                                <div class="dropdown-menu" role="menu">
-                                                    <a class="dropdown-item edit_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-edit text-dark"></span> Edit</a>
-                                                    <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-trash text-danger"></span> Delete</a>
-                                                </div>
-                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>
@@ -129,34 +116,5 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 </div>
 
 <script>
-    $(document).ready(function(){
-        $('.edit_data').click(function(){
-			uni_modal("Edit Stock","inventory/manage_stock.php?id="+$(this).attr('data-id'))
-		})
-		$('.delete_data').click(function(){
-			_conf("Are you sure to delete this stock entry product permanently?","delete_stock",[$(this).attr('data-id')])
-		})
-    })
-    function delete_stock($id){
-		start_loader();
-		$.ajax({
-			url:_base_url_+"classes/Master.php?f=delete_stock",
-			method:"POST",
-			data:{id: $id},
-			dataType:"json",
-			error:err=>{
-				console.log(err)
-				alert_toast("An error occured.",'error');
-				end_loader();
-			},
-			success:function(resp){
-				if(typeof resp== 'object' && resp.status == 'success'){
-					location.reload();
-				}else{
-					alert_toast("An error occured.",'error');
-					end_loader();
-				}
-			}
-		})
-	}
+    // Stock-in History is now read-only - no actions available
 </script>

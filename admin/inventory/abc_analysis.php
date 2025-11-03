@@ -5,10 +5,11 @@
 <?php endif;?>
 <div class="card card-outline card-primary">
 	<div class="card-header">
-		<h3 class="card-title">ABC Inventory Analysis</h3>
+		<h3 class="card-title">ABC Inventory Analysis <small class="text-muted">(Real-time Stock Data)</small></h3>
 		<div class="card-tools">
 			<button class="btn btn-flat btn-info" id="refresh_analysis"><span class="fas fa-sync"></span> Refresh Analysis</button>
 			<button class="btn btn-flat btn-warning" id="auto_classify"><span class="fas fa-magic"></span> Auto Classify</button>
+			<button class="btn btn-flat btn-danger" id="reset_table"><span class="fas fa-trash"></span> Reset Table</button>
 		</div>
 	</div>
 	<div class="card-body">
@@ -94,8 +95,6 @@
 										<th>Price</th>
 										<th>Current Stock</th>
 										<th>Available Stock</th>
-										<th>Reorder Point</th>
-										<th>Max Stock</th>
 										<th>Stock Status</th>
 										<th>Action</th>
 									</tr>
@@ -215,19 +214,30 @@
 
 <script>
 $(document).ready(function(){
-	// Load ABC analysis data
+	// Load ABC analysis data on page load
 	loadABCAnalysis();
 	loadStockAlerts();
 
-	// Refresh analysis button
-	$('#refresh_analysis').click(function(){
+	// Auto-refresh every 30 seconds to ensure real-time data
+	setInterval(function(){
 		loadABCAnalysis();
 		loadStockAlerts();
+	}, 30000); // Refresh every 30 seconds
+
+	// Refresh analysis button
+	$('#refresh_analysis').click(function(){
+		start_loader();
+		loadABCAnalysis();
+		loadStockAlerts();
+		setTimeout(function(){
+			end_loader();
+			alert_toast('ABC Analysis refreshed with latest stock data','success');
+		}, 500);
 	});
 
 	// Auto classify button
 	$('#auto_classify').click(function(){
-		if(confirm('This will automatically classify all products based on sales value. Continue?')){
+		if(confirm('This will automatically classify all products based on sales value and current inventory. Continue?')){
 			start_loader();
 			$.ajax({
 				url: _base_url_ + "classes/Master.php?f=auto_classify_abc",
@@ -251,6 +261,21 @@ $(document).ready(function(){
 		}
 	});
 
+	// Reset table button - clear all data
+	$('#reset_table').click(function(){
+		if(confirm('This will clear all ABC Analysis table data. The data will reload on next refresh. Continue?')){
+			var table = $('#abc_analysis_table').DataTable();
+			table.clear().draw();
+			
+			// Reset category counts
+			$('#category_a_count').text('0');
+			$('#category_b_count').text('0');
+			$('#category_c_count').text('0');
+			
+			alert_toast('ABC Analysis table cleared. Click Refresh to reload data.','info');
+		}
+	});
+
 	// Category filter
 	$('#category_filter').change(function(){
 		var category = $(this).val();
@@ -263,25 +288,40 @@ $(document).ready(function(){
 			method: "POST",
 			dataType: "json",
 			error: err => {
-				console.log(err);
-				alert_toast("An error occurred loading ABC analysis.",'error');
+				console.log('ABC Analysis Error:', err);
+				alert_toast("An error occurred loading ABC analysis. Check console for details.",'error');
 			},
 			success: function(resp){
-				if(resp.status == 'success'){
+				console.log('ABC Analysis Response:', resp);
+				if(resp && resp.status == 'success'){
+					// Update last refresh time
+					var now = new Date();
+					var timeString = now.toLocaleTimeString();
+					$('#refresh_analysis').html('<span class="fas fa-sync"></span> Refresh Analysis<br><small>Last: ' + timeString + '</small>');
+					
 					// Update category counts
-					$('#category_a_count').text(resp.category_stats.A || 0);
-					$('#category_b_count').text(resp.category_stats.B || 0);
-					$('#category_c_count').text(resp.category_stats.C || 0);
+					$('#category_a_count').text(resp.category_stats ? resp.category_stats.A || 0 : 0);
+					$('#category_b_count').text(resp.category_stats ? resp.category_stats.B || 0 : 0);
+					$('#category_c_count').text(resp.category_stats ? resp.category_stats.C || 0 : 0);
 
 					// Populate table
 					var table = $('#abc_analysis_table').DataTable();
 					table.clear();
+					
+					if(!resp.data || resp.data.length === 0){
+						table.draw();
+						return;
+					}
 					
 					$.each(resp.data, function(index, item){
 						var stock_status_class = '';
 						var stock_status_text = '';
 						
 						switch(item.stock_status){
+							case 'OUT_OF_STOCK':
+								stock_status_class = 'badge badge-danger';
+								stock_status_text = 'Out of Stock';
+								break;
 							case 'LOW_STOCK':
 								stock_status_class = 'badge badge-warning';
 								stock_status_text = 'Low Stock';
@@ -294,32 +334,44 @@ $(document).ready(function(){
 								stock_status_class = 'badge badge-success';
 								stock_status_text = 'Normal';
 								break;
+							default:
+								stock_status_class = 'badge badge-secondary';
+								stock_status_text = 'Unknown';
 						}
 
 						var abc_class = '';
+						var abc_text = '';
 						switch(item.abc_category){
 							case 'A':
 								abc_class = 'badge badge-danger';
+								abc_text = 'Category A';
 								break;
 							case 'B':
 								abc_class = 'badge badge-warning';
+								abc_text = 'Category B';
 								break;
 							case 'C':
 								abc_class = 'badge badge-info';
+								abc_text = 'Category C';
 								break;
+							default:
+								abc_class = 'badge badge-secondary';
+								abc_text = 'Unclassified';
 						}
 
+						// Ensure values are properly formatted (handle null/undefined)
+						var currentStock = Math.max(0, parseFloat(item.current_stock || 0));
+						var availableStock = Math.max(0, parseFloat(item.available_stock || 0));
+						
 						table.row.add([
 							index + 1,
-							item.name,
-							'<span class="' + abc_class + '">Category ' + item.abc_category + '</span>',
-							'₱' + parseFloat(item.price).toLocaleString(),
-							item.current_stock,
-							item.available_stock,
-							item.reorder_point,
-							item.max_stock,
+							item.name || 'N/A',
+							'<span class="' + abc_class + '">' + abc_text + '</span>',
+							'₱' + parseFloat(item.price || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}),
+							currentStock.toLocaleString('en-US', {maximumFractionDigits: 0}),
+							availableStock.toLocaleString('en-US', {maximumFractionDigits: 0}),
 							'<span class="' + stock_status_class + '">' + stock_status_text + '</span>',
-							'<button class="btn btn-sm btn-primary view_stock" data-id="' + item.id + '">View Stock</button>'
+							'<a href="?page=inventory/view_stock&id=' + item.id + '" class="btn btn-sm btn-primary">View Stock</a>'
 						]);
 					});
 					

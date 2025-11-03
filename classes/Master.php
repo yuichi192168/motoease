@@ -2565,25 +2565,36 @@ Class Master extends DBConnection {
 	}
 	
 	function get_abc_analysis(){
-		// Get ABC analysis data directly from product_list with stock information
+		// Get ABC analysis data directly from product_list with REAL-TIME stock information
+		// No caching - always queries fresh data from stock_list and order_items tables
+		// Calculate stock the same way as stock management: total IN entries - total OUT entries - ordered stock
 		$abc_query = $this->conn->query("
 			SELECT p.*,
-				   COALESCE(s.total_stock, 0) as current_stock,
+				   COALESCE(stock_in.total_stock_in, 0) as stock_in,
+				   COALESCE(stock_out.total_stock_out, 0) as stock_out,
+				   (COALESCE(stock_in.total_stock_in, 0) - COALESCE(stock_out.total_stock_out, 0)) as current_stock,
 				   COALESCE(o.total_ordered, 0) as total_ordered,
-				   (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) as available_stock,
+				   (COALESCE(stock_in.total_stock_in, 0) - COALESCE(stock_out.total_stock_out, 0) - COALESCE(o.total_ordered, 0)) as available_stock,
+				   ((COALESCE(stock_in.total_stock_in, 0) - COALESCE(stock_out.total_stock_out, 0) - COALESCE(o.total_ordered, 0)) * p.price) as inventory_value,
 				   CASE 
-					   WHEN (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) <= 0 THEN 'OUT_OF_STOCK'
-					   WHEN (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) <= p.reorder_point THEN 'LOW_STOCK'
-					   WHEN (COALESCE(s.total_stock, 0) - COALESCE(o.total_ordered, 0)) >= p.max_stock THEN 'OVERSTOCK'
+					   WHEN (COALESCE(stock_in.total_stock_in, 0) - COALESCE(stock_out.total_stock_out, 0) - COALESCE(o.total_ordered, 0)) <= 0 THEN 'OUT_OF_STOCK'
+					   WHEN (COALESCE(stock_in.total_stock_in, 0) - COALESCE(stock_out.total_stock_out, 0) - COALESCE(o.total_ordered, 0)) <= COALESCE(p.reorder_point, 0) THEN 'LOW_STOCK'
+					   WHEN (COALESCE(stock_in.total_stock_in, 0) - COALESCE(stock_out.total_stock_out, 0) - COALESCE(o.total_ordered, 0)) >= COALESCE(p.max_stock, 0) AND COALESCE(p.max_stock, 0) > 0 THEN 'OVERSTOCK'
 					   ELSE 'NORMAL'
 				   END as stock_status
 			FROM product_list p
 			LEFT JOIN (
-				SELECT product_id, SUM(quantity) as total_stock 
+				SELECT product_id, SUM(quantity) as total_stock_in 
 				FROM stock_list 
 				WHERE type = 1 
 				GROUP BY product_id
-			) s ON p.id = s.product_id
+			) stock_in ON p.id = stock_in.product_id
+			LEFT JOIN (
+				SELECT product_id, SUM(quantity) as total_stock_out 
+				FROM stock_list 
+				WHERE type = 2 
+				GROUP BY product_id
+			) stock_out ON p.id = stock_out.product_id
 			LEFT JOIN (
 				SELECT oi.product_id, SUM(oi.quantity) as total_ordered
 				FROM order_items oi
@@ -2592,7 +2603,7 @@ Class Master extends DBConnection {
 				GROUP BY oi.product_id
 			) o ON p.id = o.product_id
 			WHERE p.delete_flag = 0
-			ORDER BY COALESCE(p.abc_category, 'C'), p.price DESC
+			ORDER BY COALESCE(p.abc_category, 'C'), inventory_value DESC, p.price DESC
 		");
 		
 		$data = [];
@@ -2604,6 +2615,17 @@ Class Master extends DBConnection {
 			if(empty($row['abc_category'])) {
 				$row['abc_category'] = 'C';
 			}
+			
+			// Ensure numeric values are properly set and calculated correctly
+			$stock_in_val = (float)($row['stock_in'] ?? 0);
+			$stock_out_val = (float)($row['stock_out'] ?? 0);
+			$ordered_val = (float)($row['total_ordered'] ?? 0);
+			
+			// Recalculate to ensure accuracy (in case of NULL values)
+			$row['current_stock'] = max(0, $stock_in_val - $stock_out_val);
+			$row['available_stock'] = max(0, $row['current_stock'] - $ordered_val);
+			$row['total_ordered'] = $ordered_val;
+			$row['max_stock'] = (float)($row['max_stock'] ?? 0);
 			
 			$data[] = $row;
 			$category_stats[$row['abc_category']]++;
@@ -2669,31 +2691,76 @@ Class Master extends DBConnection {
 		return json_encode($resp);
 	}
 	
-	function check_stock_alerts($product_id, $current_stock){
-		// Get product details
-		$product_query = $this->conn->query("SELECT * FROM product_list WHERE id = '{$product_id}'");
-		if($product_query->num_rows == 0) return;
-		
-		$product = $product_query->fetch_assoc();
-		
-		// Check for low stock alert
-		if($current_stock <= $product['reorder_point']){
-			$alert_message = "Low stock alert: {$product['name']} has {$current_stock} units remaining (Reorder point: {$product['reorder_point']})";
-			$this->create_stock_alert($product_id, 'LOW_STOCK', $current_stock, $product['reorder_point'], $alert_message);
-		}
-		
-		// Check for out of stock alert
-		if($current_stock <= 0){
-			$alert_message = "Out of stock: {$product['name']} is no longer available";
-			$this->create_stock_alert($product_id, 'OUT_OF_STOCK', $current_stock, 0, $alert_message);
-		}
-		
-		// Check for overstock alert
-		if($current_stock >= $product['max_stock']){
-			$alert_message = "Overstock alert: {$product['name']} has {$current_stock} units (Max stock: {$product['max_stock']})";
-			$this->create_stock_alert($product_id, 'OVERSTOCK', $current_stock, $product['max_stock'], $alert_message);
-		}
-	}
+    function check_stock_alerts($product_id, $current_stock){
+        // Always recalculate AVAILABLE stock from authoritative sources
+        // available = (IN - OUT) - ordered
+        $product_query = $this->conn->query("SELECT * FROM product_list WHERE id = '{$product_id}'");
+        if($product_query->num_rows == 0) return;
+        $product = $product_query->fetch_assoc();
+
+        // Stock IN
+        $stock_in_q = $this->conn->query("SELECT COALESCE(SUM(quantity),0) as s FROM stock_list WHERE product_id = '{$product_id}' AND type = 1");
+        $stock_in = $stock_in_q ? (float)$stock_in_q->fetch_assoc()['s'] : 0;
+        // Stock OUT
+        $stock_out_q = $this->conn->query("SELECT COALESCE(SUM(quantity),0) as s FROM stock_list WHERE product_id = '{$product_id}' AND type = 2");
+        $stock_out = $stock_out_q ? (float)$stock_out_q->fetch_assoc()['s'] : 0;
+        // Ordered (active orders only)
+        $ordered_q = $this->conn->query("SELECT COALESCE(SUM(quantity),0) as s FROM order_items WHERE product_id = '{$product_id}' AND order_id IN (SELECT id FROM order_list WHERE `status` != 5)");
+        $ordered = $ordered_q ? (float)$ordered_q->fetch_assoc()['s'] : 0;
+
+        $current = max(0.0, $stock_in - $stock_out);
+        $available = max(0.0, $current - $ordered);
+
+        $reorder_point = isset($product['reorder_point']) ? (float)$product['reorder_point'] : 0.0;
+        $max_stock = isset($product['max_stock']) ? (float)$product['max_stock'] : 0.0;
+
+        // Resolve existing alerts helper
+        $resolve_if_exists = function($type) {
+            $this->conn->query("UPDATE inventory_alerts SET is_resolved = 1, resolved_date = NOW() WHERE product_id = '{$GLOBALS['product_id']}' AND alert_type = '{$type}' AND is_resolved = 0");
+        };
+
+        // Create or update alert helper
+        $create_or_update = function($type, $cur, $threshold, $message){
+            $exists = $this->conn->query("SELECT id FROM inventory_alerts WHERE product_id = '{$GLOBALS['product_id']}' AND alert_type = '{$type}' AND is_resolved = 0");
+            if($exists && $exists->num_rows > 0){
+                $row = $exists->fetch_assoc();
+                $this->conn->query("UPDATE inventory_alerts SET current_stock = '{$cur}', threshold_value = '{$threshold}', message = '{$this->conn->real_escape_string($message)}' WHERE id = '{$row['id']}'");
+            } else {
+                $this->create_stock_alert($GLOBALS['product_id'], $type, $cur, $threshold, $message);
+            }
+        };
+
+        // Determine and manage alerts based on AVAILABLE stock
+        $name = $product['name'];
+        $triggered = false;
+
+        if($available <= 0){
+            $msg = "Out of stock: {$name} is no longer available";
+            $create_or_update('OUT_OF_STOCK', $available, 0, $msg);
+            $triggered = true;
+        } else {
+            $resolve_if_exists('OUT_OF_STOCK');
+        }
+
+        if($available <= $reorder_point){
+            $msg = "Low stock alert: {$name} has {$available} units remaining (Reorder point: {$reorder_point})";
+            $create_or_update('LOW_STOCK', $available, $reorder_point, $msg);
+            $triggered = true;
+        } else {
+            $resolve_if_exists('LOW_STOCK');
+        }
+
+        if($max_stock > 0 && $available >= $max_stock){
+            $msg = "Overstock alert: {$name} has {$available} units (Max stock: {$max_stock})";
+            $create_or_update('OVERSTOCK', $available, $max_stock, $msg);
+            $triggered = true;
+        } else {
+            $resolve_if_exists('OVERSTOCK');
+        }
+
+        // If none triggered, nothing to do (alerts already resolved above)
+        return;
+    }
 	
 	function create_stock_alert($product_id, $alert_type, $current_stock, $threshold_value, $message){
 		// Check if alert already exists and is not resolved
@@ -3035,11 +3102,13 @@ Class Master extends DBConnection {
 	}
 	
 	function auto_classify_abc(){
-		// Get all products with their sales data
+		// Get all products with their sales data AND current inventory value (real-time stock)
 		$products_query = $this->conn->query("
 			SELECT p.*, 
 				   COALESCE(sales.total_sales_value, 0) as total_sales_value,
-				   COALESCE(sales.total_quantity_sold, 0) as total_quantity_sold
+				   COALESCE(sales.total_quantity_sold, 0) as total_quantity_sold,
+				   COALESCE(stock_in.total_stock_in, 0) - COALESCE(stock_out.total_stock_out, 0) as current_stock,
+				   (COALESCE(stock_in.total_stock_in, 0) - COALESCE(stock_out.total_stock_out, 0)) * p.price as inventory_value
 			FROM product_list p
 			LEFT JOIN (
 				SELECT oi.product_id,
@@ -3051,16 +3120,31 @@ Class Master extends DBConnection {
 				WHERE ol.status != 5
 				GROUP BY oi.product_id
 			) sales ON p.id = sales.product_id
+			LEFT JOIN (
+				SELECT product_id, SUM(quantity) as total_stock_in 
+				FROM stock_list 
+				WHERE type = 1 
+				GROUP BY product_id
+			) stock_in ON p.id = stock_in.product_id
+			LEFT JOIN (
+				SELECT product_id, SUM(quantity) as total_stock_out 
+				FROM stock_list 
+				WHERE type = 2 
+				GROUP BY product_id
+			) stock_out ON p.id = stock_out.product_id
 			WHERE p.delete_flag = 0
-			ORDER BY sales.total_sales_value DESC
+			ORDER BY sales.total_sales_value DESC, inventory_value DESC
 		");
 		
 		$products = [];
 		$total_value = 0;
 		
 		while($row = $products_query->fetch_assoc()){
+			// Use sales value, but if no sales, use inventory value (current stock * price)
+			$product_value = $row['total_sales_value'] > 0 ? $row['total_sales_value'] : $row['inventory_value'];
+			$row['classification_value'] = $product_value;
 			$products[] = $row;
-			$total_value += $row['total_sales_value'];
+			$total_value += $product_value;
 		}
 		
 		// Calculate cumulative percentages and assign ABC categories
@@ -3068,7 +3152,7 @@ Class Master extends DBConnection {
 		$updated_count = 0;
 		
 		foreach($products as $product){
-			$cumulative_value += $product['total_sales_value'];
+			$cumulative_value += $product['classification_value'];
 			$percentage = $total_value > 0 ? ($cumulative_value / $total_value) * 100 : 0;
 			
 			// Assign ABC category based on cumulative percentage
@@ -3087,7 +3171,7 @@ Class Master extends DBConnection {
 		}
 		
 		$resp['status'] = 'success';
-		$resp['msg'] = "ABC classification updated for {$updated_count} products.";
+		$resp['msg'] = "ABC classification updated for {$updated_count} products based on sales and current inventory value.";
 		$resp['total_products'] = count($products);
 		$resp['updated_count'] = $updated_count;
 		
