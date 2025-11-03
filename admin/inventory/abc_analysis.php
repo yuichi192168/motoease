@@ -5,11 +5,10 @@
 <?php endif;?>
 <div class="card card-outline card-primary">
 	<div class="card-header">
-		<h3 class="card-title">ABC Inventory Analysis <small class="text-muted">(Real-time Stock Data)</small></h3>
+		<h3 class="card-title">ABC Inventory Analysis</h3>
 		<div class="card-tools">
 			<button class="btn btn-flat btn-info" id="refresh_analysis"><span class="fas fa-sync"></span> Refresh Analysis</button>
 			<button class="btn btn-flat btn-warning" id="auto_classify"><span class="fas fa-magic"></span> Auto Classify</button>
-			<button class="btn btn-flat btn-danger" id="reset_table"><span class="fas fa-trash"></span> Reset Table</button>
 		</div>
 	</div>
 	<div class="card-body">
@@ -54,21 +53,7 @@
 </div>
 
 
-			<!-- Stock Alerts -->
-			<div class="row mb-3">
-				<div class="col-12">
-					<div class="card card-outline card-danger">
-						<div class="card-header">
-							<h3 class="card-title">Stock Alerts</h3>
-						</div>
-						<div class="card-body">
-							<div id="stock_alerts_container">
-								<!-- Stock alerts will be loaded here -->
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
+
 
 			<!-- ABC Analysis Table -->
 			<div class="row">
@@ -188,7 +173,7 @@
 }
 
 .info-box.bg-primary {
-    background-color: #007bff !important; /* Category C - Blue */
+    background-color: #17A2B8 !important; /* Category C - Teal */
     color: white !important;
 }
 
@@ -212,23 +197,37 @@
 }
 </style>
 
+<style>
+/* Refresh Analysis button color override */
+#refresh_analysis,
+#refresh_analysis:focus,
+#refresh_analysis:active {
+    background-color: #17A2B8 !important;
+    border-color: #17A2B8 !important;
+    color: #ffffff !important;
+}
+#refresh_analysis:hover {
+    background-color: #17A2B8 !important;
+    border-color: #17A2B8 !important;
+    color: #ffffff !important;
+}
+</style>
+
 <script>
 $(document).ready(function(){
 	// Load ABC analysis data on page load
 	loadABCAnalysis();
-	loadStockAlerts();
+
 
 	// Auto-refresh every 30 seconds to ensure real-time data
 	setInterval(function(){
 		loadABCAnalysis();
-		loadStockAlerts();
 	}, 30000); // Refresh every 30 seconds
 
 	// Refresh analysis button
 	$('#refresh_analysis').click(function(){
 		start_loader();
 		loadABCAnalysis();
-		loadStockAlerts();
 		setTimeout(function(){
 			end_loader();
 			alert_toast('ABC Analysis refreshed with latest stock data','success');
@@ -258,21 +257,6 @@ $(document).ready(function(){
 					end_loader();
 				}
 			});
-		}
-	});
-
-	// Reset table button - clear all data
-	$('#reset_table').click(function(){
-		if(confirm('This will clear all ABC Analysis table data. The data will reload on next refresh. Continue?')){
-			var table = $('#abc_analysis_table').DataTable();
-			table.clear().draw();
-			
-			// Reset category counts
-			$('#category_a_count').text('0');
-			$('#category_b_count').text('0');
-			$('#category_c_count').text('0');
-			
-			alert_toast('ABC Analysis table cleared. Click Refresh to reload data.','info');
 		}
 	});
 
@@ -381,88 +365,7 @@ $(document).ready(function(){
 		});
 	}
 
-	function loadStockAlerts(){
-		$.ajax({
-			url: _base_url_ + "classes/Master.php?f=get_stock_alerts",
-			method: "POST",
-			dataType: "json",
-			error: err => {
-				console.log('Error loading stock alerts:', err);
-			},
-			success: function(resp){
-				console.log('Stock alerts response:', resp);
-				if(resp.status == 'success'){
-					var html = '';
-					if(resp.alerts.length > 0){
-						$.each(resp.alerts, function(index, alert){
-							console.log('Processing alert:', alert);
-							var alert_class = '';
-							switch(alert.alert_type){
-								case 'LOW_STOCK':
-									alert_class = 'alert-warning';
-									break;
-								case 'OUT_OF_STOCK':
-									alert_class = 'alert-danger';
-									break;
-								case 'OVERSTOCK':
-									alert_class = 'alert-info';
-									break;
-							}
-							
-							html += '<div class="alert ' + alert_class + ' alert-dismissible">';
-							html += '<button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>';
-							html += '<h5><i class="icon fas fa-exclamation-triangle"></i> ' + alert.alert_type.replace('_', ' ') + '</h5>';
-							html += '<p>' + alert.message + '</p>';
-							html += '<small>Product: ' + alert.product_name + ' | Category: ' + alert.abc_category + '</small>';
-							html += '<button class="btn btn-sm btn-primary float-right resolve_alert" data-id="' + alert.id + '">Resolve</button>';
-							html += '</div>';
-						});
-					} else {
-						html = '<div class="alert alert-success">No stock alerts at this time.</div>';
-					}
-					$('#stock_alerts_container').html(html);
-				} else {
-					console.log('Failed to load stock alerts:', resp.msg);
-				}
-			}
-		});
-	}
 
-	// Resolve alert
-	$(document).on('click', '.resolve_alert', function(){
-		var alert_id = $(this).data('id');
-		console.log('Resolving alert with ID:', alert_id);
-		
-		if(!alert_id || alert_id === 'undefined' || alert_id === '') {
-			alert_toast('Invalid alert ID. Please refresh the page and try again.', 'error');
-			return;
-		}
-		
-		if(confirm('Mark this alert as resolved?')){
-			start_loader();
-			$.ajax({
-				url: _base_url_ + "classes/Master.php?f=resolve_stock_alert",
-				method: "POST",
-				data: {alert_id: alert_id},
-				dataType: "json",
-				error: err => {
-					console.log('AJAX Error:', err);
-					alert_toast("An error occurred while resolving the alert.",'error');
-					end_loader();
-				},
-				success: function(resp){
-					end_loader();
-					console.log('Resolve response:', resp);
-					if(resp.status == 'success'){
-						alert_toast(resp.msg,'success');
-						loadStockAlerts();
-					} else {
-						alert_toast(resp.msg || 'Failed to resolve alert','error');
-					}
-				}
-			});
-		}
-	});
 
 	// View stock button
 	$(document).on('click', '.view_stock', function(){

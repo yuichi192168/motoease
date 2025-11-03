@@ -76,7 +76,6 @@ $date_end = isset($_GET['date_end']) ? $_GET['date_end'] :  date("Y-m-d");
                         <th>#</th>
                         <th>Date Time</th>
                         <th>Owner Name</th>
-                        <th>Vehicle Name</th>
                         <th>Vehicle Reg. No.</th>
                         <th>Assigned To</th>
                         <th>Service</th>
@@ -104,7 +103,6 @@ $date_end = isset($_GET['date_end']) ? $_GET['date_end'] :  date("Y-m-d");
                         <td class="text-center"><?php echo $i++ ?></td>
                         <td><?php echo $row['date_created'] ?></td>
                         <td><?php echo $row['fullname'] ?></td>
-                        <td><?php echo $row['vehicle_name'] ?></td>
                         <td><?php echo $row['vehicle_registration_number'] ?></td>
                         <td><?php echo !empty($row['mechanic_id']) && isset($mech_arr[$row['mechanic_id']]) ? $mech_arr[$row['mechanic_id']] : "N/A" ?></td>
                         <td><?php echo $srow['service'] ?></td>
@@ -125,7 +123,7 @@ $date_end = isset($_GET['date_end']) ? $_GET['date_end'] :  date("Y-m-d");
                     <?php endwhile; endwhile; ?>
                     <?php if($qry->num_rows <= 0): ?>
                     <tr>
-                        <td class="text-center" colspan="8">No Data...</td>
+                        <td class="text-center" colspan="7">No Data...</td>
                     </tr>
                     <?php endif; ?>
                 </tbody>

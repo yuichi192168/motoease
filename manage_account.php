@@ -55,6 +55,13 @@ $installments = $conn->query("SELECT
 // Get OR/CR documents
 $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_settings->userdata('id')}' ORDER BY date_created DESC");
 ?>
+<style>
+/* Ensure customer info boxes use the requested teal color */
+.info-box.bg-info {
+	background-color: #17A2B8 !important;
+	color: #ffffff !important;
+}
+</style>
 <div class="content py-5 mt-3">
     <div class="container">
         <!-- Welcome Section with Avatar -->
