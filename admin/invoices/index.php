@@ -770,12 +770,17 @@ $('#edit_invoice_form').submit(function(e){
 		html += '<thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>';
 		html += '<tbody>';
 		$.each(invoice.items, function(index, item){
+			// Calculate unit_price if it's zero or missing, using total_price and quantity
+			var unit_price = parseFloat(item.unit_price) || 0;
+			if(unit_price == 0 && parseFloat(item.quantity) > 0 && parseFloat(item.total_price) > 0){
+				unit_price = parseFloat(item.total_price) / parseFloat(item.quantity);
+			}
 			html += '<tr>';
 			html += '<td>' + item.item_name + '</td>';
 			html += '<td>' + (item.item_description || '-') + '</td>';
 			html += '<td>' + item.quantity + '</td>';
-			html += '<td>₱' + parseFloat(item.unit_price).toLocaleString() + '</td>';
-			html += '<td>₱' + parseFloat(item.total_price).toLocaleString() + '</td>';
+			html += '<td>₱' + unit_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
+			html += '<td>₱' + parseFloat(item.total_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
 			html += '</tr>';
 		});
 		html += '</tbody>';
@@ -784,12 +789,10 @@ $('#edit_invoice_form').submit(function(e){
 
 		html += '<div class="row">';
 		html += '<div class="col-md-6">';
-		html += '<p><strong>Pickup Location:</strong><br>' + invoice.pickup_location + '</p>';
-		html += '<p><strong>Payment Instructions:</strong><br>' + invoice.payment_instructions + '</p>';
+		// html += '<p><strong>Pickup Location:</strong><br>' + invoice.pickup_location + '</p>';
+		// html += '<p><strong>Payment Instructions:</strong><br>' + invoice.payment_instructions + '</p>';
 		html += '</div>';
 		html += '<div class="col-md-6 text-right">';
-		html += '<p><strong>Subtotal:</strong> ₱' + parseFloat(invoice.subtotal).toLocaleString() + '</p>';
-		html += '<p><strong>VAT:</strong> ₱' + parseFloat(invoice.vat_amount).toLocaleString() + '</p>';
 		html += '<p><strong>Total Amount:</strong> ₱' + parseFloat(invoice.total_amount).toLocaleString() + '</p>';
 		if(typeof invoice.balance_remaining !== 'undefined'){
 			html += '<p><strong>Balance Remaining:</strong> ₱' + parseFloat(invoice.balance_remaining).toLocaleString() + '</p>';
@@ -909,12 +912,17 @@ $('#edit_invoice_form').submit(function(e){
 		
 		if(invoice.items && invoice.items.length > 0){
 			$.each(invoice.items, function(index, item){
+				// Calculate unit_price if it's zero or missing, using total_price and quantity
+				var unit_price = parseFloat(item.unit_price) || 0;
+				if(unit_price == 0 && parseFloat(item.quantity) > 0 && parseFloat(item.total_price) > 0){
+					unit_price = parseFloat(item.total_price) / parseFloat(item.quantity);
+				}
 				html += '<tr>';
 				html += '<td>' + item.item_name + '</td>';
 				html += '<td>' + (item.item_description || '-') + '</td>';
 				html += '<td class="text-center">' + item.quantity + '</td>';
-				html += '<td class="text-right">₱' + parseFloat(item.unit_price).toLocaleString() + '</td>';
-				html += '<td class="text-right">₱' + parseFloat(item.total_price).toLocaleString() + '</td>';
+				html += '<td class="text-right">₱' + unit_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
+				html += '<td class="text-right">₱' + parseFloat(item.total_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
 				html += '</tr>';
 			});
 		}
@@ -925,8 +933,6 @@ $('#edit_invoice_form').submit(function(e){
 		// Totals
 		html += '<div class="totals">';
 		html += '<table class="totals-table">';
-		html += '<tr><td>Subtotal:</td><td class="text-right">₱' + parseFloat(invoice.subtotal).toLocaleString() + '</td></tr>';
-		html += '<tr><td>VAT (12%):</td><td class="text-right">₱' + parseFloat(invoice.vat_amount).toLocaleString() + '</td></tr>';
 		html += '<tr class="total-row"><td><strong>Total Amount:</strong></td><td class="text-right"><strong>₱' + parseFloat(invoice.total_amount).toLocaleString() + '</strong></td></tr>';
 		html += '</table>';
 		html += '</div>';

@@ -40,24 +40,50 @@
 						<?php 
 						try {
 							$i = 1;
-                            $qry = $conn->query("SELECT c.*, 
-                                                c.account_balance as total_balance,
-                                                COALESCE(SUM(CASE WHEN o.status IN (4,6) THEN o.total_amount ELSE 0 END), 0) as paid_amount,
-                                                COALESCE(SUM(CASE WHEN o.status IN (0,1,2,3) THEN o.total_amount ELSE 0 END), 0) as unpaid_amount
+                            // Updated query to align with installment system
+                            $qry = $conn->query("SELECT 
+                                                c.*,
+                                                COALESCE(SUM(ic.total_amount), 0) as total_contract_amount,
+                                                COALESCE(SUM(ic.down_payment_amount + IFNULL(ip.paid_amount, 0)), 0) as paid_amount,
+                                                COALESCE(SUM(ic.remaining_balance), 0) as unpaid_amount,
+                                                COUNT(DISTINCT ic.id) as active_contracts
                                                 FROM `client_list` c 
-                                                LEFT JOIN order_list o ON c.id = o.client_id 
+                                                LEFT JOIN installment_contracts ic ON c.id = ic.customer_id AND ic.status = 'active'
+                                                LEFT JOIN (SELECT contract_id, SUM(amount_paid) as paid_amount FROM installment_payments GROUP BY contract_id) ip ON ic.id = ip.contract_id
                                                 WHERE c.delete_flag = 0 
                                                 GROUP BY c.id 
                                                 ORDER BY c.lastname, c.firstname");
 							while($row = $qry->fetch_assoc()):
-								$installment_plan = "₱" . number_format($row['total_balance'] / 6, 2) . "/month for 6 months";
-								if($row['total_balance'] == 0) $installment_plan = "No balance";
+                                // Calculate total balance
+                                $total_balance = (float)$row['total_contract_amount'];
+                                
+                                // Determine installment plan based on active contracts
+                                if($row['active_contracts'] > 0) {
+                                    // Get contract details for plan display
+                                    $contract_q = $conn->query("SELECT ic.*, ip.plan_name, ip.number_of_installments 
+                                                                FROM installment_contracts ic 
+                                                                LEFT JOIN installment_plans ip ON ic.installment_plan_id = ip.id 
+                                                                WHERE ic.customer_id = '{$row['id']}' AND ic.status = 'active' 
+                                                                ORDER BY ic.created_at DESC LIMIT 1");
+                                    if($contract_q && $contract_q->num_rows > 0) {
+                                        $contract_info = $contract_q->fetch_assoc();
+                                        $monthly_payment = $contract_info['remaining_balance'] > 0 ? ($contract_info['remaining_balance'] / max($contract_info['number_of_installments'], 1)) : 0;
+                                        $installment_plan = $contract_info['plan_name'] ?: "₱" . number_format($monthly_payment, 2) . "/month";
+                                    } else {
+                                        $installment_plan = "Active Contract(s)";
+                                    }
+                                } else if($total_balance > 0) {
+                                    $installment_plan = "₱" . number_format($total_balance / 6, 2) . "/month for 6 months";
+                                } else {
+                                    $installment_plan = "No balance";
+                                }
 						?>
 							<tr>
 								<td class="text-center"><?php echo $i++; ?></td>
 								<td>
 									<strong><?php echo ucwords($row['lastname'] . ', ' . $row['firstname'] . ' ' . $row['middlename']) ?></strong><br>
-									<small class="text-muted"><?php echo $row['email'] ?></small>
+									<small class="text-muted"><?php echo $row['email'] ?></small><br>
+									<small class="text-info">ID: <?php echo $row['id'] ?></small>
 								</td>
 								<td class="text-center">
 									<small><?php echo $installment_plan ?></small>
@@ -69,48 +95,52 @@
 									<strong>₱<?php echo number_format($row['unpaid_amount'], 2) ?></strong>
 								</td>
                             <?php 
-                                // Compute next due and delay/penalty summary for this client
-                                $late_fee_rate = 0.03; // 3% per month
+                                // Updated status calculation based on installment system
                                 $client_id = (int)$row['id'];
-                                $due_q = $conn->query("SELECT 
-                                        ol.id,
-                                        ol.total_amount,
-                                        COALESCE(i.payment_status, CASE WHEN ol.status IN (4,6) THEN 'paid' ELSE 'unpaid' END) as payment_status,
-                                        COALESCE(i.due_date, DATE_ADD(ol.date_created, INTERVAL 30 DAY)) as due_date,
-                                        CASE 
-                                            WHEN COALESCE(i.payment_status, CASE WHEN ol.status IN (4,6) THEN 'paid' ELSE 'unpaid' END) = 'paid' THEN 0
-                                            ELSE DATEDIFF(CURDATE(), COALESCE(i.due_date, DATE_ADD(ol.date_created, INTERVAL 30 DAY)))
-                                        END as days_overdue
-                                    FROM order_list ol
-                                    LEFT JOIN invoices i ON i.order_id = ol.id
-                                    WHERE ol.client_id = '{$client_id}' AND ol.status != 5");
-                                $max_overdue = 0; $any_unpaid = false; $next_due = null; $penalty_total = 0; $all_paid = true; 
-                                if($due_q){
-                                    while($d = $due_q->fetch_assoc()){
-                                        $is_paid = ($d['payment_status'] === 'paid');
-                                        if(!$is_paid){
-                                            $all_paid = false;
-                                            $any_unpaid = true;
-                                            $due_dt = $d['due_date'];
-                                            if($next_due === null || strtotime($due_dt) < strtotime($next_due)){
-                                                $next_due = $due_dt;
-                                            }
-                                            $days = (int)$d['days_overdue'];
-                                            if($days > $max_overdue) $max_overdue = $days;
-                                            $months_overdue = $days > 0 ? floor($days / 30) : 0;
-                                            if($months_overdue > 0){
-                                                $penalty_total += ((float)$d['total_amount']) * $late_fee_rate * $months_overdue;
-                                            }
-                                        }
-                                    }
-                                }
                                 $status_badge = '';
-                                if($all_paid || (!$any_unpaid && $row['unpaid_amount'] <= 0)){
-                                    $status_badge = '<span class="badge badge-success">🟢 Paid</span>';
-                                } elseif($max_overdue > 0){
-                                    $status_badge = '<span class="badge badge-danger">🔴 Late: '.(int)$max_overdue.'d</span> <small class=\'text-danger\'>+'.(int)($late_fee_rate*100)."%/mo ₱".number_format($penalty_total,2).'</small>';
+                                $late_fee_rate = 0.03; // 3% per month
+                                
+                                // Get installment contract status
+                                $contract_q = $conn->query("SELECT 
+                                    ic.id,
+                                    ic.contract_number,
+                                    ic.status as contract_status,
+                                    ic.remaining_balance,
+                                    COUNT(DISTINCT isch.id) as total_installments,
+                                    SUM(CASE WHEN isch.status = 'paid' THEN 1 ELSE 0 END) as paid_installments,
+                                    SUM(CASE WHEN isch.status = 'overdue' THEN 1 ELSE 0 END) as overdue_installments,
+                                    MIN(CASE WHEN isch.status IN ('pending', 'overdue') THEN isch.due_date END) as next_due_date,
+                                    MAX(CASE WHEN isch.status = 'overdue' THEN DATEDIFF(CURDATE(), isch.due_date) END) as max_days_overdue,
+                                    SUM(CASE WHEN isch.status = 'overdue' THEN isch.amount_due * {$late_fee_rate} * FLOOR(DATEDIFF(CURDATE(), isch.due_date)/30) ELSE 0 END) as penalty_total
+                                    FROM installment_contracts ic
+                                    LEFT JOIN installment_schedule isch ON ic.id = isch.contract_id
+                                    WHERE ic.customer_id = '{$client_id}' AND ic.status = 'active'
+                                    GROUP BY ic.id
+                                    ORDER BY ic.created_at DESC
+                                    LIMIT 1");
+                                
+                                if($contract_q && $contract_q->num_rows > 0) {
+                                    $contract = $contract_q->fetch_assoc();
+                                    
+                                    if($contract['contract_status'] == 'completed' || ($contract['remaining_balance'] <= 0 && $row['unpaid_amount'] <= 0)) {
+                                        $status_badge = '<span class="badge badge-success">🟢 Fully Paid</span>';
+                                    } elseif($contract['overdue_installments'] > 0 && $contract['max_days_overdue'] > 0) {
+                                        $status_badge = '<span class="badge badge-danger">🔴 Late: '.(int)$contract['max_days_overdue'].'d</span> <small class="text-danger">+'.(int)($late_fee_rate*100).'%/mo ₱'.number_format($contract['penalty_total'] ?: 0,2).'</small>';
+                                    } elseif($contract['remaining_balance'] > 0 || $row['unpaid_amount'] > 0) {
+                                        $next_due = $contract['next_due_date'] ? date('M d, Y', strtotime($contract['next_due_date'])) : '—';
+                                        $status_badge = '<span class="badge badge-warning">🟡 Pending / Due '.$next_due.'</span>';
+                                    } else {
+                                        $status_badge = '<span class="badge badge-success">🟢 Paid</span>';
+                                    }
                                 } else {
-                                    $status_badge = '<span class="badge badge-warning">🟡 Pending / Due '.($next_due ? date('M d, Y', strtotime($next_due)) : '—').'</span>';
+                                    // No active contracts - check if has balance
+                                    if($row['unpaid_amount'] <= 0 && $row['paid_amount'] > 0) {
+                                        $status_badge = '<span class="badge badge-success">🟢 Fully Paid</span>';
+                                    } elseif($row['unpaid_amount'] > 0) {
+                                        $status_badge = '<span class="badge badge-warning">🟡 Has Balance</span>';
+                                    } else {
+                                        $status_badge = '<span class="badge badge-secondary">⚪ No Activity</span>';
+                                    }
                                 }
                             ?>
                             <td class="text-center">
@@ -134,6 +164,11 @@
 										<a class="dropdown-item view_transactions" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
 											<span class="fa fa-list text-info"></span> View Transactions
 										</a>
+										<?php if($_settings->userdata('login_type') == 1): // Admin only ?>
+										<a class="dropdown-item adjust_balance" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
+											<span class="fa fa-edit text-primary"></span> Adjust Balance
+										</a>
+										<?php endif; ?>
 										<div class="dropdown-divider"></div>
 										<a class="dropdown-item upload_orcr" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
 											<span class="fa fa-upload text-success"></span> Upload OR/CR
@@ -147,12 +182,12 @@
 						<?php endwhile; ?>
 						<?php if($qry->num_rows <= 0): ?>
 						<tr>
-							<td colspan="7" class="text-center">No customer accounts found.</td>
+							<td colspan="8" class="text-center">No customer accounts found.</td>
 						</tr>
 						<?php endif; ?>
 						<?php } catch (Exception $e) { ?>
 						<tr>
-							<td colspan="7" class="text-center text-danger">Error loading customer accounts: <?php echo $e->getMessage(); ?></td>
+							<td colspan="8" class="text-center text-danger">Error loading customer accounts: <?php echo $e->getMessage(); ?></td>
 						</tr>
 						<?php } ?>
 					</tbody>
@@ -180,7 +215,8 @@
 						<input type="text" class="form-control" id="adjust_customer_name" readonly>
 					</div>
 					<div class="form-group">
-						
+						<label>Current Balance</label>
+						<input type="text" class="form-control" id="current_balance" readonly>
 					</div>
 					<div class="form-group">
 						<label>Adjustment Type</label>
@@ -307,24 +343,24 @@
 
 <!-- View Transactions Modal -->
 <div class="modal fade" id="viewTransactionsModal" tabindex="-1" role="dialog">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-xl" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
-				<h4 class="modal-title">Customer Transactions</h4>
+				<h4 class="modal-title">Customer Transactions & Installments</h4>
 				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
 					<span aria-hidden="true">&times;</span>
 				</button>
 			</div>
             <div class="modal-body">
-                <div class="mb-2 d-flex justify-content-between align-items-center">
+                <div class="mb-3 d-flex justify-content-between align-items-center">
                     <div>
                         <strong>Customer:</strong> <span id="vt_customer_name">-</span>
                     </div>
                     <div class="btn-group" role="group" aria-label="Actions">
                         <?php if($_settings->userdata('login_type') == 1): // Admin only ?>
-                        <!-- <button type="button" class="btn btn-sm btn-primary" id="vt_adjust_balance">
+                        <button type="button" class="btn btn-sm btn-primary" id="vt_adjust_balance">
                             <span class="fa fa-edit"></span> Adjust Balance
-                        </button> -->
+                        </button>
                         <?php endif; ?>
                         <button type="button" class="btn btn-sm btn-success" id="vt_upload_orcr">
                             <span class="fa fa-upload"></span> Upload OR/CR
@@ -334,8 +370,105 @@
                         </button>
                     </div>
                 </div>
-                <div id="transactions_list">
-                    <!-- Transactions will be loaded here -->
+                
+                <!-- Tabs Navigation -->
+                <ul class="nav nav-tabs" id="transactionTabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="contracts-tab" data-toggle="tab" href="#contracts" role="tab" aria-controls="contracts" aria-selected="true">
+                            <i class="fa fa-file-contract"></i> Installment Contracts
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="payments-tab" data-toggle="tab" href="#payments" role="tab" aria-controls="payments" aria-selected="false">
+                            <i class="fa fa-money-bill-wave"></i> Payment History
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="schedule-tab" data-toggle="tab" href="#schedule" role="tab" aria-controls="schedule" aria-selected="false">
+                            <i class="fa fa-calendar-alt"></i> Payment Schedule
+                        </a>
+                    </li>
+                </ul>
+                
+                <!-- Tab Content -->
+                <div class="tab-content mt-3" id="transactionTabsContent">
+                    <!-- Contracts Tab -->
+                    <div class="tab-pane fade show active" id="contracts" role="tabpanel" aria-labelledby="contracts-tab">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Contract #</th>
+                                        <th>Invoice #</th>
+                                        <th>Plan</th>
+                                        <th class="text-right">Total Amount</th>
+                                        <th class="text-right">Paid</th>
+                                        <th class="text-right">Remaining</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="contracts_list">
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted">
+                                            <i class="fa fa-spinner fa-spin"></i> Loading contracts...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Payments Tab -->
+                    <div class="tab-pane fade" id="payments" role="tabpanel" aria-labelledby="payments-tab">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Contract #</th>
+                                        <th>Installment #</th>
+                                        <th class="text-right">Amount</th>
+                                        <th>Method</th>
+                                        <th>Receipt #</th>
+                                        <th>Processed By</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="payments_list">
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted">
+                                            <i class="fa fa-spinner fa-spin"></i> Loading payment history...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Schedule Tab -->
+                    <div class="tab-pane fade" id="schedule" role="tabpanel" aria-labelledby="schedule-tab">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Contract #</th>
+                                        <th>Installment #</th>
+                                        <th>Due Date</th>
+                                        <th class="text-right">Amount Due</th>
+                                        <th class="text-right">Paid</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="schedule_list">
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">
+                                            <i class="fa fa-spinner fa-spin"></i> Loading payment schedule...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 			<div class="modal-footer">
@@ -362,11 +495,34 @@
 }
 
 /* Ensure proper spacing */
+.table td, .table th {
+    padding: 8px 12px;
+    vertical-align: middle;
+}
 
 /* Fix modal scrolling */
 .modal-body {
-    max-height: 60vh;
+    max-height: 70vh;
     overflow-y: auto;
+}
+
+/* Tab styling */
+.nav-tabs .nav-link {
+    color: #495057;
+}
+
+.nav-tabs .nav-link.active {
+    color: #007bff;
+    font-weight: 600;
+}
+
+.nav-tabs .nav-link:hover {
+    border-color: transparent;
+    color: #007bff;
+}
+
+.tab-content {
+    min-height: 300px;
 }
 
 /* Improve table readability */
@@ -376,22 +532,55 @@
     background: #f4f6f9;
     z-index: 10;
 }
+
+/* Badge improvements */
+.badge {
+    font-size: 0.75em;
+    padding: 4px 8px;
+}
+
+/* Text alignment */
+.text-right {
+    text-align: right !important;
+}
+
+.text-center {
+    text-align: center !important;
+}
+
+/* Status colors */
+.text-success { color: #28a745 !important; }
+.text-danger { color: #dc3545 !important; }
+.text-warning { color: #ffc107 !important; }
+.text-info { color: #17a2b8 !important; }
 </style>
 
 <script>
 	$(document).ready(function(){
+		// Initialize DataTable with better configuration
 		$('.table').dataTable({
 			"scrollX": true,
 			"scrollY": "400px",
-			"scrollCollapse": true
+			"scrollCollapse": true,
+			"pageLength": 25,
+			"order": [[1, "asc"]],
+			"language": {
+				"emptyTable": "No customer accounts found",
+				"info": "Showing _START_ to _END_ of _TOTAL_ customers",
+				"infoEmpty": "Showing 0 to 0 of 0 customers",
+				"infoFiltered": "(filtered from _MAX_ total customers)",
+				"lengthMenu": "Show _MENU_ customers",
+				"search": "Search:",
+				"zeroRecords": "No matching customers found"
+			}
 		});
 		
 		$('.adjust_balance').click(function(){
 			var id = $(this).attr('data-id');
 			var name = $(this).attr('data-name');
 			
-						// Get client context before showing modal
-						$.ajax({
+			// Get client current balance
+			$.ajax({
 				url: _base_url_ + "classes/Master.php?f=get_client_balance",
 				method: "POST",
 				data: {client_id: id},
@@ -399,8 +588,11 @@
 				success: function(resp){
 					if(resp.status == 'success'){
 						$('#adjust_client_id').val(id);
-								$('#adjust_customer_name').val(name);
+						$('#adjust_customer_name').val(name);
+						$('#current_balance').val('₱' + parseFloat(resp.current_balance || resp.balance || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
 						$('#adjustBalanceModal').modal('show');
+					} else {
+						alert_toast(resp.msg, 'error');
 					}
 				}
 			});
@@ -438,10 +630,15 @@
         $('.view_transactions').click(function(){
             var id = $(this).attr('data-id');
             var name = $(this).attr('data-name') || '';
-            // store context for modal action buttons
+            
+            // Store context for modal action buttons
             $('#viewTransactionsModal').data('client-id', id);
             $('#viewTransactionsModal').data('client-name', name);
             $('#vt_customer_name').text(name || '-');
+            
+            // Reset tabs to first tab
+            $('#contracts-tab').tab('show');
+            
             $.ajax({
 				url: _base_url_ + "classes/Master.php?f=get_client_transactions",
 				method: "POST",
@@ -449,9 +646,83 @@
 				dataType: "json",
 				success: function(resp){
 					if(resp.status == 'success'){
-						$('#transactions_list').html(resp.html);
+						// Populate Contracts
+						var contractsHtml = '';
+						if(resp.contracts && resp.contracts.length > 0){
+							$.each(resp.contracts, function(index, contract){
+								var statusClass = contract.status == 'completed' ? 'success' : 
+								                  (contract.status == 'active' ? 'primary' : 
+								                  (contract.status == 'defaulted' ? 'danger' : 'secondary'));
+								contractsHtml += '<tr>';
+								contractsHtml += '<td>' + (contract.contract_number || '-') + '</td>';
+								contractsHtml += '<td>' + (contract.invoice_number || '-') + '</td>';
+								contractsHtml += '<td>' + (contract.plan_name || '-') + '</td>';
+								contractsHtml += '<td class="text-right">₱' + parseFloat(contract.total_amount || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
+								contractsHtml += '<td class="text-right text-success">₱' + parseFloat(contract.paid_amount || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
+								contractsHtml += '<td class="text-right text-danger">₱' + parseFloat(contract.remaining_balance || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
+								contractsHtml += '<td><span class="badge badge-' + statusClass + '">' + (contract.status ? contract.status.charAt(0).toUpperCase() + contract.status.slice(1) : '-') + '</span></td>';
+								contractsHtml += '<td>' + (contract.created_at ? new Date(contract.created_at).toLocaleDateString('en-US', {year: 'numeric', month: 'short', day: 'numeric'}) : '-') + '</td>';
+								contractsHtml += '</tr>';
+							});
+						} else {
+							contractsHtml = '<tr><td colspan="8" class="text-center text-muted">No installment contracts found.</td></tr>';
+						}
+						$('#contracts_list').html(contractsHtml);
+						
+						// Populate Payments
+						var paymentsHtml = '';
+						if(resp.payments && resp.payments.length > 0){
+							$.each(resp.payments, function(index, payment){
+								paymentsHtml += '<tr>';
+								paymentsHtml += '<td>' + (payment.payment_date ? new Date(payment.payment_date).toLocaleString('en-US', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : '-') + '</td>';
+								paymentsHtml += '<td>' + (payment.contract_number || '-') + '</td>';
+								paymentsHtml += '<td>#' + (payment.installment_number || '-') + '</td>';
+								paymentsHtml += '<td class="text-right text-success">₱' + parseFloat(payment.amount_paid || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
+								paymentsHtml += '<td>' + (payment.payment_method ? payment.payment_method.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-') + '</td>';
+								paymentsHtml += '<td>' + (payment.receipt_number || '-') + '</td>';
+								var staffName = payment.staff_firstname || payment.staff_name || '';
+								if(payment.staff_lastname) staffName += ' ' + payment.staff_lastname;
+								paymentsHtml += '<td>' + (staffName || 'System') + '</td>';
+								paymentsHtml += '</tr>';
+							});
+						} else {
+							paymentsHtml = '<tr><td colspan="7" class="text-center text-muted">No payment history found.</td></tr>';
+						}
+						$('#payments_list').html(paymentsHtml);
+						
+						// Populate Schedule
+						var scheduleHtml = '';
+						if(resp.schedule && resp.schedule.length > 0){
+							$.each(resp.schedule, function(index, schedule){
+								var statusClass = schedule.status == 'paid' ? 'success' : 
+								                  (schedule.status == 'overdue' ? 'danger' : 
+								                  (schedule.status == 'partial' ? 'warning' : 'secondary'));
+								var isOverdue = schedule.status == 'overdue' || (schedule.status == 'pending' && new Date(schedule.due_date) < new Date());
+								var rowClass = isOverdue ? 'table-danger' : '';
+								scheduleHtml += '<tr class="' + rowClass + '">';
+								scheduleHtml += '<td>' + (schedule.contract_number || '-') + '</td>';
+								scheduleHtml += '<td>#' + (schedule.installment_number || '-') + '</td>';
+								scheduleHtml += '<td>' + (schedule.due_date ? new Date(schedule.due_date).toLocaleDateString('en-US', {year: 'numeric', month: 'short', day: 'numeric'}) : '-') + '</td>';
+								scheduleHtml += '<td class="text-right">₱' + parseFloat(schedule.amount_due || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
+								scheduleHtml += '<td class="text-right">₱' + parseFloat(schedule.paid_amount || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
+								scheduleHtml += '<td><span class="badge badge-' + statusClass + '">' + (schedule.status ? schedule.status.charAt(0).toUpperCase() + schedule.status.slice(1) : '-') + '</span></td>';
+								scheduleHtml += '</tr>';
+							});
+						} else {
+							scheduleHtml = '<tr><td colspan="6" class="text-center text-muted">No payment schedule found.</td></tr>';
+						}
+						$('#schedule_list').html(scheduleHtml);
+						
 						$('#viewTransactionsModal').modal('show');
+					} else {
+						alert_toast(resp.msg || 'Failed to load transactions', 'error');
 					}
+				},
+				error: function(){
+					$('#contracts_list').html('<tr><td colspan="8" class="text-center text-danger">Error loading data.</td></tr>');
+					$('#payments_list').html('<tr><td colspan="7" class="text-center text-danger">Error loading data.</td></tr>');
+					$('#schedule_list').html('<tr><td colspan="6" class="text-center text-danger">Error loading data.</td></tr>');
+					alert_toast('Failed to load transactions', 'error');
 				}
 			});
 		});
@@ -467,11 +738,12 @@
                 data: {client_id: id},
                 dataType: "json",
                 success: function(resp){
-						if(resp.status == 'success'){
-							$('#adjust_client_id').val(id);
-							$('#adjust_customer_name').val(name);
-							$('#adjustBalanceModal').modal('show');
-						}
+					if(resp.status == 'success'){
+						$('#adjust_client_id').val(id);
+						$('#adjust_customer_name').val(name);
+						$('#current_balance').val('₱' + parseFloat(resp.current_balance || resp.balance || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ","));
+						$('#adjustBalanceModal').modal('show');
+					}
                 }
             });
         });
@@ -519,7 +791,10 @@
 				success: function(resp){
 					if(resp.status == 'success'){
 						$('#adjustBalanceModal').modal('hide');
-						location.reload();
+						alert_toast(resp.msg, 'success');
+						setTimeout(function(){
+							location.reload();
+						}, 2000);
 					} else {
 						alert_toast(resp.msg, 'error');
 					}
@@ -599,7 +874,7 @@
 		});
 		
 		$('#print_reports').click(function(){
-			var nw = window.open("print_customer_accounts.php","_blank","width=800,height=600")
+			var nw = window.open("print_customer_accounts.php","_blank","width=1200,height=800,scrollbars=yes");
 		});
 
 		// Handle multiple stacked modals so new ones sit above previous

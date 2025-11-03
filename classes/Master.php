@@ -1306,8 +1306,10 @@ Class Master extends DBConnection {
 	
 	// Service request functions
 	function save_request(){
+		$resp = array('status' => 'failed', 'msg' => 'An error occurred');
+		
 		if(empty($_POST['id']))
-		$_POST['client_id'] = $this->settings->userdata('id');
+			$_POST['client_id'] = $this->settings->userdata('id');
 		
 		// Enforce Terms & Conditions acceptance only for new requests (not admin updates)
 		$is_update = !empty($_POST['id']);
@@ -1337,25 +1339,36 @@ Class Master extends DBConnection {
 		if($save){
 			$rid = empty($id) ? $this->conn->insert_id : $id ;
 			$data = "";
+			$meta_values = [];
 			foreach($_POST as $k=> $v){
 				if(!in_array($k,array('id','client_id','mechanic_id','status','vehicle_type','vehicle_name','vehicle_registration_number','vehicle_model'))){
-					if(!empty($data)){ $data .= ", "; }
 					if(is_array($_POST[$k]))
-					$v = implode(",",$_POST[$k]);
+						$v = implode(",",$_POST[$k]);
 					$v = $this->conn->real_escape_string($v);
-					$data .= "('{$rid}','{$k}','{$v}')";
+					if(!empty($v)){ // Only add non-empty values
+						$meta_values[] = "('{$rid}','{$k}','{$v}')";
+					}
 				}
 			}
-			$sql = "INSERT INTO `request_meta` (`request_id`,`meta_field`,`meta_value`) VALUES {$data} ";
+			
+			// Delete existing meta first
 			$this->conn->query("DELETE FROM `request_meta` where `request_id` = '{$rid}' ");
-			$save = $this->conn->query($sql);
-			if($save){
+			
+			// Insert meta only if there are values
+			$meta_save = true; // Default to success if no meta to insert
+			if(!empty($meta_values)){
+				$data = implode(", ", $meta_values);
+				$sql = "INSERT INTO `request_meta` (`request_id`,`meta_field`,`meta_value`) VALUES {$data}";
+				$meta_save = $this->conn->query($sql);
+			}
+			
+			if($meta_save){
 				$resp['status'] = 'success';
 				$resp['id'] = $rid;
 				if(empty($id))
-				$resp['msg'] = " Service Request has been submitted successfully.";
+					$resp['msg'] = "Service Request has been submitted successfully.";
 				else
-				$resp['msg'] = " Service Request details has been updated successfully.";
+					$resp['msg'] = "Service Request details has been updated successfully.";
 				// Send notifications (client + admins)
 				try {
 					if(file_exists(base_app.'classes/Notification.php')){
@@ -1369,11 +1382,11 @@ Class Master extends DBConnection {
 			}else{
 				$resp['status'] = 'failed';
 				$resp['error'] = $this->conn->error;
-				$resp['sql'] = $sql;
+				$resp['sql'] = isset($sql) ? $sql : 'N/A';
 				if(empty($id))
-				$resp['msg'] = " Service Request has failed to submit.";
+					$resp['msg'] = "Service Request has failed to submit.";
 				else
-				$resp['msg'] = " Service Request details has failed to update.";
+					$resp['msg'] = "Service Request details has failed to update.";
 				$this->conn->query("DELETE FROM `service_requests` where id = '{$rid}'");
 			}
 
@@ -1387,7 +1400,10 @@ Class Master extends DBConnection {
 			$resp['msg'] = " Service Request details has failed to update.";
 		}
 		if($resp['status'] == 'success')
-		$this->settings->set_flashdata("success", $resp['msg']);
+			$this->settings->set_flashdata("success", $resp['msg']);
+		
+		// Ensure we return clean JSON (no extra output)
+		header('Content-Type: application/json');
 		return json_encode($resp);
 	}
 	
@@ -1999,8 +2015,8 @@ Class Master extends DBConnection {
 		// Sanitize inputs
 		$client_id = $this->conn->real_escape_string($client_id);
 		
-		// Get client balance
-		$client = $this->conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}' AND delete_flag = 0");
+		// Check if client exists
+		$client = $this->conn->query("SELECT id FROM client_list WHERE id = '{$client_id}' AND delete_flag = 0");
 		
 		if($client->num_rows == 0){
 			$resp['status'] = 'failed';
@@ -2008,11 +2024,31 @@ Class Master extends DBConnection {
 			return json_encode($resp);
 		}
 		
-		$balance = $client->fetch_assoc()['account_balance'];
-		$balance = $balance ? $balance : 0;
+		// Calculate balance from installment contracts (aligned with invoices/receipts)
+		$balance_q = $this->conn->query("SELECT 
+			COALESCE(SUM(ic.remaining_balance), 0) as total_remaining_balance,
+			COALESCE(SUM(ic.down_payment_amount + IFNULL(ip.paid_amount, 0)), 0) as total_paid_amount,
+			COALESCE(SUM(ic.total_amount), 0) as total_contract_amount
+			FROM installment_contracts ic
+			LEFT JOIN (SELECT contract_id, SUM(amount_paid) as paid_amount FROM installment_payments GROUP BY contract_id) ip ON ic.id = ip.contract_id
+			WHERE ic.customer_id = '{$client_id}' AND ic.status = 'active'");
+		
+		if($balance_q && $balance_q->num_rows > 0) {
+			$balance_data = $balance_q->fetch_assoc();
+			$remaining_balance = (float)$balance_data['total_remaining_balance'];
+		} else {
+			// Fallback to account_balance if no installment contracts
+			$client_bal = $this->conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}'");
+			if($client_bal && $client_bal->num_rows > 0) {
+				$remaining_balance = (float)($client_bal->fetch_assoc()['account_balance'] ?: 0);
+			} else {
+				$remaining_balance = 0;
+			}
+		}
 		
 		$resp['status'] = 'success';
-		$resp['balance'] = $balance;
+		$resp['balance'] = $remaining_balance;
+		$resp['current_balance'] = $remaining_balance;
 		return json_encode($resp);
 	}
 
@@ -2026,16 +2062,32 @@ Class Master extends DBConnection {
 			return json_encode($resp);
 		}
 		$client_id = $this->conn->real_escape_string($client_id);
-		$client = $this->conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}' AND delete_flag = 0");
+		
+		// Check if client exists
+		$client = $this->conn->query("SELECT id FROM client_list WHERE id = '{$client_id}' AND delete_flag = 0");
 		if(!$client || $client->num_rows == 0){
 			$resp['status'] = 'failed';
 			$resp['msg'] = 'Client not found.';
 			return json_encode($resp);
 		}
-		$balance = $client->fetch_assoc()['account_balance'];
-		$balance = $balance ? $balance : 0;
+		
+		// Calculate balance from installment contracts
+		$balance_q = $this->conn->query("SELECT 
+			COALESCE(SUM(ic.remaining_balance), 0) as total_remaining_balance
+			FROM installment_contracts ic
+			WHERE ic.customer_id = '{$client_id}' AND ic.status = 'active'");
+		
+		if($balance_q && $balance_q->num_rows > 0) {
+			$balance_data = $balance_q->fetch_assoc();
+			$balance = (float)$balance_data['total_remaining_balance'];
+		} else {
+			// Fallback to account_balance
+			$client_bal = $this->conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}'");
+			$balance = $client_bal && $client_bal->num_rows > 0 ? (float)($client_bal->fetch_assoc()['account_balance'] ?: 0) : 0;
+		}
+		
 		$resp['status'] = 'success';
-		$resp['data'] = [ 'balance' => (float)$balance ];
+		$resp['data'] = [ 'balance' => $balance ];
 		return json_encode($resp);
 	}
 	
@@ -2059,44 +2111,97 @@ Class Master extends DBConnection {
 			$resp['msg'] = "Client not found.";
 			return json_encode($resp);
 		}
-		$client_name = $client->fetch_assoc()['fullname'];
 		
-		// Get transactions
-		$transactions = $this->conn->query("SELECT * FROM customer_transactions WHERE client_id = '{$client_id}' ORDER BY date_created DESC LIMIT 50");
+		// Get installment contracts summary
+		$contracts_q = $this->conn->query("SELECT 
+			ic.*,
+			i.invoice_number,
+			ip.plan_name,
+			ic.down_payment_amount + COALESCE(SUM(ipay.amount_paid), 0) as paid_amount,
+			DATE_FORMAT(ic.created_at, '%Y-%m-%d') as created_at
+			FROM installment_contracts ic
+			LEFT JOIN invoices i ON ic.invoice_id = i.id
+			LEFT JOIN installment_plans ip ON ic.installment_plan_id = ip.id
+			LEFT JOIN installment_payments ipay ON ic.id = ipay.contract_id
+			WHERE ic.customer_id = '{$client_id}'
+			GROUP BY ic.id
+			ORDER BY ic.created_at DESC");
 		
-		$html = '<div class="table-responsive">';
-		$html .= '<h6>Transaction History for: <strong>' . $client_name . '</strong></h6>';
-		$html .= '<table class="table table-bordered table-striped">';
-		$html .= '<thead><tr>';
-		$html .= '<th>Date</th>';
-		$html .= '<th>Type</th>';
-		$html .= '<th>Amount</th>';
-		$html .= '<th>Description</th>';
-		$html .= '<th>Reference</th>';
-		$html .= '</tr></thead>';
-		$html .= '<tbody>';
-		
-		if($transactions->num_rows > 0){
-			while($row = $transactions->fetch_assoc()){
-				$amount_class = $row['transaction_type'] == 'payment' ? 'text-success' : 'text-danger';
-				$amount_sign = $row['transaction_type'] == 'payment' ? '+' : '-';
-				
-				$html .= '<tr>';
-				$html .= '<td>' . date("M d, Y H:i", strtotime($row['date_created'])) . '</td>';
-				$html .= '<td><span class="badge badge-' . ($row['transaction_type'] == 'payment' ? 'success' : 'danger') . '">' . ucfirst($row['transaction_type']) . '</span></td>';
-				$html .= '<td class="' . $amount_class . '">' . $amount_sign . '₱' . number_format($row['amount'], 2) . '</td>';
-				$html .= '<td>' . htmlspecialchars($row['description']) . '</td>';
-				$html .= '<td>' . htmlspecialchars($row['reference_id']) . '</td>';
-				$html .= '</tr>';
+		$contracts = array();
+		if($contracts_q && $contracts_q->num_rows > 0){
+			while($contract = $contracts_q->fetch_assoc()){
+				$contracts[] = array(
+					'contract_number' => $contract['contract_number'],
+					'invoice_number' => $contract['invoice_number'],
+					'plan_name' => $contract['plan_name'],
+					'total_amount' => (float)$contract['total_amount'],
+					'paid_amount' => (float)($contract['paid_amount'] ?: 0),
+					'remaining_balance' => (float)$contract['remaining_balance'],
+					'status' => $contract['status'],
+					'created_at' => $contract['created_at']
+				);
 			}
-		} else {
-			$html .= '<tr><td colspan="5" class="text-center text-muted">No transactions found.</td></tr>';
 		}
 		
-		$html .= '</tbody></table></div>';
+		// Get installment payments
+		$payments_q = $this->conn->query("SELECT 
+			ip.*,
+			ic.contract_number,
+			isch.installment_number,
+			u.firstname as staff_firstname,
+			u.lastname as staff_lastname,
+			DATE_FORMAT(ip.payment_date, '%Y-%m-%d %H:%i:%s') as payment_date
+			FROM installment_payments ip
+			LEFT JOIN installment_contracts ic ON ip.contract_id = ic.id
+			LEFT JOIN installment_schedule isch ON ip.schedule_id = isch.id
+			LEFT JOIN users u ON ip.created_by = u.id
+			WHERE ic.customer_id = '{$client_id}'
+			ORDER BY ip.payment_date DESC LIMIT 50");
+		
+		$payments = array();
+		if($payments_q && $payments_q->num_rows > 0){
+			while($payment = $payments_q->fetch_assoc()){
+				$payments[] = array(
+					'payment_date' => $payment['payment_date'],
+					'contract_number' => $payment['contract_number'],
+					'installment_number' => $payment['installment_number'],
+					'amount_paid' => (float)$payment['amount_paid'],
+					'payment_method' => $payment['payment_method'],
+					'receipt_number' => $payment['receipt_number'],
+					'staff_firstname' => $payment['staff_firstname'],
+					'staff_lastname' => $payment['staff_lastname']
+				);
+			}
+		}
+		
+		// Get installment schedule
+		$schedule_q = $this->conn->query("SELECT 
+			isch.*,
+			ic.contract_number,
+			DATE_FORMAT(isch.due_date, '%Y-%m-%d') as due_date
+			FROM installment_schedule isch
+			LEFT JOIN installment_contracts ic ON isch.contract_id = ic.id
+			WHERE ic.customer_id = '{$client_id}'
+			ORDER BY isch.due_date ASC");
+		
+		$schedule = array();
+		if($schedule_q && $schedule_q->num_rows > 0){
+			while($sch = $schedule_q->fetch_assoc()){
+				$schedule[] = array(
+					'contract_number' => $sch['contract_number'],
+					'installment_number' => $sch['installment_number'],
+					'due_date' => $sch['due_date'],
+					'amount_due' => (float)$sch['amount_due'],
+					'paid_amount' => (float)($sch['paid_amount'] ?: 0),
+					'status' => $sch['status']
+				);
+			}
+		}
 		
 		$resp['status'] = 'success';
-		$resp['html'] = $html;
+		$resp['contracts'] = $contracts;
+		$resp['payments'] = $payments;
+		$resp['schedule'] = $schedule;
 		return json_encode($resp);
 	}
 	

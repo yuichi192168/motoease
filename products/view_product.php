@@ -424,7 +424,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                     $slides[] = ['color'=> isset($name) ? $name : 'Default', 'img'=> (isset($image_path) ? $image_path : '')];
                                 }
                             ?>
-                            <div class="available-colors">
+                            <!-- <div class="available-colors">
                                 <h6 class="mb-2">Available Colors:</h6>
                                 <div class="color-list">
                                     <?php if(!empty($colors)): ?>
@@ -435,7 +435,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                         <span class="text-muted">No specific colors available</span>
                                     <?php endif; ?>
                                 </div>
-                            </div>
+                            </div> -->
                         </div>
                     </div>
                     

@@ -399,12 +399,17 @@ $(document).ready(function(){
         html += '<thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>';
         html += '<tbody>';
         $.each(invoice.items, function(index, item){
+            // Calculate unit_price if it's zero or missing, using total_price and quantity
+            var unit_price = parseFloat(item.unit_price) || 0;
+            if(unit_price == 0 && parseFloat(item.quantity) > 0 && parseFloat(item.total_price) > 0){
+                unit_price = parseFloat(item.total_price) / parseFloat(item.quantity);
+            }
             html += '<tr>';
             html += '<td>' + item.item_name + '</td>';
             html += '<td>' + (item.item_description || '-') + '</td>';
             html += '<td>' + item.quantity + '</td>';
-            html += '<td>₱' + parseFloat(item.unit_price).toLocaleString() + '</td>';
-            html += '<td>₱' + parseFloat(item.total_price).toLocaleString() + '</td>';
+            html += '<td>₱' + unit_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
+            html += '<td>₱' + parseFloat(item.total_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
             html += '</tr>';
         });
         html += '</tbody>';
@@ -413,12 +418,11 @@ $(document).ready(function(){
 
         html += '<div class="row">';
         html += '<div class="col-md-6">';
-        html += '<p><strong>Pickup Location:</strong><br>' + invoice.pickup_location + '</p>';
-        html += '<p><strong>Payment Instructions:</strong><br>' + invoice.payment_instructions + '</p>';
+        // html += '<p><strong>Pickup Location:</strong><br>' + invoice.pickup_location + '</p>';
+        // html += '<p><strong>Payment Instructions:</strong><br>' + invoice.payment_instructions + '</p>';
         html += '</div>';
         html += '<div class="col-md-6 text-right">';
         html += '<p><strong>Subtotal:</strong> ₱' + parseFloat(invoice.subtotal).toLocaleString() + '</p>';
-        html += '<p><strong>VAT:</strong> ₱' + parseFloat(invoice.vat_amount).toLocaleString() + '</p>';
         html += '<p><strong>Total Amount:</strong> ₱' + parseFloat(invoice.total_amount).toLocaleString() + '</p>';
         html += '</div>';
         html += '</div>';

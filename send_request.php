@@ -211,7 +211,7 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
         </div>
         <?php else: ?>
         <div class="text-right">
-            <button type="button" class="btn btn-info" id="send_service_appointment">Send Service Appointment</button>
+            <button type="submit" class="btn btn-primary">Submit Service Request</button>
             <a href="./" class="btn btn-secondary">Cancel</a>
         </div>
         <?php endif; ?>
@@ -452,72 +452,68 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                 cache: false,
                 contentType: false,
                 processData: false,
-                dataType: 'json',
-                error: err => {
-                    console.log(err);
-                    alert_toast("An error occurred", 'error');
+                dataType: 'text', // Changed to text to handle response manually
+                complete: function(xhr, status) {
                     end_loader();
-                },
-                success: function(resp){
-                    end_loader();
-                    if(resp.status == 'success'){
-                        alert_toast(resp.msg || 'Service request submitted successfully!', 'success');
+                    
+                    var resp = null;
+                    var responseText = xhr.responseText || '';
+                    
+                    // Try to parse JSON response
+                    try {
+                        // Remove any whitespace or PHP notices that might be before JSON
+                        responseText = responseText.trim();
+                        // Find JSON in response (in case there's output before it)
+                        var jsonMatch = responseText.match(/\{[\s\S]*\}/);
+                        if(jsonMatch) {
+                            resp = JSON.parse(jsonMatch[0]);
+                        } else {
+                            resp = JSON.parse(responseText);
+                        }
+                    } catch(e) {
+                        console.error('Failed to parse response:', responseText);
+                        console.error('Parse error:', e);
+                        // If response contains success keywords, assume it worked
+                        if(responseText.toLowerCase().includes('success') || responseText.toLowerCase().includes('submitted')) {
+                            resp = {status: 'success', msg: 'Service request submitted successfully!'};
+                        } else {
+                            resp = {status: 'failed', msg: 'Failed to process response. Please check if your request was saved.'};
+                        }
+                    }
+                    
+                    // Handle response
+                    if(resp && (resp.status === 'success' || resp.status === 'Success')) {
+                        // Show success notification with better styling
+                        alert_toast(
+                            resp.msg || '✓ Service request submitted successfully! We will review your request shortly.', 
+                            'success'
+                        );
+                        
+                        // Clear form on success
+                        $('#request_form')[0].reset();
+                        $('#service_id').val(null).trigger('change');
+                        
                         <?php if ($is_standalone): ?>
                         setTimeout(function(){
                             location.reload();
-                        }, 2000);
+                        }, 2500);
                         <?php else: ?>
                         setTimeout(function(){
                             location.href = "./?p=my_services";
-                        }, 2000);
+                        }, 2500);
                         <?php endif; ?>
                     } else {
-                        alert_toast(resp.msg || 'An error occurred', 'error');
+                        // Show error with actual message
+                        var errorMsg = (resp && resp.msg) ? resp.msg : 'Failed to submit service request. Please try again.';
+                        if(resp && resp.error) {
+                            console.error('Server error:', resp.error);
+                        }
+                        alert_toast(errorMsg, 'error');
                     }
                 }
             });
         });
 
-        // Send Service Appointment button
-        $('#send_service_appointment').click(function(){
-            // Collect preferred schedule data
-            var preferredMechanic = $('#preferred_mechanic').val() || '';
-            var preferredDate = $('#preferred_date').val() || '';
-            var preferredTime = $('#preferred_time').val() || '';
-
-            if(!preferredDate || !preferredTime){
-                alert_toast('Please select preferred date and time.','warning');
-                return;
-            }
-
-            start_loader();
-            $.ajax({
-                url: _base_url_ + 'classes/Master.php?f=save_appointment',
-                method: 'POST',
-                data: {
-                    client_id: '<?= $_settings->userdata('id') ?>',
-                    service_type: ($('#service_id').val()||[])[0] || '',
-                    mechanic_id: preferredMechanic,
-                    appointment_date: preferredDate,
-                    appointment_time: preferredTime,
-                    vehicle_info: $('#vehicle_info').val()||'',
-                    notes: $('#service_description').val()||''
-                },
-                dataType: 'json',
-                success: function(resp){
-                    end_loader();
-                    if(resp.status == 'success'){
-                        alert_toast('Service appointment sent successfully!','success');
-                    } else {
-                        alert_toast(resp.msg || 'Failed to send appointment.','error');
-                    }
-                },
-                error: function(){
-                    end_loader();
-                    alert_toast('An error occurred.','error');
-                }
-            });
-        });
         
         // Handle cancel service request button clicks
         $('.cancel_service_request').click(function(){

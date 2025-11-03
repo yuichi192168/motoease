@@ -44,33 +44,36 @@ require_once('../../config.php');
             <tr>
                 <th>#</th>
                 <th>Customer</th>
-                <th class="text-right">Total Balance</th>
+                <th class="text-right">Total Contract</th>
                 <th class="text-right">Paid Amount</th>
-                <th class="text-right">Unpaid Amount</th>
+                <th class="text-right">Remaining Balance</th>
             </tr>
         </thead>
         <tbody>
             <?php 
             $i = 1; 
             $total = 0; $paid = 0; $unpaid = 0;
-            $qry = $conn->query("SELECT c.*, 
-                                    COALESCE(SUM(o.total_amount), 0) as total_balance,
-                                    COALESCE(SUM(CASE WHEN o.status IN (4,6) THEN o.total_amount ELSE 0 END), 0) as paid_amount,
-                                    COALESCE(SUM(CASE WHEN o.status IN (0,1,2,3) THEN o.total_amount ELSE 0 END), 0) as unpaid_amount
-                                  FROM `client_list` c 
-                                  LEFT JOIN order_list o ON c.id = o.client_id 
-                                  WHERE c.delete_flag = 0 
-                                  GROUP BY c.id 
-                                  ORDER BY c.lastname, c.firstname");
+            // Updated query to align with installment system
+            $qry = $conn->query("SELECT 
+                                    c.*,
+                                    COALESCE(SUM(ic.total_amount), 0) as total_contract_amount,
+                                    COALESCE(SUM(ic.down_payment_amount + IFNULL(ip.paid_amount, 0)), 0) as paid_amount,
+                                    COALESCE(SUM(ic.remaining_balance), 0) as unpaid_amount
+                                    FROM `client_list` c 
+                                    LEFT JOIN installment_contracts ic ON c.id = ic.customer_id AND ic.status = 'active'
+                                    LEFT JOIN (SELECT contract_id, SUM(amount_paid) as paid_amount FROM installment_payments GROUP BY contract_id) ip ON ic.id = ip.contract_id
+                                    WHERE c.delete_flag = 0 
+                                    GROUP BY c.id 
+                                    ORDER BY c.lastname, c.firstname");
             while($row = $qry->fetch_assoc()):
-                $total += (float)$row['total_balance'];
+                $total += (float)$row['total_contract_amount'];
                 $paid += (float)$row['paid_amount'];
                 $unpaid += (float)$row['unpaid_amount'];
             ?>
             <tr>
                 <td class="text-center"><?php echo $i++; ?></td>
                 <td><?php echo ucwords($row['lastname'] . ', ' . $row['firstname'] . ' ' . $row['middlename']) ?></td>
-                <td class="text-right">₱<?php echo number_format($row['total_balance'], 2) ?></td>
+                <td class="text-right">₱<?php echo number_format($row['total_contract_amount'], 2) ?></td>
                 <td class="text-right text-success">₱<?php echo number_format($row['paid_amount'], 2) ?></td>
                 <td class="text-right text-danger">₱<?php echo number_format($row['unpaid_amount'], 2) ?></td>
             </tr>

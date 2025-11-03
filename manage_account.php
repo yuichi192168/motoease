@@ -89,38 +89,36 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-3">
-                                <div class="info-box bg-primary">
-                                    <span class="info-box-icon"><i class="fas fa-money-bill-wave"></i></span>
-                                    <div class="info-box-content">
-                                        <span class="info-box-text">Total Order Amount</span>
-                                        <span class="info-box-number">₱<?= number_format($account_balance['total_balance'] ?? 0, 2) ?></span>
+                            <div class="col-md-4">
+                                <div class="info-box bg-primary" style="min-height: 80px; display: flex; align-items: center;">
+                                    <span class="info-box-icon" style="display: flex; align-items: center; justify-content: center;"><i class="fas fa-money-bill-wave"></i></span>
+                                    <div class="info-box-content" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                                        <span class="info-box-text" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 5px;">Total Order Amount</span>
+                                        <span class="info-box-number" style="display: block; font-size: 24px; font-weight: bold;">₱<?= number_format($account_balance['total_balance'] ?? 0, 2) ?></span>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="info-box bg-warning">
-                                    <span class="info-box-icon"><i class="fas fa-credit-card"></i></span>
-                                    <div class="info-box-content">
-                                        <span class="info-box-text">Pending Amount</span>
-                                        <span class="info-box-number">₱<?= number_format($account_balance['pending_amount'] ?? 0, 2) ?></span>
+                            <div class="col-md-4">
+                                <div class="info-box bg-warning" style="min-height: 80px; display: flex; align-items: center;">
+                                    <span class="info-box-icon" style="display: flex; align-items: center; justify-content: center;"><i class="fas fa-credit-card"></i></span>
+                                    <div class="info-box-content" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                                        <span class="info-box-text" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 5px;">Pending Amount</span>
+                                        <span class="info-box-number" style="display: block; font-size: 24px; font-weight: bold;">₱<?= number_format($account_balance['pending_amount'] ?? 0, 2) ?></span>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="info-box bg-info">
-                                    <span class="info-box-icon"><i class="fas fa-calendar-alt"></i></span>
-                                    <div class="info-box-content">
-                                        <span class="info-box-text">Paid Amount</span>
-                                        <span class="info-box-number">₱<?= number_format($account_balance['delivered_amount'] ?? 0, 2) ?></span>
+                            <div class="col-md-4">
+                                <div class="info-box bg-info" style="min-height: 80px; display: flex; align-items: center;">
+                                    <span class="info-box-icon" style="display: flex; align-items: center; justify-content: center;"><i class="fas fa-calendar-alt"></i></span>
+                                    <div class="info-box-content" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                                        <span class="info-box-text" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 5px;">Paid Amount</span>
+                                        <span class="info-box-number" style="display: block; font-size: 24px; font-weight: bold;">₱<?= number_format($account_balance['delivered_amount'] ?? 0, 2) ?></span>
                                     </div>
                                 </div>
                             </div>
-                            
                         </div>
                         
                         <!-- Payment Status Alert -->
-                        </div>
                         
                         <?php 
                         // Invoices & Receipts summary aligned with Admin

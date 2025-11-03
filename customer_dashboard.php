@@ -8,36 +8,43 @@ $client_id = $_settings->userdata('id');
 // Get customer data
 $customer = $conn->query("SELECT * FROM client_list WHERE id = '{$client_id}'")->fetch_assoc();
 
-// Get account balance and amounts per status, strictly for this client
-$account_balance = $conn->query("SELECT 
-    COALESCE(SUM(total_amount), 0) as total_balance,
-    COALESCE(SUM(CASE WHEN status IN (4,6) THEN total_amount ELSE 0 END), 0) as paid_amount,
-    COALESCE(SUM(CASE WHEN status IN (0,1,2,3) THEN total_amount ELSE 0 END), 0) as pending_amount
-    FROM order_list 
-    WHERE client_id = '{$client_id}' AND status != 5")->fetch_assoc();
+// Get account balance from installment contracts (aligned with invoices/receipts)
+$account_balance_q = $conn->query("SELECT 
+    COALESCE(SUM(ic.total_amount), 0) as total_contract_amount,
+    COALESCE(SUM(ic.down_payment_amount + IFNULL(ip.paid_amount, 0)), 0) as paid_amount,
+    COALESCE(SUM(ic.remaining_balance), 0) as pending_amount
+    FROM installment_contracts ic
+    LEFT JOIN (SELECT contract_id, SUM(amount_paid) as paid_amount FROM installment_payments GROUP BY contract_id) ip ON ic.id = ip.contract_id
+    WHERE ic.customer_id = '{$client_id}' AND ic.status = 'active'");
+$account_balance = $account_balance_q && $account_balance_q->num_rows > 0 ? $account_balance_q->fetch_assoc() : ['total_contract_amount' => 0, 'paid_amount' => 0, 'pending_amount' => 0];
 
-// Reflect account balance from client_list (single source of truth)
+// Fallback to account_balance if no installment contracts
 $client_balance_row = $conn->query("SELECT account_balance FROM client_list WHERE id = '{$client_id}' AND delete_flag = 0")->fetch_assoc();
-$client_account_balance = $client_balance_row ? (float)$client_balance_row['account_balance'] : 0;
+$client_account_balance = (float)($account_balance['pending_amount'] > 0 ? $account_balance['pending_amount'] : ($client_balance_row ? (float)$client_balance_row['account_balance'] : 0));
 
-// Installment schedule with due dates and delay/penalty computed from invoices or 30-day rule
+// Installment schedule from installment_schedule table (aligned with contracts)
 $installments = $conn->query("SELECT 
-    ol.id,
-    ol.ref_code,
-    ol.total_amount,
-    ol.status as order_status,
-    ol.date_created,
-    COALESCE(i.due_date, DATE_ADD(ol.date_created, INTERVAL 30 DAY)) as due_date,
+    isch.id,
+    ic.contract_number as ref_code,
+    isch.amount_due as total_amount,
+    isch.status as order_status,
+    isch.due_date,
+    isch.paid_date as date_created,
     CASE 
-        WHEN COALESCE(i.payment_status, CASE WHEN ol.status IN (4,6) THEN 'paid' ELSE 'unpaid' END) = 'paid' THEN 0
-        ELSE DATEDIFF(CURDATE(), COALESCE(i.due_date, DATE_ADD(ol.date_created, INTERVAL 30 DAY)))
+        WHEN isch.status = 'paid' THEN 0
+        ELSE DATEDIFF(CURDATE(), isch.due_date)
     END as days_overdue,
-    COALESCE(i.payment_status, CASE WHEN ol.status IN (4,6) THEN 'paid' ELSE 'unpaid' END) as payment_status
-    FROM order_list ol
-    LEFT JOIN invoices i ON i.order_id = ol.id
-    WHERE ol.client_id = '{$client_id}' 
-    AND ol.status != 5
-    ORDER BY ol.date_created DESC");
+    CASE 
+        WHEN isch.status = 'paid' THEN 'paid'
+        WHEN isch.status = 'overdue' OR (isch.status = 'pending' AND isch.due_date < CURDATE()) THEN 'unpaid'
+        ELSE 'pending'
+    END as payment_status,
+    isch.paid_amount,
+    ic.id as contract_id
+    FROM installment_schedule isch
+    LEFT JOIN installment_contracts ic ON isch.contract_id = ic.id
+    WHERE ic.customer_id = '{$client_id}' AND ic.status = 'active'
+    ORDER BY isch.due_date DESC");
 
 // Get recent orders
 $orders = $conn->query("SELECT * FROM order_list WHERE client_id = '{$client_id}' ORDER BY date_created DESC LIMIT 5");
@@ -204,9 +211,9 @@ $recent_notifications = $conn->query("SELECT * FROM notifications WHERE user_id 
                                     ?>
                                     <tr>
                                         <td>
-                                            <a href="./?p=view_order&id=<?= $installment['ref_code'] ?>" class="text-primary">
-                                                <?= $installment['ref_code'] ?>
-                                            </a>
+                                            <span class="text-primary">
+                                                <?= htmlspecialchars($installment['ref_code']) ?>
+                                            </span>
                                         </td>
                                         <td>₱<?= number_format($installment['total_amount'], 2) ?></td>
                                         <td><?= date('M d, Y', strtotime($installment['due_date'])) ?></td>
