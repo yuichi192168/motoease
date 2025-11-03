@@ -1,6 +1,6 @@
 <?php if($_settings->chk_flashdata('success')): ?>
 <script>
-	alert_toast("<?php echo $_settings->flashdata('success') ?>",'success')
+	alert_toast(<?php echo json_encode($_settings->flashdata('success')); ?>,'success');
 </script>
 <?php endif;?>
 <div class="card card-outline card-primary">
@@ -14,21 +14,25 @@
 		<div class="container-fluid">
 			<div class="table-responsive">
 				<table class="table table-bordered table-stripped">
-                    <colgroup>
+					<colgroup>
 						<col width="5%">
 						<col width="20%">
 						<col width="15%">
-						<col width="15%">
-						<col width="15%">
-						<col width="15%">
-                        <col width="12%">
-                        <col width="18%">
+						<col width="12%"> <!-- Monthly Payment -->
+						<col width="12%"> <!-- Due Date -->
+						<col width="12%"> <!-- Paid Amount -->
+						<col width="12%"> <!-- Unpaid Amount -->
+						<col width="12%"> <!-- Status -->
+						<col width="10%"> <!-- Credit App -->
+						<col width="10%"> <!-- Action -->
 					</colgroup>
 					<thead>
                         <tr>
 							<th>#</th>
 							<th>Customer</th>
 							<th>Installment Plan</th>
+							<th>Monthly Payment</th>
+							<th>Due Date</th>
 							<th>Paid Amount</th>
 							<th>Unpaid Amount</th>
                             <th>Status</th>
@@ -58,6 +62,8 @@
                                 $total_balance = (float)$row['total_contract_amount'];
                                 
                                 // Determine installment plan based on active contracts
+                                $monthly_payment_display = "-";
+                                $due_date_display = "-";
                                 if($row['active_contracts'] > 0) {
                                     // Get contract details for plan display
                                     $contract_q = $conn->query("SELECT ic.*, ip.plan_name, ip.number_of_installments 
@@ -83,11 +89,53 @@
 								<td>
 									<strong><?php echo ucwords($row['lastname'] . ', ' . $row['firstname'] . ' ' . $row['middlename']) ?></strong><br>
 									<small class="text-muted"><?php echo $row['email'] ?></small><br>
-									<small class="text-info">ID: <?php echo $row['id'] ?></small>
+									<!-- <small class="text-info">ID: <?php echo $row['id'] ?></small> -->
 								</td>
-								<td class="text-center">
-									<small><?php echo $installment_plan ?></small>
-								</td>
+							<td class="text-center">
+								<small><?php echo $installment_plan ?></small>
+							</td>
+							<?php 
+								// Enriched contract status for monthly payment and due date
+								$client_id = (int)$row['id'];
+								$contract_detail_q = $conn->query("SELECT 
+									ic.id,
+									ic.remaining_balance,
+									ic.status as contract_status,
+									ip2.monthly_interest_rate as mir,
+									ip2.number_of_installments as plan_installments,
+									COUNT(DISTINCT isch.id) as total_installments,
+									SUM(CASE WHEN isch.status = 'paid' THEN 1 ELSE 0 END) as paid_installments,
+									MIN(CASE WHEN isch.status IN ('pending','overdue') THEN isch.due_date END) as next_due_date,
+									MIN(CASE WHEN isch.status IN ('pending','overdue') THEN isch.amount_due END) as next_amount_due
+									FROM installment_contracts ic
+									LEFT JOIN installment_plans ip2 ON ic.installment_plan_id = ip2.id
+									LEFT JOIN installment_schedule isch ON ic.id = isch.contract_id
+									WHERE ic.customer_id = '{$client_id}' AND ic.status = 'active'
+									GROUP BY ic.id
+									ORDER BY ic.created_at DESC
+									LIMIT 1");
+								if($contract_detail_q && $contract_detail_q->num_rows > 0){
+									$cd = $contract_detail_q->fetch_assoc();
+									$remaining_installments = max((int)$cd['total_installments'] - (int)$cd['paid_installments'], 0);
+									$mir = isset($cd['mir']) ? (float)$cd['mir'] : 0.0; // e.g. 0.02 for 2%
+									$rb = isset($cd['remaining_balance']) ? (float)$cd['remaining_balance'] : 0.0;
+									if($rb > 0){
+										if($mir > 0 && $remaining_installments > 0){
+											$mp_calc = ($rb + ($rb * $mir)) / $remaining_installments;
+										} else if($remaining_installments > 0){
+											$mp_calc = $rb / $remaining_installments;
+										} else {
+											$mp_calc = $cd['next_amount_due'] ? (float)$cd['next_amount_due'] : 0;
+										}
+										$monthly_payment_display = '₱' . number_format($mp_calc, 2);
+									} else {
+										$monthly_payment_display = '₱0.00';
+									}
+									$due_date_display = $cd['next_due_date'] ? date('M d, Y', strtotime($cd['next_due_date'])) : '-';
+								}
+							?>
+							<td class="text-center"><small><?php echo $monthly_payment_display; ?></small></td>
+							<td class="text-center"><small><?php echo $due_date_display; ?></small></td>
                                 <td class="text-right text-success">
 									<strong>₱<?php echo number_format($row['paid_amount'], 2) ?></strong>
 								</td>
@@ -111,8 +159,10 @@
                                     SUM(CASE WHEN isch.status = 'overdue' THEN 1 ELSE 0 END) as overdue_installments,
                                     MIN(CASE WHEN isch.status IN ('pending', 'overdue') THEN isch.due_date END) as next_due_date,
                                     MAX(CASE WHEN isch.status = 'overdue' THEN DATEDIFF(CURDATE(), isch.due_date) END) as max_days_overdue,
-                                    SUM(CASE WHEN isch.status = 'overdue' THEN isch.amount_due * {$late_fee_rate} * FLOOR(DATEDIFF(CURDATE(), isch.due_date)/30) ELSE 0 END) as penalty_total
+                                    SUM(CASE WHEN isch.status = 'overdue' THEN isch.amount_due * {$late_fee_rate} * FLOOR(DATEDIFF(CURDATE(), isch.due_date)/30) ELSE 0 END) as penalty_total,
+                                    ip2.monthly_interest_rate as mir
                                     FROM installment_contracts ic
+                                    LEFT JOIN installment_plans ip2 ON ic.installment_plan_id = ip2.id
                                     LEFT JOIN installment_schedule isch ON ic.id = isch.contract_id
                                     WHERE ic.customer_id = '{$client_id}' AND ic.status = 'active'
                                     GROUP BY ic.id
@@ -182,12 +232,12 @@
 						<?php endwhile; ?>
 						<?php if($qry->num_rows <= 0): ?>
 						<tr>
-							<td colspan="8" class="text-center">No customer accounts found.</td>
+							<td colspan="10" class="text-center">No customer accounts found.</td>
 						</tr>
 						<?php endif; ?>
 						<?php } catch (Exception $e) { ?>
 						<tr>
-							<td colspan="8" class="text-center text-danger">Error loading customer accounts: <?php echo $e->getMessage(); ?></td>
+							<td colspan="10" class="text-center text-danger">Error loading customer accounts: <?php echo $e->getMessage(); ?></td>
 						</tr>
 						<?php } ?>
 					</tbody>
@@ -195,6 +245,61 @@
 			</div>
 		</div>
 	</div>
+</div>
+
+<!-- Add Payment Modal -->
+<div class="modal fade" id="addPaymentModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Add Payment</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="addPaymentForm">
+                    <input type="hidden" name="client_id" id="pay_client_id">
+                    <div class="form-group">
+                        <label>Contract</label>
+                        <select name="contract_id" id="pay_contract_id" class="form-control" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Suggested Monthly</label>
+                        <input type="text" id="pay_suggested" class="form-control" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Amount Paid</label>
+                        <input type="number" name="amount_paid" id="pay_amount" class="form-control" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Date Paid</label>
+                        <input type="datetime-local" name="payment_date" id="pay_date" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Method</label>
+                        <select name="payment_method" id="pay_method" class="form-control" required>
+                            <option value="cash">Cash</option>
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="gcash">GCash</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Receipt / Reference # (optional)</label>
+                        <input type="text" name="receipt_number" id="pay_receipt" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Notes (optional)</label>
+                        <textarea name="notes" id="pay_notes" class="form-control" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button type="submit" form="addPaymentForm" class="btn btn-primary">Save Payment</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Adjust Balance Modal -->
@@ -360,6 +465,9 @@
                         <?php if($_settings->userdata('login_type') == 1): // Admin only ?>
                         <button type="button" class="btn btn-sm btn-primary" id="vt_adjust_balance">
                             <span class="fa fa-edit"></span> Adjust Balance
+                        </button>
+                        <button type="button" class="btn btn-sm btn-info" id="vt_add_payment">
+                            <span class="fa fa-money-bill"></span> Add Payment
                         </button>
                         <?php endif; ?>
                         <button type="button" class="btn btn-sm btn-success" id="vt_upload_orcr">
@@ -646,6 +754,8 @@
 				dataType: "json",
 				success: function(resp){
 					if(resp.status == 'success'){
+                        // cache for other actions (e.g., Add Payment)
+                        window._vtData = resp;
 						// Populate Contracts
 						var contractsHtml = '';
 						if(resp.contracts && resp.contracts.length > 0){
@@ -825,6 +935,71 @@
 					}
 					end_loader();
 				}
+			});
+		});
+
+		// Add Payment flow (admin)
+		$('#vt_add_payment').click(function(){
+			var id = $('#viewTransactionsModal').data('client-id') || '';
+			var name = $('#viewTransactionsModal').data('client-name') || '';
+			if(!id) return;
+			$('#pay_client_id').val(id);
+			var data = window._vtData || {};
+			var contracts = data.contracts || [];
+			var options = '';
+			$.each(contracts, function(i, c){
+				options += '<option value="'+(c.id||'')+'" data-remaining="'+(c.remaining_balance||0)+'" data-mir="'+(c.monthly_interest_rate||0)+'" data-remaining-inst="'+(c.remaining_installments||0)+'">'+(c.contract_number||('Contract #'+(c.id||'')))+'</option>';
+			});
+			$('#pay_contract_id').html(options);
+			function updateSuggested(){
+				var selId = $('#pay_contract_id').val();
+				var suggested = 0;
+				// Prefer next schedule amount for selected contract
+				if(data.schedule && selId){
+					for(var i=0;i<data.schedule.length;i++){
+						var s = data.schedule[i];
+						if(String(s.contract_id)===String(selId) && (s.status==='pending' || s.status==='overdue')){ suggested = parseFloat(s.amount_due||0); break; }
+					}
+				}
+				if(!suggested){
+					var opt = $('#pay_contract_id option:selected');
+					var rb = parseFloat(opt.data('remaining')||0);
+					var mir = parseFloat(opt.data('mir')||0);
+					var ri = parseInt(opt.data('remaining-inst')||0);
+					if(rb>0 && ri>0){ suggested = (rb + (rb*mir)) / ri; }
+				}
+				$('#pay_suggested').val(suggested ? ('₱'+suggested.toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2})) : '—');
+				$('#pay_amount').val(suggested ? suggested.toFixed(2) : '');
+			}
+			$('#pay_contract_id').off('change.__pay').on('change.__pay', updateSuggested);
+			// default date now
+			var now = new Date();
+			var pad = n=> (n<10?'0':'')+n;
+			var dt = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes());
+			$('#pay_date').val(dt);
+			updateSuggested();
+			$('#addPaymentModal').modal('show');
+		});
+
+		$('#addPaymentForm').submit(function(e){
+			e.preventDefault();
+			start_loader();
+			$.ajax({
+				url: _base_url_ + 'classes/Master.php?f=add_installment_payment',
+				method: 'POST',
+				data: $(this).serialize(),
+				dataType: 'json',
+				success: function(resp){
+					if(resp && resp.status === 'success'){
+						$('#addPaymentModal').modal('hide');
+						alert_toast(resp.msg || 'Payment recorded','success');
+						location.reload();
+					}else{
+						alert_toast(resp.msg || 'Failed to record payment','error');
+					}
+					end_loader();
+				},
+				error: function(){ end_loader(); alert_toast('Failed to record payment','error'); }
 			});
 		});
 

@@ -53,18 +53,16 @@ table td, table th {
                 <colgroup>
                     <col width="5%">
                     <col width="15%">
-                    <col width="20%">
-                    <col width="16%">
-                    <col width="12%">
-                    <col width="13%">
-                    <col width="11%">
+                    <col width="35%">
+                    <col width="15%">
+                    <col width="15%">
+                    <col width="15%">
                 </colgroup>
                 <thead>
                     <tr>
                         <th>#</th>
                         <th>Invoice No.</th>
                         <th>Customer</th>
-                        <th>Transaction Type</th>
                         <th>Total Amount</th>
                         <th>Payment Status</th>
                         <th>Date Created</th>
@@ -81,7 +79,6 @@ table td, table th {
                         <td class="text-center"><?php echo $i++ ?></td>
                         <td><strong><?php echo htmlspecialchars($row['invoice_number']) ?></strong></td>
                         <td><?php echo ucwords($row['lastname'] . ', ' . $row['firstname'] . ' ' . $row['middlename']) ?><br><small><?php echo htmlspecialchars($row['email']) ?></small></td>
-                        <td><?php echo htmlspecialchars(strtoupper($row['transaction_type'])) ?></td>
                         <td class="text-right">₱<?php echo number_format($row['total_amount'],2) ?></td>
                         <td class="text-center">
                             <?php $ps = strtolower($row['payment_status']); ?>
@@ -93,7 +90,7 @@ table td, table th {
                     <?php endwhile; ?>
                     <?php if($qry->num_rows <= 0): ?>
                     <tr>
-                        <td class="text-center" colspan="7">No Data...</td>
+                        <td class="text-center" colspan="6">No Data...</td>
                     </tr>
                     <?php endif; ?>
                 </tbody>
