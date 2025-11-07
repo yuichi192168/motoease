@@ -10,6 +10,24 @@ Class Users extends DBConnection {
 	public function __destruct(){
 		parent::__destruct();
 	}
+	private function validatePasswordRules($password){
+		if(strlen($password) < 8){
+			return 'Password must be at least 8 characters long.';
+		}
+		if(!preg_match('/[A-Z]/', $password)){
+			return 'Password must include at least one uppercase letter.';
+		}
+		if(!preg_match('/[a-z]/', $password)){
+			return 'Password must include at least one lowercase letter.';
+		}
+		if(!preg_match('/[0-9]/', $password)){
+			return 'Password must include at least one number.';
+		}
+		if(!preg_match('/[!@#$%^&*()_\-+=\[\]{}|:;\'"<>,.?\/]/', $password)){
+			return 'Password must include at least one special character (e.g. !@#$%^&*).';
+		}
+		return true;
+	}
 	public function save_users(){
 		extract($_POST);
 		$data = '';
@@ -109,10 +127,33 @@ Class Users extends DBConnection {
 	}
 	public function save_client(){
 		$resp = array();
+		$is_new_registration = !isset($_POST['id']) || $_POST['id'] === '';
+		$plain_password = isset($_POST['password']) ? $_POST['password'] : '';
+		
+		if($is_new_registration){
+			if(trim($plain_password) === ''){
+				$resp['status'] = 'failed';
+				$resp['msg'] = 'Password is required.';
+				return json_encode($resp);
+			}
+			$password_validation = $this->validatePasswordRules($plain_password);
+			if($password_validation !== true){
+				$resp['status'] = 'failed';
+				$resp['msg'] = $password_validation;
+				return json_encode($resp);
+			}
+		}elseif(!empty($plain_password)){
+			$password_validation = $this->validatePasswordRules($plain_password);
+			if($password_validation !== true){
+				$resp['status'] = 'failed';
+				$resp['msg'] = $password_validation;
+				return json_encode($resp);
+			}
+		}
 		
 		// Handle password encryption
-		if(!empty($_POST['password']))
-			$_POST['password'] = md5($_POST['password']);
+		if(!empty($plain_password))
+			$_POST['password'] = md5($plain_password);
 		else
 			unset($_POST['password']);
 			

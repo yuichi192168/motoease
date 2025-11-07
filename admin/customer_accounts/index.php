@@ -205,12 +205,13 @@
                                     <span class="badge badge-secondary">N/A</span>
                                 <?php endif; ?>
                             </td>
-								<td align="center">
-									<button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">
+							<td align="center">
+								<div class="btn-group">
+									<button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 										Action
 										<span class="sr-only">Toggle Dropdown</span>
 									</button>
-									<div class="dropdown-menu" role="menu">
+									<div class="dropdown-menu dropdown-menu-right" role="menu">
 										<a class="dropdown-item view_transactions" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['lastname'] . ', ' . $row['firstname'] ?>">
 											<span class="fa fa-list text-info"></span> View Transactions
 										</a>
@@ -227,7 +228,8 @@
 											<span class="fa fa-file-pdf text-warning"></span> View OR/CR
 										</a>
 									</div>
-								</td>
+								</div>
+							</td>
 							</tr>
 						<?php endwhile; ?>
 						<?php if($qry->num_rows <= 0): ?>
@@ -260,6 +262,8 @@
             <div class="modal-body">
                 <form id="addPaymentForm">
                     <input type="hidden" name="client_id" id="pay_client_id">
+                    <input type="hidden" name="penalty_amount" id="pay_penalty_amount" value="0">
+                    <input type="hidden" name="total_due" id="pay_total_due" value="0">
                     <div class="form-group">
                         <label>Contract</label>
                         <select name="contract_id" id="pay_contract_id" class="form-control" required></select>
@@ -291,6 +295,9 @@
                     <div class="form-group">
                         <label>Notes (optional)</label>
                         <textarea name="notes" id="pay_notes" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <div class="small text-muted" id="pay_penalty_info" style="display:none"></div>
                     </div>
                 </form>
             </div>
@@ -537,6 +544,8 @@
                                         <th>Contract #</th>
                                         <th>Installment #</th>
                                         <th class="text-right">Amount</th>
+                                        <th class="text-right">Penalty</th>
+                                        <th class="text-right">Total Due</th>
                                         <th>Method</th>
                                         <th>Receipt #</th>
                                         <th>Processed By</th>
@@ -544,7 +553,7 @@
                                 </thead>
                                 <tbody id="payments_list">
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted">
+                                        <td colspan="9" class="text-center text-muted">
                                             <i class="fa fa-spinner fa-spin"></i> Loading payment history...
                                         </td>
                                     </tr>
@@ -646,6 +655,9 @@
     font-size: 0.75em;
     padding: 4px 8px;
 }
+
+/* Ensure dropdown menus can overlay inside scrollable table container */
+/* no special dropdown z-index needed with standard btn-group */
 
 /* Text alignment */
 .text-right {
@@ -781,13 +793,18 @@
 						
 						// Populate Payments
 						var paymentsHtml = '';
-						if(resp.payments && resp.payments.length > 0){
+                        if(resp.payments && resp.payments.length > 0){
 							$.each(resp.payments, function(index, payment){
 								paymentsHtml += '<tr>';
 								paymentsHtml += '<td>' + (payment.payment_date ? new Date(payment.payment_date).toLocaleString('en-US', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : '-') + '</td>';
 								paymentsHtml += '<td>' + (payment.contract_number || '-') + '</td>';
 								paymentsHtml += '<td>#' + (payment.installment_number || '-') + '</td>';
-								paymentsHtml += '<td class="text-right text-success">₱' + parseFloat(payment.amount_paid || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
+                                paymentsHtml += '<td class="text-right text-success">₱' + parseFloat(payment.amount_paid || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
+                                var pen = parseFloat(payment.penalty_amount || 0);
+                                var totalDue = parseFloat(payment.total_due || 0);
+                                if(!totalDue){ totalDue = parseFloat(payment.amount_paid || 0) + pen; }
+                                paymentsHtml += '<td class="text-right">' + (pen>0 ? ('₱'+pen.toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2})) : '-') + '</td>';
+                                paymentsHtml += '<td class="text-right">' + (totalDue>0 ? ('₱'+totalDue.toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2})) : '-') + '</td>';
 								paymentsHtml += '<td>' + (payment.payment_method ? payment.payment_method.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-') + '</td>';
 								paymentsHtml += '<td>' + (payment.receipt_number || '-') + '</td>';
 								var staffName = payment.staff_firstname || payment.staff_name || '';
@@ -796,7 +813,7 @@
 								paymentsHtml += '</tr>';
 							});
 						} else {
-							paymentsHtml = '<tr><td colspan="7" class="text-center text-muted">No payment history found.</td></tr>';
+                            paymentsHtml = '<tr><td colspan="9" class="text-center text-muted">No payment history found.</td></tr>';
 						}
 						$('#payments_list').html(paymentsHtml);
 						
@@ -951,14 +968,19 @@
 				options += '<option value="'+(c.id||'')+'" data-remaining="'+(c.remaining_balance||0)+'" data-mir="'+(c.monthly_interest_rate||0)+'" data-remaining-inst="'+(c.remaining_installments||0)+'">'+(c.contract_number||('Contract #'+(c.id||'')))+'</option>';
 			});
 			$('#pay_contract_id').html(options);
-			function updateSuggested(){
+			function computePenaltyAndTotals(){
 				var selId = $('#pay_contract_id').val();
-				var suggested = 0;
-				// Prefer next schedule amount for selected contract
+				var suggested = 0; // base monthly
+				var dueDateStr = null;
+				// Prefer next schedule for selected contract
 				if(data.schedule && selId){
 					for(var i=0;i<data.schedule.length;i++){
 						var s = data.schedule[i];
-						if(String(s.contract_id)===String(selId) && (s.status==='pending' || s.status==='overdue')){ suggested = parseFloat(s.amount_due||0); break; }
+						if(String(s.contract_id)===String(selId) && (s.status==='pending' || s.status==='overdue')){ 
+							suggested = parseFloat(s.amount_due||0); 
+							dueDateStr = s.due_date || null;
+							break; 
+						}
 					}
 				}
 				if(!suggested){
@@ -968,17 +990,39 @@
 					var ri = parseInt(opt.data('remaining-inst')||0);
 					if(rb>0 && ri>0){ suggested = (rb + (rb*mir)) / ri; }
 				}
+				// compute days late
+				var payDateStr = $('#pay_date').val();
+				var daysLate = 0;
+				if(dueDateStr && payDateStr){
+					var pd = new Date(payDateStr);
+					var dd = new Date(dueDateStr);
+					daysLate = Math.floor((pd - dd)/(1000*60*60*24));
+				}
+				var penalty = (daysLate>=7) ? (suggested * 0.03) : 0;
+				var totalDue = suggested + penalty;
 				$('#pay_suggested').val(suggested ? ('₱'+suggested.toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2})) : '—');
-				$('#pay_amount').val(suggested ? suggested.toFixed(2) : '');
+				$('#pay_amount').val(totalDue ? totalDue.toFixed(2) : '');
+				$('#pay_penalty_amount').val(penalty.toFixed(2));
+				$('#pay_total_due').val(totalDue.toFixed(2));
+				if(daysLate>0){
+					$('#pay_penalty_info').show().text('Due '+(dueDateStr? new Date(dueDateStr).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) : '-')+ ' • Days late: '+daysLate + (penalty>0 ? (' • Penalty 3%: ₱'+ penalty.toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2})) : ' • No penalty (<7 days)'));
+				}else{
+					$('#pay_penalty_info').hide().text('');
+				}
 			}
-			$('#pay_contract_id').off('change.__pay').on('change.__pay', updateSuggested);
+			$('#pay_contract_id').off('change.__pay').on('change.__pay', computePenaltyAndTotals);
 			// default date now
 			var now = new Date();
 			var pad = n=> (n<10?'0':'')+n;
 			var dt = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes());
 			$('#pay_date').val(dt);
-			updateSuggested();
+			computePenaltyAndTotals();
 			$('#addPaymentModal').modal('show');
+		});
+
+		// Recompute penalty when date changes
+		$(document).on('change', '#pay_date', function(){
+			$('#pay_contract_id').trigger('change.__pay');
 		});
 
 		$('#addPaymentForm').submit(function(e){
@@ -1064,6 +1108,35 @@
 					.css('z-index', zIndex - 1)
 					.addClass('modal-stack');
 			}, 0);
+		});
+
+		// Ensure dropdowns inside table remain clickable with DataTables
+		$(document).on('click', '.table .btn-group [data-toggle="dropdown"]', function(e){
+			e.stopPropagation();
+		});
+
+		// Copy of working pattern used in other sections: reparent dropdown to body to avoid clipping
+		$(document).on('show.bs.dropdown', '.table .btn-group', function () {
+			var $btn = $(this).find('[data-toggle="dropdown"]');
+			var $menu = $(this).find('> .dropdown-menu');
+			if($menu.length === 0) return;
+			$('body').append($menu.detach());
+			var offset = $btn.offset();
+			$menu.css({
+				display: 'block',
+				position: 'absolute',
+				left: offset.left + 'px',
+				top: (offset.top + $btn.outerHeight()) + 'px',
+				'z-index': 2000
+			});
+		});
+		$(document).on('hide.bs.dropdown', '.table .btn-group', function () {
+			var $container = $(this);
+			var $menu = $('body > .dropdown-menu:visible');
+			if($menu.length){
+				$container.append($menu.detach());
+				$menu.removeAttr('style');
+			}
 		});
 
 		// When a modal is hidden, if others remain open, keep body from jumping

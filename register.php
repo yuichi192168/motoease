@@ -90,6 +90,34 @@
         margin-top: 0.25rem;
       }
 
+      .password-rules {
+        margin-top: 0.35rem;
+      }
+
+      .password-rule {
+        display: flex;
+        align-items: center;
+        font-size: 0.75rem;
+        color: #6c757d;
+      }
+
+      .password-rule .rule-icon {
+        width: 16px;
+        margin-right: 0.4rem;
+      }
+
+      .password-rule.valid {
+        color: #28a745;
+      }
+
+      .password-rule.valid .rule-icon {
+        color: #28a745;
+      }
+
+      .password-rule.invalid .rule-icon {
+        color: #6c757d;
+      }
+
       /* Red and Black Theme */
       .btn-primary {
         background: linear-gradient(135deg, #dc3545, #c82333);
@@ -305,7 +333,15 @@
                         <span class="input-group-text"><i class="fa fa-eye-slash pass_type" data-type="password"></i></span>
                       </div>
                     </div>
-                    <small>Password must be at least 6 characters</small>
+                    <small class="text-muted">Minimum 8 characters with uppercase, lowercase, number, and special character (12+ recommended).</small>
+                    <ul class="password-rules list-unstyled" aria-live="polite">
+                      <li class="password-rule invalid" data-rule="length"><i class="fa fa-times-circle rule-icon"></i>At least 8 characters</li>
+                      <li class="password-rule invalid" data-rule="uppercase"><i class="fa fa-times-circle rule-icon"></i>Contains an uppercase letter (A–Z)</li>
+                      <li class="password-rule invalid" data-rule="lowercase"><i class="fa fa-times-circle rule-icon"></i>Contains a lowercase letter (a–z)</li>
+                      <li class="password-rule invalid" data-rule="number"><i class="fa fa-times-circle rule-icon"></i>Contains a number (0–9)</li>
+                      <li class="password-rule invalid" data-rule="special"><i class="fa fa-times-circle rule-icon"></i>Contains a special character (!@#$%^&*()_-+=[]{}|:;'"<>,.?/)</li>
+                    </ul>
+                    <div class="error-msg" id="password-error"></div>
                   </div>
                   <div class="form-group col-md-6">
                     <label for="cpassword" class="small">Confirm Password *</label>
@@ -315,6 +351,7 @@
                         <span class="input-group-text"><i class="fa fa-eye-slash pass_type" data-type="password"></i></span>
                       </div>
                     </div>
+                    <div class="error-msg" id="cpassword-error"></div>
                   </div>
                 </div>
 
@@ -381,15 +418,48 @@ $(document).ready(function(){
   // Real-time validation functions
   function validateField(id, condition, msg){
     var input = $(id);
+    var formGroup = input.closest('.form-group');
+    var errorEl = formGroup.find('.error-msg').first();
     if(!condition(input.val())){
       input.addClass('is-invalid').removeClass('is-valid');
-      input.next('.error-msg').text(msg);
+      if(errorEl.length) errorEl.text(msg);
       return false;
     } else {
       input.addClass('is-valid').removeClass('is-invalid');
-      input.next('.error-msg').text('');
+      if(errorEl.length) errorEl.text('');
       return true;
     }
+  }
+
+  const passwordPolicyRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_\-+=\[\]{}|:;'"<>,.?\/]).{8,}$/;
+  const passwordPolicyMessage = 'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character. (12+ characters recommended.)';
+
+  const passwordRuleTests = {
+    length: val => val.length >= 8,
+    uppercase: val => /[A-Z]/.test(val),
+    lowercase: val => /[a-z]/.test(val),
+    number: val => /\d/.test(val),
+    special: val => /[!@#$%^&*()_\-+=\[\]{}|:;'"<>,.?\/]/.test(val)
+  };
+
+  function updatePasswordRulesFeedback(val){
+    Object.keys(passwordRuleTests).forEach(function(key){
+      var ruleEl = $('.password-rule[data-rule="' + key + '"]');
+      var iconEl = ruleEl.find('.rule-icon');
+      if(passwordRuleTests[key](val)){
+        ruleEl.addClass('valid').removeClass('invalid');
+        iconEl.removeClass('fa-times-circle text-muted').addClass('fa-check-circle text-success');
+      } else {
+        ruleEl.addClass('invalid').removeClass('valid');
+        iconEl.removeClass('fa-check-circle text-success').addClass('fa-times-circle text-muted');
+      }
+    });
+  }
+
+  function validatePasswordField(){
+    return validateField('#password', function(val){
+      return passwordPolicyRegex.test(val);
+    }, passwordPolicyMessage);
   }
 
   $('#firstname').on('input', function(){
@@ -413,8 +483,15 @@ $(document).ready(function(){
   });
 
   $('#password').on('input', function(){
-    validateField('#password', val => val.length >= 6, 'Password must be at least 6 characters.');
+    var currentVal = $(this).val();
+    updatePasswordRulesFeedback(currentVal);
+    validatePasswordField();
+    if($('#cpassword').val().length > 0){
+      $('#cpassword').trigger('input');
+    }
   });
+
+  updatePasswordRulesFeedback($('#password').val());
 
   $('#cpassword').on('input', function(){
     validateField('#cpassword', val => val === $('#password').val(), 'Passwords do not match.');
@@ -440,13 +517,13 @@ $(document).ready(function(){
 
     // Check all fields
     var valid = true;
-    valid &= validateField('#firstname', val => val.trim().length > 0, 'First name is required.');
-    valid &= validateField('#lastname', val => val.trim().length > 0, 'Last name is required.');
-    valid &= validateField('#gender', val => val != null && val != '', 'Select gender.');
-    valid &= validateField('#contact', val => /^09[0-9]{9}$/.test(val), 'Enter a valid 11-digit mobile number starting with 09.');
-    valid &= validateField('#email', val => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), 'Enter a valid email.');
-    valid &= validateField('#password', val => val.length >= 6, 'Password must be at least 6 characters.');
-    valid &= validateField('#cpassword', val => val === $('#password').val(), 'Passwords do not match.');
+    valid = validateField('#firstname', val => val.trim().length > 0, 'First name is required.') && valid;
+    valid = validateField('#lastname', val => val.trim().length > 0, 'Last name is required.') && valid;
+    valid = validateField('#gender', val => val != null && val != '', 'Select gender.') && valid;
+    valid = validateField('#contact', val => /^09[0-9]{9}$/.test(val), 'Enter a valid 11-digit mobile number starting with 09.') && valid;
+    valid = validateField('#email', val => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), 'Enter a valid email.') && valid;
+    valid = validatePasswordField() && valid;
+    valid = validateField('#cpassword', val => val === $('#password').val(), 'Passwords do not match.') && valid;
 
     if(!valid) return false;
 
