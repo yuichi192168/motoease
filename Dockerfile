@@ -7,9 +7,11 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libfreetype6-dev \
     libzip-dev \
+    libonig-dev \
     zip \
     unzip \
     curl \
+    pkg-config \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install mysqli pdo pdo_mysql gd mbstring zip curl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
