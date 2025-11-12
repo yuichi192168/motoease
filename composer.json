@@ -1,5 +1,10 @@
 {
-    "require": {
-        "phpmailer/phpmailer": "^7.0"
-    }
+  "name": "motoease/app",
+  "description": "MotoEase Web Management System",
+  "require": {
+    "php": "^7.4 || ^8.0",
+    "ext-mysqli": "*",
+    "ext-mbstring": "*",
+    "phpmailer/phpmailer": "^6.5"
+  }
 }
