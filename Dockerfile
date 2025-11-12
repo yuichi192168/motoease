@@ -1,6 +1,5 @@
 FROM php:8.1-apache
 
-# Set working directory
 WORKDIR /var/www/html
 
 # Install system dependencies for PHP extensions
@@ -19,8 +18,8 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-install mysqli pdo pdo_mysql gd mbstring zip curl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
+# Enable Apache modules
+RUN a2enmod rewrite headers
 
 # Copy existing application directory contents
 COPY . /var/www/html
