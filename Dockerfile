@@ -1,16 +1,26 @@
 # Use official PHP + Apache image
 FROM php:8.2-apache
 
-# Install required PHP extensions
-RUN docker-php-ext-install mysqli pdo pdo_mysql gd mbstring zip curl
+# Install system dependencies for PHP extensions
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libzip-dev \
+    zip \
+    unzip \
+    curl \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install mysqli pdo pdo_mysql gd mbstring zip curl \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
-# Set working directory inside container
+# Set working directory
 WORKDIR /var/www/html
 
-# Copy all project files into the container
+# Copy project files
 COPY . /var/www/html
 
 # Install Composer
