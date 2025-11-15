@@ -602,6 +602,7 @@ Class Master extends DBConnection {
             $this->conn->commit();
             
             // Auto-generate invoice for the new order
+            $invoice_id = null;
             try{
                 if(file_exists(base_app.'classes/Invoice.php')){
                     require_once base_app.'classes/Invoice.php';
@@ -614,9 +615,80 @@ Class Master extends DBConnection {
                     } else if(is_array($invRes)){
                         $resp['invoice_id'] = $invRes['invoice_id'] ?? null;
                         $resp['invoice_number'] = $invRes['invoice_number'] ?? null;
+                        $invoice_id = $invRes['invoice_id'] ?? null;
                     }
                 }
             } catch (Exception $e){ /* non-fatal */ }
+            
+            // Auto-create customer account balance record for motorcycle orders
+            try{
+                if($has_motorcycle && file_exists(base_app.'classes/CustomerAccountBalance.php')){
+                    require_once base_app.'classes/CustomerAccountBalance.php';
+                    $accountBalance = new CustomerAccountBalance($this->conn);
+                    
+                    // Get motorcycle product name(s)
+                    $motorcycle_query = $this->conn->query("SELECT p.name, p.price, oi.quantity 
+                                                           FROM order_items oi 
+                                                           INNER JOIN product_list p ON oi.product_id = p.id 
+                                                           INNER JOIN categories cat ON p.category_id = cat.id 
+                                                           WHERE oi.order_id = '{$order_id}' 
+                                                           AND (cat.category LIKE '%motorcycle%' OR cat.category LIKE '%bike%' OR p.name LIKE '%motorcycle%' OR p.name LIKE '%bike%')
+                                                           LIMIT 1");
+                    
+                    if($motorcycle_query && $motorcycle_row = $motorcycle_query->fetch_assoc()){
+                        $item_purchased = $motorcycle_row['name'];
+                        $total_price = $total_amount; // Without VAT (already calculated without VAT in order)
+                        
+                        // Get payment method and installment details
+                        $payment_method = isset($_POST['payment_method']) ? strtolower(trim($_POST['payment_method'])) : 'cash';
+                        $installment_plan_id = isset($_POST['installment_plan_id']) ? intval($_POST['installment_plan_id']) : null;
+                        $downpayment_amount = isset($_POST['downpayment_amount']) ? floatval($_POST['downpayment_amount']) : 0;
+                        $installment_months = null;
+                        $monthly_payment = null;
+                        $contract_id = null;
+                        
+                        // If installment payment, get plan details
+                        if($payment_method === 'installment' && $installment_plan_id){
+                            $plan_query = $this->conn->query("SELECT * FROM installment_plans WHERE id = '{$installment_plan_id}'");
+                            if($plan_query && $plan = $plan_query->fetch_assoc()){
+                                $installment_months = $plan['number_of_installments'];
+                                // Calculate downpayment if not provided
+                                if($downpayment_amount == 0 && $plan['down_payment_percentage'] > 0){
+                                    $downpayment_amount = ($total_price * $plan['down_payment_percentage']) / 100;
+                                }
+                                // Calculate monthly payment
+                                $remaining = $total_price - $downpayment_amount;
+                                if($plan['interest_rate'] > 0){
+                                    $monthly_payment = ($remaining * (1 + ($plan['interest_rate']/100))) / $installment_months;
+                                } else {
+                                    $monthly_payment = $remaining / $installment_months;
+                                }
+                            }
+                        }
+                        
+                        // Create customer account record
+                        $account_id = $accountBalance->createAccount(
+                            $client_id,
+                            $order_id,
+                            $item_purchased,
+                            $total_price,
+                            $downpayment_amount,
+                            $installment_months,
+                            $monthly_payment,
+                            $invoice_id,
+                            $contract_id
+                        );
+                        
+                        if($account_id){
+                            $resp['account_id'] = $account_id;
+                            error_log("Customer account created for order {$order_id}, account ID: {$account_id}");
+                        }
+                    }
+                }
+            } catch (Exception $e){ 
+                // Non-fatal: log error but don't fail order
+                error_log('Customer account creation failed for order ' . $order_id . ': ' . $e->getMessage());
+            }
             
             $resp['status'] = 'success';
             $resp['msg'] = "Order placed successfully!";
@@ -4170,7 +4242,11 @@ $sysset = new SystemSettings();
 		echo $Master->remove_from_cart();
 	break;
 	case 'place_order':
+		// Ensure clean output
+		ob_clean();
+		header('Content-Type: application/json');
 		echo $Master->place_order();
+		exit;
 	break;
 	case 'get_cart_count':
 		echo $Master->get_cart_count();
@@ -4206,7 +4282,11 @@ $sysset = new SystemSettings();
 		echo $Master->delete_mechanic();
 	break;
 	case 'update_order_status':
+		// Ensure clean output
+		ob_clean();
+		header('Content-Type: application/json');
 		echo $Master->update_order_status();
+		exit;
 	break;
 	case 'update_document_status':
 		echo $Master->update_document_status();

@@ -1,0 +1,585 @@
+<?php
+/**
+ * Customer Account Balance Management Class
+ * Handles account creation, payment tracking, late fee calculation
+ */
+class CustomerAccountBalance {
+    private $conn;
+    
+    public function __construct($connection) {
+        if(!$connection){
+            // If no connection provided, try to get from global
+            global $conn;
+            $this->conn = $conn;
+        } else {
+            $this->conn = $connection;
+        }
+    }
+    
+    /**
+     * Create customer account record when order is placed
+     * @param int $client_id
+     * @param int $order_id
+     * @param int $invoice_id (optional)
+     * @param int $contract_id (optional)
+     * @param string $item_purchased
+     * @param float $total_price (without VAT)
+     * @param float $downpayment_amount
+     * @param int $installment_plan_months
+     * @param float $monthly_payment_amount
+     * @return int|false Account ID or false on failure
+     */
+    public function createAccount($client_id, $order_id, $item_purchased, $total_price, $downpayment_amount, $installment_plan_months = null, $monthly_payment_amount = null, $invoice_id = null, $contract_id = null) {
+        // Calculate remaining balance after downpayment
+        $remaining_balance = $total_price - $downpayment_amount;
+        
+        // If installment plan, calculate monthly payment if not provided
+        if ($installment_plan_months && !$monthly_payment_amount) {
+            $monthly_payment_amount = $remaining_balance / $installment_plan_months;
+        }
+        
+        // Insert account record
+        $stmt = $this->conn->prepare("
+            INSERT INTO customer_account_balances 
+            (client_id, order_id, invoice_id, contract_id, item_purchased, total_price, 
+             downpayment_amount, paid_amount, remaining_balance, installment_plan_months, 
+             monthly_payment_amount, status) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
+        ");
+        
+        $initial_paid = $downpayment_amount > 0 ? $downpayment_amount : 0;
+        
+        $stmt->bind_param("iiisddddidd", 
+            $client_id, 
+            $order_id, 
+            $invoice_id, 
+            $contract_id, 
+            $item_purchased, 
+            $total_price, 
+            $downpayment_amount, 
+            $initial_paid, 
+            $remaining_balance, 
+            $installment_plan_months, 
+            $monthly_payment_amount
+        );
+        
+        if (!$stmt->execute()) {
+            error_log("Error creating account: " . $stmt->error);
+            return false;
+        }
+        
+        $account_id = $stmt->insert_id;
+        $stmt->close();
+        
+        // Record downpayment transaction if exists
+        if ($downpayment_amount > 0) {
+            $this->recordTransaction($account_id, null, 'downpayment', $downpayment_amount, 'cash', null, 'Initial downpayment');
+        }
+        
+        // Create monthly payment schedule if installment plan exists
+        if ($installment_plan_months && $monthly_payment_amount && $remaining_balance > 0) {
+            $this->createPaymentSchedule($account_id, $installment_plan_months, $monthly_payment_amount, $remaining_balance);
+        }
+        
+        return $account_id;
+    }
+    
+    /**
+     * Create monthly payment schedule
+     * @param int $account_id
+     * @param int $months
+     * @param float $monthly_amount
+     * @param float $total_balance
+     * @return bool
+     */
+    private function createPaymentSchedule($account_id, $months, $monthly_amount, $total_balance) {
+        $start_date = date('Y-m-d');
+        $schedule_inserted = 0;
+        
+        for ($i = 1; $i <= $months; $i++) {
+            // Calculate due date (first payment due 1 month after order)
+            $due_date = date('Y-m-d', strtotime("+$i month", strtotime($start_date)));
+            
+            // Calculate remaining balance for this month
+            $month_balance = ($i == $months) ? $total_balance - (($months - 1) * $monthly_amount) : $monthly_amount;
+            
+            $stmt = $this->conn->prepare("
+                INSERT INTO customer_account_schedule 
+                (account_id, installment_number, due_date, amount_due, remaining_balance, payment_status) 
+                VALUES (?, ?, ?, ?, ?, 'Unpaid')
+            ");
+            
+            $stmt->bind_param("iisdd", $account_id, $i, $due_date, $monthly_amount, $month_balance);
+            
+            if ($stmt->execute()) {
+                $schedule_inserted++;
+            }
+            $stmt->close();
+        }
+        
+        return $schedule_inserted > 0;
+    }
+    
+    /**
+     * Record a payment transaction
+     * @param int $account_id
+     * @param int|null $schedule_id (if paying specific month)
+     * @param string $transaction_type
+     * @param float $amount
+     * @param string $payment_method
+     * @param string|null $receipt_number
+     * @param string|null $notes
+     * @param int|null $processed_by (admin/staff ID)
+     * @return int|false Transaction ID or false
+     */
+    public function recordTransaction($account_id, $schedule_id, $transaction_type, $amount, $payment_method = 'cash', $receipt_number = null, $notes = null, $processed_by = null) {
+        $stmt = $this->conn->prepare("
+            INSERT INTO customer_account_transactions 
+            (account_id, schedule_id, transaction_type, amount, payment_method, receipt_number, notes, processed_by) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        
+        $stmt->bind_param("iisdsssi", $account_id, $schedule_id, $transaction_type, $amount, $payment_method, $receipt_number, $notes, $processed_by);
+        
+        if (!$stmt->execute()) {
+            error_log("Error recording transaction: " . $stmt->error);
+            return false;
+        }
+        
+        $transaction_id = $stmt->insert_id;
+        $stmt->close();
+        
+        // Update account balance
+        $this->updateAccountBalance($account_id, $amount);
+        
+        // If schedule_id provided, update schedule payment
+        if ($schedule_id) {
+            $this->updateSchedulePayment($schedule_id, $amount);
+        }
+        
+        // Create notification for payment received
+        $account_info = $this->getAccountInfo($account_id);
+        if ($account_info) {
+            $this->createNotification(
+                $account_id, 
+                $schedule_id, 
+                $account_info['client_id'], 
+                'payment_received', 
+                'Payment Received', 
+                "Payment of ₱" . number_format($amount, 2) . " has been recorded for your account."
+            );
+        }
+        
+        return $transaction_id;
+    }
+    
+    /**
+     * Add payment to account (manual by admin)
+     * @param int $account_id
+     * @param int|null $schedule_id (specific month, or null for general payment)
+     * @param float $amount
+     * @param string $payment_method
+     * @param string|null $receipt_number
+     * @param string|null $notes
+     * @param int|null $processed_by
+     * @return bool
+     */
+    public function addPayment($account_id, $schedule_id, $amount, $payment_method = 'cash', $receipt_number = null, $notes = null, $processed_by = null) {
+        // Check and apply late fees before processing payment
+        $this->checkAndApplyLateFees($account_id);
+        
+        $transaction_type = $schedule_id ? 'monthly_payment' : 'monthly_payment';
+        
+        return $this->recordTransaction($account_id, $schedule_id, $transaction_type, $amount, $payment_method, $receipt_number, $notes, $processed_by) !== false;
+    }
+    
+    /**
+     * Update account balance after payment
+     * @param int $account_id
+     * @param float $amount
+     * @return bool
+     */
+    private function updateAccountBalance($account_id, $amount) {
+        $stmt = $this->conn->prepare("
+            UPDATE customer_account_balances 
+            SET paid_amount = paid_amount + ?, 
+                remaining_balance = GREATEST(0, remaining_balance - ?),
+                updated_at = NOW()
+            WHERE id = ?
+        ");
+        
+        $stmt->bind_param("ddi", $amount, $amount, $account_id);
+        $result = $stmt->execute();
+        $stmt->close();
+        
+        // Check if account is fully paid
+        $account = $this->getAccountInfo($account_id);
+        if ($account && $account['remaining_balance'] <= 0) {
+            $this->updateAccountStatus($account_id, 'paid');
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Update schedule payment status
+     * @param int $schedule_id
+     * @param float $amount
+     * @return bool
+     */
+    private function updateSchedulePayment($schedule_id, $amount) {
+        $schedule = $this->getScheduleInfo($schedule_id);
+        if (!$schedule) return false;
+        
+        $new_paid = $schedule['paid_amount'] + $amount;
+        $new_remaining = $schedule['remaining_balance'] - $amount;
+        $status = 'Partial';
+        
+        if ($new_remaining <= 0) {
+            $status = 'Paid';
+            $new_remaining = 0;
+        } elseif ($schedule['payment_status'] == 'Late' && $new_remaining > 0) {
+            $status = 'Late';
+        }
+        
+        $stmt = $this->conn->prepare("
+            UPDATE customer_account_schedule 
+            SET paid_amount = ?, 
+                remaining_balance = ?,
+                payment_status = ?,
+                paid_date = CASE WHEN ? = 0 THEN NOW() ELSE paid_date END,
+                updated_at = NOW()
+            WHERE id = ?
+        ");
+        
+        $stmt->bind_param("ddssi", $new_paid, $new_remaining, $status, $new_remaining, $schedule_id);
+        $result = $stmt->execute();
+        $stmt->close();
+        
+        return $result;
+    }
+    
+    /**
+     * Check and apply late fees (3% if payment is >7 days late)
+     * @param int $account_id
+     * @return bool
+     */
+    public function checkAndApplyLateFees($account_id) {
+        $today = date('Y-m-d');
+        $late_fee_rate = 0.03; // 3%
+        
+        // Get all unpaid or partial schedules
+        $stmt = $this->conn->prepare("
+            SELECT id, due_date, amount_due, remaining_balance, late_fee, payment_status
+            FROM customer_account_schedule 
+            WHERE account_id = ? 
+            AND payment_status IN ('Unpaid', 'Partial', 'Late')
+            AND remaining_balance > 0
+        ");
+        
+        $stmt->bind_param("i", $account_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $updated = false;
+        
+        while ($schedule = $result->fetch_assoc()) {
+            $due_date = strtotime($schedule['due_date']);
+            $current_date = strtotime($today);
+            $days_overdue = floor(($current_date - $due_date) / (60 * 60 * 24));
+            
+            // If more than 7 days late and no late fee applied yet
+            if ($days_overdue > 7 && $schedule['late_fee'] == 0 && $schedule['payment_status'] != 'Paid') {
+                $late_fee_amount = $schedule['remaining_balance'] * $late_fee_rate;
+                
+                // Update schedule with late fee
+                $update_stmt = $this->conn->prepare("
+                    UPDATE customer_account_schedule 
+                    SET late_fee = ?,
+                        remaining_balance = remaining_balance + ?,
+                        amount_due = amount_due + ?,
+                        payment_status = 'Late',
+                        updated_at = NOW()
+                    WHERE id = ?
+                ");
+                
+                $update_stmt->bind_param("dddi", $late_fee_amount, $late_fee_amount, $late_fee_amount, $schedule['id']);
+                
+                if ($update_stmt->execute()) {
+                    // Update account balance to include late fee
+                    $acc_stmt = $this->conn->prepare("
+                        UPDATE customer_account_balances 
+                        SET remaining_balance = remaining_balance + ?,
+                            updated_at = NOW()
+                        WHERE id = ?
+                    ");
+                    
+                    $acc_stmt->bind_param("di", $late_fee_amount, $account_id);
+                    $acc_stmt->execute();
+                    $acc_stmt->close();
+                    
+                    // Record late fee transaction
+                    $this->recordTransaction(
+                        $account_id, 
+                        $schedule['id'], 
+                        'late_fee', 
+                        $late_fee_amount, 
+                        'cash', 
+                        null, 
+                        "Late fee (3%) applied for payment overdue by $days_overdue days"
+                    );
+                    
+                    // Create notification for late payment
+                    $account_info = $this->getAccountInfo($account_id);
+                    if ($account_info) {
+                        $this->createNotification(
+                            $account_id, 
+                            $schedule['id'], 
+                            $account_info['client_id'], 
+                            'late_payment', 
+                            'Late Payment Fee Applied', 
+                            "A late fee of ₱" . number_format($late_fee_amount, 2) . " has been applied to your payment due on " . date('M d, Y', $due_date) . ". Please settle your account to avoid additional charges."
+                        );
+                    }
+                    
+                    $updated = true;
+                }
+                $update_stmt->close();
+            } elseif ($days_overdue > 7 && $schedule['payment_status'] == 'Unpaid') {
+                // Update status to Late even if fee already applied
+                $status_stmt = $this->conn->prepare("
+                    UPDATE customer_account_schedule 
+                    SET payment_status = 'Late',
+                        updated_at = NOW()
+                    WHERE id = ? AND payment_status = 'Unpaid'
+                ");
+                
+                $status_stmt->bind_param("i", $schedule['id']);
+                $status_stmt->execute();
+                $status_stmt->close();
+            }
+        }
+        
+        $stmt->close();
+        return $updated;
+    }
+    
+    /**
+     * Get account information
+     * @param int $account_id
+     * @return array|null
+     */
+    public function getAccountInfo($account_id) {
+        $stmt = $this->conn->prepare("
+            SELECT cab.*, cl.firstname, cl.lastname, cl.email 
+            FROM customer_account_balances cab
+            LEFT JOIN client_list cl ON cab.client_id = cl.id
+            WHERE cab.id = ?
+        ");
+        
+        $stmt->bind_param("i", $account_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $account = $result->fetch_assoc();
+        $stmt->close();
+        
+        return $account;
+    }
+    
+    /**
+     * Get schedule information
+     * @param int $schedule_id
+     * @return array|null
+     */
+    public function getScheduleInfo($schedule_id) {
+        $stmt = $this->conn->prepare("
+            SELECT * FROM customer_account_schedule WHERE id = ?
+        ");
+        
+        $stmt->bind_param("i", $schedule_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $schedule = $result->fetch_assoc();
+        $stmt->close();
+        
+        return $schedule;
+    }
+    
+    /**
+     * Get all accounts for a client
+     * @param int $client_id
+     * @return array
+     */
+    public function getCustomerAccounts($client_id) {
+        $stmt = $this->conn->prepare("
+            SELECT * FROM customer_account_balances 
+            WHERE client_id = ? 
+            ORDER BY created_at DESC
+        ");
+        
+        $stmt->bind_param("i", $client_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $accounts = [];
+        
+        while ($row = $result->fetch_assoc()) {
+            // Check and apply late fees before returning
+            $this->checkAndApplyLateFees($row['id']);
+            $accounts[] = $row;
+        }
+        
+        $stmt->close();
+        return $accounts;
+    }
+    
+    /**
+     * Get payment schedule for an account
+     * @param int $account_id
+     * @return array
+     */
+    public function getPaymentSchedule($account_id) {
+        // Check and apply late fees first
+        $this->checkAndApplyLateFees($account_id);
+        
+        $stmt = $this->conn->prepare("
+            SELECT * FROM customer_account_schedule 
+            WHERE account_id = ? 
+            ORDER BY installment_number ASC
+        ");
+        
+        $stmt->bind_param("i", $account_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $schedule = [];
+        
+        while ($row = $result->fetch_assoc()) {
+            $schedule[] = $row;
+        }
+        
+        $stmt->close();
+        return $schedule;
+    }
+    
+    /**
+     * Get transaction history for an account
+     * @param int $account_id
+     * @return array
+     */
+    public function getTransactionHistory($account_id) {
+        $stmt = $this->conn->prepare("
+            SELECT cat.*, u.firstname as processor_firstname, u.lastname as processor_lastname
+            FROM customer_account_transactions cat
+            LEFT JOIN users u ON cat.processed_by = u.id
+            WHERE cat.account_id = ? 
+            ORDER BY cat.transaction_date DESC
+        ");
+        
+        $stmt->bind_param("i", $account_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $transactions = [];
+        
+        while ($row = $result->fetch_assoc()) {
+            $transactions[] = $row;
+        }
+        
+        $stmt->close();
+        return $transactions;
+    }
+    
+    /**
+     * Create notification
+     * @param int $account_id
+     * @param int|null $schedule_id
+     * @param int $client_id
+     * @param string $type
+     * @param string $title
+     * @param string $message
+     * @return bool
+     */
+    public function createNotification($account_id, $schedule_id, $client_id, $type, $title, $message) {
+        $stmt = $this->conn->prepare("
+            INSERT INTO customer_account_notifications 
+            (account_id, schedule_id, client_id, notification_type, title, message) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        
+        $stmt->bind_param("iiisss", $account_id, $schedule_id, $client_id, $type, $title, $message);
+        $result = $stmt->execute();
+        $stmt->close();
+        
+        return $result;
+    }
+    
+    /**
+     * Update account status
+     * @param int $account_id
+     * @param string $status
+     * @return bool
+     */
+    private function updateAccountStatus($account_id, $status) {
+        $stmt = $this->conn->prepare("
+            UPDATE customer_account_balances 
+            SET status = ?, updated_at = NOW() 
+            WHERE id = ?
+        ");
+        
+        $stmt->bind_param("si", $status, $account_id);
+        $result = $stmt->execute();
+        $stmt->close();
+        
+        return $result;
+    }
+    
+    /**
+     * Get client notifications
+     * @param int $client_id
+     * @param bool $unread_only
+     * @return array
+     */
+    public function getCustomerNotifications($client_id, $unread_only = false) {
+        $sql = "
+            SELECT * FROM customer_account_notifications 
+            WHERE client_id = ?
+        ";
+        
+        if ($unread_only) {
+            $sql .= " AND is_read = 0";
+        }
+        
+        $sql .= " ORDER BY created_at DESC LIMIT 50";
+        
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param("i", $client_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $notifications = [];
+        
+        while ($row = $result->fetch_assoc()) {
+            $notifications[] = $row;
+        }
+        
+        $stmt->close();
+        return $notifications;
+    }
+    
+    /**
+     * Mark notification as read
+     * @param int $notification_id
+     * @param int $client_id
+     * @return bool
+     */
+    public function markNotificationRead($notification_id, $client_id) {
+        $stmt = $this->conn->prepare("
+            UPDATE customer_account_notifications 
+            SET is_read = 1 
+            WHERE id = ? AND client_id = ?
+        ");
+        
+        $stmt->bind_param("ii", $notification_id, $client_id);
+        $result = $stmt->execute();
+        $stmt->close();
+        
+        return $result;
+    }
+}
+

@@ -302,7 +302,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
         <?php endif; ?>
 
         <!-- Quick Actions -->
-        <div class="row mb-4">
+        <!-- <div class="row mb-4">
             <div class="col-md-12">
                 <div class="card card-outline card-info shadow rounded-0">
                     <div class="card-header">
@@ -313,7 +313,7 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                     </div>
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <!-- Main Account Management -->
         <div class="card card-outline card-dark shadow rounded-0">

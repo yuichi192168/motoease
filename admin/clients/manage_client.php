@@ -1,4 +1,9 @@
 <?php
+// Ensure config is loaded
+if(!defined('base_app')){
+	require_once('../config.php');
+}
+
 if(isset($_GET['id']) && $_GET['id'] > 0){
     $qry = $conn->query("SELECT * from `client_list` where id = '{$_GET['id']}' ");
     if($qry->num_rows > 0){
@@ -75,6 +80,97 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 			</div>
 		</form>
 	</div>
+	
+	<?php if(isset($id) && $id > 0): ?>
+	<!-- Account Balances & Payment Status Section -->
+	<div class="card card-outline card-primary mt-3">
+		<div class="card-header">
+			<h3 class="card-title">Account Balances & Payment Status</h3>
+		</div>
+		<div class="card-body">
+			<?php
+			// Load CustomerAccountBalance class if available
+			if(file_exists(base_app.'classes/CustomerAccountBalance.php')){
+				require_once(base_app.'classes/CustomerAccountBalance.php');
+				$accountBalance = new CustomerAccountBalance($conn);
+				$accounts = $accountBalance->getCustomerAccounts($id);
+				
+				if(count($accounts) > 0):
+			?>
+			<div class="table-responsive">
+				<table class="table table-bordered table-striped table-sm">
+					<thead>
+						<tr>
+							<th>Item Purchased</th>
+							<th>Total Price</th>
+							<th>Paid Amount</th>
+							<th>Remaining Balance</th>
+							<th>Status</th>
+							<th>Action</th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach($accounts as $account): 
+							// Check and apply late fees
+							$accountBalance->checkAndApplyLateFees($account['id']);
+							// Refresh account data
+							$account = $accountBalance->getAccountInfo($account['id']);
+							$schedule = $accountBalance->getPaymentSchedule($account['id']);
+							$has_overdue = false;
+							$max_days_overdue = 0;
+							foreach($schedule as $sched){
+								if($sched['payment_status'] == 'Late'){
+									$has_overdue = true;
+									$days_overdue = floor((strtotime('today') - strtotime($sched['due_date'])) / (60*60*24));
+									if($days_overdue > $max_days_overdue) $max_days_overdue = $days_overdue;
+								}
+							}
+						?>
+						<tr>
+							<td><?php echo htmlspecialchars($account['item_purchased']) ?></td>
+							<td class="text-right"><strong>₱<?php echo number_format($account['total_price'], 2) ?></strong></td>
+							<td class="text-right text-success"><strong>₱<?php echo number_format($account['paid_amount'], 2) ?></strong></td>
+							<td class="text-right text-danger"><strong>₱<?php echo number_format($account['remaining_balance'], 2) ?></strong></td>
+							<td class="text-center">
+								<?php 
+								if($account['status'] == 'paid' || $account['remaining_balance'] <= 0){
+									echo '<span class="badge badge-success">🟢 Fully Paid</span>';
+								} elseif($has_overdue && $max_days_overdue > 0){
+									$late_fee_total = array_sum(array_column($schedule, 'late_fee'));
+									echo '<span class="badge badge-danger">🔴 Late: '.$max_days_overdue.'d</span>';
+									if($late_fee_total > 0){
+										echo ' <small class="text-danger">+₱'.number_format($late_fee_total, 2).' late fee</small>';
+									}
+								} elseif($account['status'] == 'active'){
+									echo '<span class="badge badge-primary">🟦 Active</span>';
+								} else {
+									echo '<span class="badge badge-secondary">⚪ '.ucfirst($account['status']).'</span>';
+								}
+								?>
+							</td>
+							<td class="text-center">
+								<a href="javascript:void(0)" class="btn btn-sm btn-info view_account_details" data-id="<?php echo $account['id'] ?>">
+									<i class="fa fa-eye"></i> View Details
+								</a>
+							</td>
+						</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+			<?php else: ?>
+			<div class="alert alert-info">
+				<i class="fa fa-info-circle"></i> No account balances found for this customer.
+			</div>
+			<?php endif; ?>
+			<?php } else { ?>
+			<div class="alert alert-warning">
+				<i class="fa fa-exclamation-triangle"></i> CustomerAccountBalance class not found.
+			</div>
+			<?php } ?>
+		</div>
+	</div>
+	<?php endif; ?>
 	<div class="card-footer">
 		<button class="btn btn-flat btn-primary" form="client-form">Save</button>
 		<a class="btn btn-flat btn-default" href="./?page=clients">Cancel</a>
@@ -168,5 +264,13 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 		            [ 'view', [ 'undo', 'redo', 'fullscreen', 'codeview', 'help' ] ]
 		        ]
 		    })
+		    
+		// View account details
+		$(document).on('click', '.view_account_details', function(){
+			var account_id = $(this).data('id');
+			if(account_id){
+				uni_modal("Account Details", "customer_account_balances/view_account.php?id="+account_id, "large");
+			}
+		});
 	})
 </script>

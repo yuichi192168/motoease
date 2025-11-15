@@ -79,6 +79,40 @@ class Invoice extends DBConnection {
     }
     
     /**
+     * Sync receipt payment to customer_account_balances
+     */
+    private function syncReceiptToAccountBalance($invoice_id, $amount_paid, $receipt_number, $payment_method, $processed_by) {
+        // Check if invoice is linked to a customer_account_balance
+        $account = $this->conn->query("
+            SELECT id, client_id, remaining_balance 
+            FROM customer_account_balances 
+            WHERE invoice_id = '{$invoice_id}' 
+            AND status != 'closed'
+            LIMIT 1
+        ")->fetch_assoc();
+        
+        if($account && $account['remaining_balance'] > 0) {
+            // Load CustomerAccountBalance class
+            if(file_exists(__DIR__ . '/CustomerAccountBalance.php')) {
+                require_once(__DIR__ . '/CustomerAccountBalance.php');
+                $accountBalance = new CustomerAccountBalance($this->conn);
+                
+                // Record payment transaction
+                $accountBalance->recordTransaction(
+                    $account['id'],
+                    null, // schedule_id - null for general payment
+                    'invoice_payment',
+                    $amount_paid,
+                    $payment_method,
+                    $receipt_number,
+                    "Payment from invoice receipt",
+                    $processed_by
+                );
+            }
+        }
+    }
+    
+    /**
      * Create invoice from order
      */
     public function createInvoiceFromOrder($order_id, $staff_id) {
@@ -214,6 +248,9 @@ class Invoice extends DBConnection {
             // TRIGGER: Update invoice and recalculate client balance
             $this->conn->query("UPDATE invoices SET updated_at = NOW() WHERE id = '{$invoice_id}'");
             $this->recalculateClientBalance($invoice['customer_id']);
+            
+            // Sync payment with customer_account_balances if invoice is linked to an account
+            $this->syncReceiptToAccountBalance($invoice_id, $payment_data['amount_paid'], $receipt_number, $payment_data['payment_method'], $staff_id);
             
             return [
                 'status' => 'success', 
@@ -391,8 +428,12 @@ if(isset($_GET['action'])) {
             
         case 'create_receipt':
             if(isset($_POST['invoice_id']) && isset($_POST['payment_data']) && isset($_POST['staff_id'])) {
+                // Ensure clean output
+                ob_clean();
+                header('Content-Type: application/json');
                 $result = $invoice->createReceipt($_POST['invoice_id'], $_POST['payment_data'], $_POST['staff_id']);
                 echo json_encode($result);
+                exit;
             }
             break;
             

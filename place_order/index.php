@@ -698,47 +698,60 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                 method: 'POST',
                 type: 'POST',
                 dataType: 'json',
-                error:err=>{
-                    console.log(err);
-                    // Try to parse responseText in case server returned JSON but parsing failed due to extra output
-                    try{
-                        if(err && err.responseText){
-                            var parsed = null;
-                            try{ parsed = JSON.parse(err.responseText); }catch(e){ parsed = null; }
-                            if(!parsed){
-                                var txt = err.responseText;
+                error:function(xhr, status, error){
+                    end_loader();
+                    console.error('AJAX Error:', status, error);
+                    console.log('Response:', xhr.responseText);
+                    
+                    // Try to parse response even if it's in error handler
+                    var response = null;
+                    try {
+                        if(xhr.responseText){
+                            // Try direct parse first
+                            try {
+                                response = JSON.parse(xhr.responseText);
+                            } catch(e1) {
+                                // If that fails, try to extract JSON from response
+                                var txt = xhr.responseText;
                                 var s = txt.indexOf('{');
                                 var e = txt.lastIndexOf('}');
                                 if(s !== -1 && e !== -1 && e > s){
                                     var sub = txt.substring(s, e+1);
-                                    try{ parsed = JSON.parse(sub); }catch(e2){ parsed = null; }
-                                }
-                            }
-                            if(parsed){
-                                // Call the success handler path by simulating resp
-                                end_loader();
-                                $('#place_order_btn').prop('disabled', false).html('<i class="fa fa-shopping-cart"></i> Advance Order');
-                                if(parsed.status == 'success'){
-                                    // Show success message before redirecting
-                                    uni_modal('Order Placed Successfully','./success_msg.php');
-                                    if(parsed.ref_code){
-                                        alert_toast('Reference Code: '+parsed.ref_code,'success');
-                                    }
-                                    setTimeout(function(){ window.location.replace('./?p=my_orders'); }, 3000);
-                                    return;
-                                } else if(parsed.status == 'failed' && parsed.msg){
-                                    var el = $('<div>');
-                                    el.addClass("alert alert-danger err-msg").text(parsed.msg);
-                                    _this.prepend(el);
-                                    el.show('slow');
-                                    $("html, body").animate({ scrollTop: _this.closest('.card').offset().top }, "fast");
-                                    return;
+                                    response = JSON.parse(sub);
                                 }
                             }
                         }
-                    }catch(parseErr){ console.log('Response parse failed', parseErr); }
-                    alert_toast("An error occurred",'error');
-                    end_loader();
+                    } catch(e){
+                        console.log('Could not parse response as JSON:', e);
+                    }
+                    
+                    // If we got a valid JSON response with success status, treat it as success
+                    if(response && response.status === 'success'){
+                        $('#place_order_btn').prop('disabled', false);
+                        updateButtonText();
+                        // Show success message before redirecting
+                        uni_modal('Order Placed Successfully','./success_msg.php');
+                        if(response.ref_code){
+                            alert_toast('Reference Code: '+response.ref_code,'success');
+                        }
+                        setTimeout(function(){ window.location.replace('./?p=my_orders'); }, 3000);
+                        return;
+                    }
+                    
+                    // If we got a failed response with message, show it
+                    if(response && response.status === 'failed' && response.msg){
+                        var el = $('<div>');
+                        el.addClass("alert alert-danger err-msg").text(response.msg);
+                        _this.prepend(el);
+                        el.show('slow');
+                        $("html, body").animate({ scrollTop: _this.closest('.card').offset().top }, "fast");
+                        $('#place_order_btn').prop('disabled', false);
+                        updateButtonText();
+                        return;
+                    }
+                    
+                    // Otherwise show generic error
+                    alert_toast("An error occurred while placing your order. Please try again.",'error');
                     // Reset button text based on context
                     $('#place_order_btn').prop('disabled', false);
                     updateButtonText();

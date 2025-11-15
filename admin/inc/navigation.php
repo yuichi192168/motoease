@@ -227,8 +227,8 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
 
                  <!-- Customer Account Management -->
                  <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'admin_assistant'])): ?>
-                <li class="nav-item <?php echo in_array($page, ['customer_accounts']) ? 'menu-open' : '' ?>">
-                    <a href="#" class="nav-link <?php echo in_array($page, ['customer_accounts']) ? 'active' : '' ?>">
+                <li class="nav-item <?php echo in_array($page, ['customer_accounts', 'customer_account_balances']) ? 'menu-open' : '' ?>">
+                    <a href="#" class="nav-link <?php echo in_array($page, ['customer_accounts', 'customer_account_balances']) ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-user-cog"></i>
                         <p>
                             Customer Accounts
@@ -237,9 +237,15 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                     </a>
                     <ul class="nav nav-treeview">
                         <li class="nav-item">
+                            <a href="./?page=customer_account_balances" class="nav-link <?php echo $page == 'customer_account_balances' ? 'active' : '' ?>">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Account Balances (New)</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a href="./?page=customer_accounts" class="nav-link <?php echo $page == 'customer_accounts' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p>Account Balances</p>
+                                <p>Account Balances (Legacy)</p>
                             </a>
                         </li>
                         <li class="nav-item">

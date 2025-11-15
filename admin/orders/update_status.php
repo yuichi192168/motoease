@@ -40,29 +40,59 @@ if(isset($_GET['id'])){
                 method: 'POST',
                 type: 'POST',
                 dataType: 'json',
-				error:err=>{
-					console.log(err)
-					alert_toast("An error occured",'error');
-					end_loader();
-				},
 				success:function(resp){
 					end_loader();
+					// Handle response - check if it's actually an error or success
 					if(typeof resp =='object' && resp.status == 'success'){
 						$('#uni_modal').modal('hide');
 						alert_toast(resp.msg || "Order status updated successfully.", 'success');
 						setTimeout(() => {
 							location.reload();
 						}, 1500);
-					}else if(resp.status == 'failed' && !!resp.msg){
+					}else if(resp && resp.status == 'failed' && !!resp.msg){
                         var el = $('<div>')
                             el.addClass("alert alert-danger err-msg").text(resp.msg)
                             _this.prepend(el)
                             el.show('slow')
                             $("html, body").animate({ scrollTop: _this.closest('.card').offset().top }, "fast");
                     }else{
-						alert_toast("An error occured",'error');
-                        console.log(resp)
+						alert_toast(resp.msg || "An error occured",'error');
+                        console.log('Unexpected response:', resp)
 					}
+				},
+				error:function(xhr, status, error){
+					end_loader();
+					console.error('AJAX Error:', status, error);
+					console.log('Response:', xhr.responseText);
+					
+					// Try to parse response even if it's in error handler
+					var response = null;
+					try {
+						if(xhr.responseText){
+							response = JSON.parse(xhr.responseText);
+						}
+					} catch(e){
+						console.log('Could not parse response as JSON');
+					}
+					
+					// If we got a valid JSON response with success status, treat it as success
+					if(response && response.status === 'success'){
+						$('#uni_modal').modal('hide');
+						alert_toast(response.msg || "Order status updated successfully.", 'success');
+						setTimeout(() => {
+							location.reload();
+						}, 1500);
+						return;
+					}
+					
+					// Otherwise show error
+					var errorMsg = 'An error occurred while updating order status';
+					if(response && response.msg){
+						errorMsg = response.msg;
+					} else if(xhr.responseText && xhr.responseText.length < 200){
+						errorMsg = xhr.responseText;
+					}
+					alert_toast(errorMsg, 'error');
 				}
 			})
 		})
