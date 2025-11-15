@@ -639,29 +639,36 @@ Class Master extends DBConnection {
                         $item_purchased = $motorcycle_row['name'];
                         $total_price = $total_amount; // Without VAT (already calculated without VAT in order)
                         
-                        // Get payment method and installment details
+                        // Get payment method and installment details from form
                         $payment_method = isset($_POST['payment_method']) ? strtolower(trim($_POST['payment_method'])) : 'cash';
-                        $installment_plan_id = isset($_POST['installment_plan_id']) ? intval($_POST['installment_plan_id']) : null;
-                        $downpayment_amount = isset($_POST['downpayment_amount']) ? floatval($_POST['downpayment_amount']) : 0;
-                        $installment_months = null;
+                        $installment_months = isset($_POST['installment_months']) ? intval($_POST['installment_months']) : null;
+                        $downpayment_amount = isset($_POST['down_payment']) ? floatval($_POST['down_payment']) : 0;
                         $monthly_payment = null;
                         $contract_id = null;
                         
-                        // If installment payment, get plan details
-                        if($payment_method === 'installment' && $installment_plan_id){
-                            $plan_query = $this->conn->query("SELECT * FROM installment_plans WHERE id = '{$installment_plan_id}'");
-                            if($plan_query && $plan = $plan_query->fetch_assoc()){
-                                $installment_months = $plan['number_of_installments'];
-                                // Calculate downpayment if not provided
-                                if($downpayment_amount == 0 && $plan['down_payment_percentage'] > 0){
-                                    $downpayment_amount = ($total_price * $plan['down_payment_percentage']) / 100;
+                        // If installment payment, get details from form
+                        if($payment_method === 'installment'){
+                            // Get installment months from form
+                            if($installment_months && $installment_months > 0){
+                                // Get monthly payment from form (remove currency symbol if present)
+                                $monthly_payment_str = isset($_POST['monthly_payment']) ? trim($_POST['monthly_payment']) : '';
+                                if(!empty($monthly_payment_str)){
+                                    // Remove currency symbols and convert to float
+                                    $monthly_payment = floatval(str_replace(['₱', ',', ' '], '', $monthly_payment_str));
                                 }
-                                // Calculate monthly payment
-                                $remaining = $total_price - $downpayment_amount;
-                                if($plan['interest_rate'] > 0){
-                                    $monthly_payment = ($remaining * (1 + ($plan['interest_rate']/100))) / $installment_months;
-                                } else {
-                                    $monthly_payment = $remaining / $installment_months;
+                                
+                                // If monthly payment not provided or invalid, calculate it
+                                if(empty($monthly_payment) || $monthly_payment <= 0){
+                                    $remaining = $total_price - $downpayment_amount;
+                                    if($remaining > 0 && $installment_months > 0){
+                                        $monthly_payment = $remaining / $installment_months;
+                                    }
+                                }
+                                
+                                // Ensure downpayment is at least 20% if not provided
+                                $minimum_down = $total_price * 0.2;
+                                if($downpayment_amount < $minimum_down){
+                                    $downpayment_amount = $minimum_down;
                                 }
                             }
                         }
@@ -720,6 +727,8 @@ Class Master extends DBConnection {
 			$resp['msg'] = "Failed to place order: " . $e->getMessage();
 		}
 		
+		// Ensure we return clean JSON (no extra output)
+		header('Content-Type: application/json; charset=utf-8');
 		return json_encode($resp);
 	}
 	

@@ -670,6 +670,18 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                 return false;
             }
             
+            // Ensure monthly payment is calculated for installment payments before submission
+            var paymentMethod = $('#payment_method').val();
+            if(paymentMethod === 'installment') {
+                calculateInstallment();
+                // Ensure monthly payment has a value
+                var monthlyPayment = $('#monthly_payment').val();
+                if(!monthlyPayment || monthlyPayment.trim() === '') {
+                    alert_toast('Please ensure monthly payment is calculated.', 'warning');
+                    return false;
+                }
+            }
+            
             // Redirect to credit application for motorcycle orders if not completed
             console.log('Debug - hasMotorcycles:', hasMotorcycles, 'applicationCompleted:', applicationCompleted);
             if(hasMotorcycles && !applicationCompleted) {
@@ -701,32 +713,52 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                 error:function(xhr, status, error){
                     end_loader();
                     console.error('AJAX Error:', status, error);
-                    console.log('Response:', xhr.responseText);
+                    console.log('Response Text:', xhr.responseText);
+                    console.log('HTTP Status:', xhr.status);
+                    console.log('Status Text:', xhr.statusText);
                     
-                    // Try to parse response even if it's in error handler
+                    // Always try to parse response first, regardless of HTTP status
+                    // Sometimes successful responses come through error handler due to PHP warnings/notices
                     var response = null;
+                    var responseText = xhr.responseText || '';
+                    
                     try {
-                        if(xhr.responseText){
+                        if(responseText){
+                            // Remove any whitespace/newlines before/after JSON
+                            var txt = responseText.trim();
+                            
                             // Try direct parse first
                             try {
-                                response = JSON.parse(xhr.responseText);
+                                response = JSON.parse(txt);
+                                console.log('Successfully parsed JSON directly:', response);
                             } catch(e1) {
-                                // If that fails, try to extract JSON from response
-                                var txt = xhr.responseText;
+                                console.log('Direct parse failed, trying to extract JSON:', e1);
+                                // If that fails, try to extract JSON from response (handles PHP warnings/notices)
                                 var s = txt.indexOf('{');
                                 var e = txt.lastIndexOf('}');
                                 if(s !== -1 && e !== -1 && e > s){
                                     var sub = txt.substring(s, e+1);
-                                    response = JSON.parse(sub);
+                                    try {
+                                        response = JSON.parse(sub);
+                                        console.log('Successfully parsed extracted JSON:', response);
+                                    } catch(e2) {
+                                        console.error('Could not parse extracted JSON:', e2);
+                                        console.error('Extracted substring:', sub);
+                                    }
+                                } else {
+                                    console.error('Could not find JSON boundaries in response');
                                 }
                             }
+                        } else {
+                            console.error('No response text available');
                         }
                     } catch(e){
-                        console.log('Could not parse response as JSON:', e);
+                        console.error('Exception while parsing response:', e);
                     }
                     
                     // If we got a valid JSON response with success status, treat it as success
-                    if(response && response.status === 'success'){
+                    if(response && typeof response === 'object' && response.status === 'success'){
+                        console.log('Order placed successfully!', response);
                         $('#place_order_btn').prop('disabled', false);
                         updateButtonText();
                         // Show success message before redirecting
@@ -739,7 +771,8 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                     }
                     
                     // If we got a failed response with message, show it
-                    if(response && response.status === 'failed' && response.msg){
+                    if(response && typeof response === 'object' && response.status === 'failed' && response.msg){
+                        console.log('Order failed with message:', response.msg);
                         var el = $('<div>');
                         el.addClass("alert alert-danger err-msg").text(response.msg);
                         _this.prepend(el);
@@ -750,7 +783,24 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                         return;
                     }
                     
-                    // Otherwise show generic error
+                    // If HTTP status is 200 but we couldn't parse, it might still be success
+                    // Check if response contains success indicators
+                    if((xhr.status === 200 || xhr.status === 0) && responseText){
+                        var lowerText = responseText.toLowerCase();
+                        if(lowerText.indexOf('"status":"success"') !== -1 || 
+                           lowerText.indexOf("'status':'success'") !== -1 ||
+                           lowerText.indexOf('success') !== -1 && lowerText.indexOf('ref_code') !== -1){
+                            console.log('Detected success indicators in response, treating as success');
+                            $('#place_order_btn').prop('disabled', false);
+                            updateButtonText();
+                            uni_modal('Order Placed Successfully','./success_msg.php');
+                            setTimeout(function(){ window.location.replace('./?p=my_orders'); }, 3000);
+                            return;
+                        }
+                    }
+                    
+                    // Otherwise show generic error only if we truly don't have a valid response
+                    console.error('No valid response detected, showing error');
                     alert_toast("An error occurred while placing your order. Please try again.",'error');
                     // Reset button text based on context
                     $('#place_order_btn').prop('disabled', false);

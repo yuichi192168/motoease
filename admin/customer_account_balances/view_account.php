@@ -370,19 +370,31 @@ if($orders_query){
 									?>
 									<span class="badge badge-<?php echo $badge ?>"><?php echo $status ?></span>
 								</dd>
+								<?php if(isset($account['installment_plan_months']) && $account['installment_plan_months'] > 0): ?>
+								<dt>Installment Plan:</dt>
+								<dd><?php echo $account['installment_plan_months'] ?> Months</dd>
+								<?php endif; ?>
+								<?php if(isset($account['monthly_payment_amount']) && $account['monthly_payment_amount'] > 0): ?>
+								<dt>Monthly Payment:</dt>
+								<dd><strong>₱<?php echo number_format($account['monthly_payment_amount'], 2) ?></strong></dd>
+								<?php endif; ?>
 							</dl>
 						</div>
 						<div class="col-md-6">
 							<dl>
 								<dt>Generated Date:</dt>
 								<dd><?php echo date('M d, Y h:i A', strtotime($invoice['generated_at'])) ?></dd>
-								<?php if($invoice['due_date']): ?>
+								<?php if(isset($invoice['due_date']) && $invoice['due_date']): ?>
 								<dt>Due Date:</dt>
 								<dd><?php echo date('M d, Y', strtotime($invoice['due_date'])) ?></dd>
 								<?php endif; ?>
-								<?php if($invoice['paid_at']): ?>
+								<?php if(isset($invoice['paid_at']) && $invoice['paid_at']): ?>
 								<dt>Paid Date:</dt>
 								<dd class="text-success"><?php echo date('M d, Y h:i A', strtotime($invoice['paid_at'])) ?></dd>
+								<?php endif; ?>
+								<?php if(isset($account['downpayment_amount']) && $account['downpayment_amount'] > 0): ?>
+								<dt>Downpayment:</dt>
+								<dd class="text-info"><strong>₱<?php echo number_format($account['downpayment_amount'], 2) ?></strong></dd>
 								<?php endif; ?>
 							</dl>
 						</div>

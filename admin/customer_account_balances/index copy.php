@@ -27,28 +27,26 @@ if($_settings->chk_flashdata('success')): ?>
 			<div class="table-responsive">
 				<table class="table table-bordered table-stripped" id="account_list">
 					<colgroup>
-						<col width="3%">
-						<col width="12%">
-						<col width="10%">
-						<col width="10%">
-						<col width="10%">
-						<col width="10%">
-						<col width="10%">
-						<col width="12%">
-						<col width="8%">
 						<col width="5%">
+						<col width="15%">
+						<col width="20%">
+						<col width="12%">
+						<col width="10%">
+						<col width="10%">
+						<col width="10%">
+						<col width="10%">
+						<col width="8%">
 					</colgroup>
 					<thead>
 						<tr>
 							<th>#</th>
-							<th>Customer</th>
-							<th>Installment Plan</th>
-							<th>MonthlyPayment</th>
-							<th>Due Date</th>
+							<th>Customer Name</th>
+							<th>Item Purchased</th>
+							<th>Total Price</th>
+							<th>Downpayment</th>
 							<th>Paid Amount</th>
-							<th>Unpaid Amount</th>
+							<th>Remaining Balance</th>
 							<th>Status</th>
-							<th>Credit App</th>
 							<th>Action</th>
 						</tr>
 					</thead>
@@ -59,7 +57,7 @@ if($_settings->chk_flashdata('success')): ?>
 						$qry = $conn->query("
 							SELECT cab.*, 
 								   CONCAT(cl.firstname, ' ', cl.middlename, ' ', cl.lastname) as customer_name,
-								   cl.email, cl.contact, cl.credit_application_completed
+								   cl.email, cl.contact
 							FROM customer_account_balances cab
 							LEFT JOIN client_list cl ON cab.client_id = cl.id
 							WHERE cab.status != 'closed'
@@ -72,54 +70,6 @@ if($_settings->chk_flashdata('success')): ?>
 							// Refresh row data after late fee check
 							$refreshed = $accountBalance->getAccountInfo($row['id']);
 							if($refreshed) $row = array_merge($row, $refreshed);
-							
-							// Get payment schedule once (used for both due date and status)
-							$schedule_info = $accountBalance->getPaymentSchedule($row['id']);
-							$next_due_date = null;
-							foreach($schedule_info as $sched){
-								if(!$next_due_date && in_array($sched['payment_status'], ['Unpaid', 'Partial', 'Late'])){
-									$next_due_date = $sched['due_date'];
-									break;
-								}
-							}
-							
-							// Format installment plan
-							$installment_months = isset($row['installment_plan_months']) && $row['installment_plan_months'] > 0 ? $row['installment_plan_months'] : null;
-							$installment_plan_display = $installment_months ? $installment_months . ' Months' : 'Full Payment';
-							
-							// Get monthly payment
-							$monthly_payment = isset($row['monthly_payment_amount']) && $row['monthly_payment_amount'] > 0 ? $row['monthly_payment_amount'] : 0;
-							
-							// Credit application status
-							$credit_app_status = isset($row['credit_application_completed']) && $row['credit_application_completed'] == 1;
-							
-							// Enhanced status calculation with late fee awareness
-							$status_display = '';
-							$has_overdue = false;
-							$max_days_overdue = 0;
-							
-							foreach($schedule_info as $sched){
-								if($sched['payment_status'] == 'Late'){
-									$has_overdue = true;
-									$days_overdue = floor((strtotime('today') - strtotime($sched['due_date'])) / (60*60*24));
-									if($days_overdue > $max_days_overdue) $max_days_overdue = $days_overdue;
-								}
-							}
-							
-							if($row['status'] == 'paid' || $row['remaining_balance'] <= 0){
-								$status_display = '<span class="badge badge-success">🟢 Fully Paid</span>';
-							} elseif($has_overdue && $max_days_overdue > 0){
-								$late_fee_total = array_sum(array_column($schedule_info, 'late_fee'));
-								$status_display = '<span class="badge badge-danger">🔴 Late: '.$max_days_overdue.'d</span> <small class="text-danger">+₱'.number_format($late_fee_total, 2).' late fee</small>';
-							} elseif($row['remaining_balance'] > 0 && $next_due_date){
-								$status_display = '<span class="badge badge-warning">🟡 Pending / Due '.date('M d, Y', strtotime($next_due_date)).'</span>';
-							} elseif($row['status'] == 'active'){
-								$status_display = '<span class="badge badge-primary">🟦 Active</span>';
-							} elseif($row['status'] == 'defaulted'){
-								$status_display = '<span class="badge badge-danger">🔴 Defaulted</span>';
-							} else {
-								$status_display = '<span class="badge badge-secondary">⚪ '.ucfirst($row['status']).'</span>';
-							}
 						?>
 							<tr>
 								<td class="text-center"><?php echo $i++; ?></td>
@@ -127,60 +77,73 @@ if($_settings->chk_flashdata('success')): ?>
 									<strong><?php echo ucwords($row['customer_name']) ?></strong><br>
 									<small class="text-muted"><?php echo $row['email'] ?></small>
 								</td>
-								<td class="text-center">
-									<strong><?php echo $installment_plan_display ?></strong>
-								</td>
-								<td class="text-right">
-									<?php if($monthly_payment > 0): ?>
-										<strong>₱<?php echo number_format($monthly_payment, 2) ?></strong>
-									<?php else: ?>
-										<span class="text-muted">N/A</span>
-									<?php endif; ?>
-								</td>
-								<td class="text-center">
-									<?php if($next_due_date): ?>
-										<strong><?php echo date('M d, Y', strtotime($next_due_date)) ?></strong>
-									<?php else: ?>
-										<span class="text-muted">-</span>
-									<?php endif; ?>
-								</td>
+								<td><?php echo $row['item_purchased'] ?></td>
+								<td class="text-right"><strong>₱<?php echo number_format($row['total_price'], 2) ?></strong></td>
+								<td class="text-right text-info">₱<?php echo number_format($row['downpayment_amount'], 2) ?></td>
 								<td class="text-right text-success"><strong>₱<?php echo number_format($row['paid_amount'], 2) ?></strong></td>
 								<td class="text-right text-danger"><strong>₱<?php echo number_format($row['remaining_balance'], 2) ?></strong></td>
-								<td class="text-center">
-									<?php echo $status_display ?>
-								</td>
-								<td class="text-center">
-									<?php if($credit_app_status): ?>
-										<span class="badge badge-success"><i class="fa fa-check-circle"></i> Completed</span>
-									<?php else: ?>
-										<span class="badge badge-warning"><i class="fa fa-exclamation-triangle"></i> Pending</span>
-									<?php endif; ?>
-								</td>
-								<td align="center">
-									<div class="btn-group">
-										<button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-											Action
-											<span class="sr-only">Toggle Dropdown</span>
-										</button>
-										<div class="dropdown-menu dropdown-menu-right" role="menu">
-											<a class="dropdown-item view_account" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo htmlspecialchars($row['customer_name']) ?>">
-												<span class="fa fa-eye text-info"></span> View Details
-											</a>
-											<a class="dropdown-item add_payment" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo htmlspecialchars($row['customer_name']) ?>">
-												<span class="fa fa-money-bill-wave text-success"></span> Add Payment
-											</a>
-											<?php if($_settings->userdata('login_type') == 1): // Admin only ?>
-											<div class="dropdown-divider"></div>
-											<a class="dropdown-item upload_orcr" href="javascript:void(0)" data-id="<?php echo $row['client_id'] ?>" data-name="<?php echo htmlspecialchars($row['customer_name']) ?>">
-												<span class="fa fa-upload text-success"></span> Upload OR/CR
-											</a>
-											<a class="dropdown-item view_orcr" href="javascript:void(0)" data-id="<?php echo $row['client_id'] ?>" data-name="<?php echo htmlspecialchars($row['customer_name']) ?>">
-												<span class="fa fa-file-pdf text-warning"></span> View OR/CR
-											</a>
-											<?php endif; ?>
-										</div>
+							<td class="text-center">
+								<?php 
+								// Enhanced status calculation with late fee awareness
+								$status_display = '';
+								$schedule_info = $accountBalance->getPaymentSchedule($row['id']);
+								$has_overdue = false;
+								$max_days_overdue = 0;
+								$next_due_date = null;
+								
+								foreach($schedule_info as $sched){
+									if($sched['payment_status'] == 'Late'){
+										$has_overdue = true;
+										$days_overdue = floor((strtotime('today') - strtotime($sched['due_date'])) / (60*60*24));
+										if($days_overdue > $max_days_overdue) $max_days_overdue = $days_overdue;
+									}
+									if(!$next_due_date && in_array($sched['payment_status'], ['Unpaid', 'Partial'])){
+										$next_due_date = $sched['due_date'];
+									}
+								}
+								
+								if($row['status'] == 'paid' || $row['remaining_balance'] <= 0){
+									$status_display = '<span class="badge badge-success">🟢 Fully Paid</span>';
+								} elseif($has_overdue && $max_days_overdue > 0){
+									$late_fee_total = array_sum(array_column($schedule_info, 'late_fee'));
+									$status_display = '<span class="badge badge-danger">🔴 Late: '.$max_days_overdue.'d</span> <small class="text-danger">+₱'.number_format($late_fee_total, 2).' late fee</small>';
+								} elseif($row['remaining_balance'] > 0 && $next_due_date){
+									$status_display = '<span class="badge badge-warning">🟡 Pending / Due '.date('M d, Y', strtotime($next_due_date)).'</span>';
+								} elseif($row['status'] == 'active'){
+									$status_display = '<span class="badge badge-primary">🟦 Active</span>';
+								} elseif($row['status'] == 'defaulted'){
+									$status_display = '<span class="badge badge-danger">🔴 Defaulted</span>';
+								} else {
+									$status_display = '<span class="badge badge-secondary">⚪ '.ucfirst($row['status']).'</span>';
+								}
+								?>
+								<?php echo $status_display ?>
+							</td>
+							<td align="center">
+								<div class="btn-group">
+									<button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+										Action
+										<span class="sr-only">Toggle Dropdown</span>
+									</button>
+									<div class="dropdown-menu dropdown-menu-right" role="menu">
+										<a class="dropdown-item view_account" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo htmlspecialchars($row['customer_name']) ?>">
+											<span class="fa fa-eye text-info"></span> View Details
+										</a>
+										<a class="dropdown-item add_payment" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>" data-name="<?php echo htmlspecialchars($row['customer_name']) ?>">
+											<span class="fa fa-money-bill-wave text-success"></span> Add Payment
+										</a>
+										<?php if($_settings->userdata('login_type') == 1): // Admin only ?>
+										<div class="dropdown-divider"></div>
+										<a class="dropdown-item upload_orcr" href="javascript:void(0)" data-id="<?php echo $row['client_id'] ?>" data-name="<?php echo htmlspecialchars($row['customer_name']) ?>">
+											<span class="fa fa-upload text-success"></span> Upload OR/CR
+										</a>
+										<a class="dropdown-item view_orcr" href="javascript:void(0)" data-id="<?php echo $row['client_id'] ?>" data-name="<?php echo htmlspecialchars($row['customer_name']) ?>">
+											<span class="fa fa-file-pdf text-warning"></span> View OR/CR
+										</a>
+										<?php endif; ?>
 									</div>
-								</td>
+								</div>
+							</td>
 							</tr>
 						<?php endwhile; ?>
 					</tbody>
