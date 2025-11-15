@@ -239,15 +239,15 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                         <li class="nav-item">
                             <a href="./?page=customer_account_balances" class="nav-link <?php echo $page == 'customer_account_balances' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
-                                <p>Account Balances (New)</p>
+                                <p>Account Balances</p>
                             </a>
                         </li>
-                        <li class="nav-item">
+                        <!-- <li class="nav-item">
                             <a href="./?page=customer_accounts" class="nav-link <?php echo $page == 'customer_accounts' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Account Balances (Legacy)</p>
                             </a>
-                        </li>
+                        </li> -->
                         <li class="nav-item">
                             <a href="./?page=invoices" class="nav-link <?php echo $page == 'invoices' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>

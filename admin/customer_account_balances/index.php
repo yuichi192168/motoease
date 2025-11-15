@@ -235,9 +235,9 @@ if($_settings->chk_flashdata('success')): ?>
 						<label for="payment_method" class="control-label">Payment Method <span class="text-danger">*</span></label>
 						<select name="payment_method" id="payment_method" class="form-control" required>
 							<option value="cash">Cash</option>
-							<option value="card">Card</option>
+							<!-- <option value="card">Card</option>
 							<option value="bank_transfer">Bank Transfer</option>
-							<option value="check">Check</option>
+							<option value="check">Check</option> -->
 						</select>
 					</div>
 					<div class="form-group">

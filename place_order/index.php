@@ -250,6 +250,8 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                                     <option value="12">12 Months</option>
                                     <option value="18">18 Months</option>
                                     <option value="24">24 Months</option>
+                                    <option value="30">30 Months</option>
+                                    <option value="36">36 Months</option>
                                 </select>
                                 <div class="invalid-feedback" id="installment_months_error"></div>
                                 

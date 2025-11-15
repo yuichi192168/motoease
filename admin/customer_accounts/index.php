@@ -284,9 +284,9 @@
                         <label>Payment Method</label>
                         <select name="payment_method" id="pay_method" class="form-control" required>
                             <option value="cash">Cash</option>
-                            <option value="bank_transfer">Bank Transfer</option>
+                            <!-- <option value="bank_transfer">Bank Transfer</option>
                             <option value="gcash">GCash</option>
-                        </select>
+                        </select> -->
                     </div>
                     <div class="form-group">
                         <label>Receipt / Reference # (optional)</label>
