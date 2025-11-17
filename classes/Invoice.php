@@ -189,6 +189,11 @@ class Invoice extends DBConnection {
             // TRIGGER: Recalculate client balance
             $customer_id = $invoice_data['customer_id'];
             $this->recalculateClientBalance($customer_id);
+            
+            // Log admin action
+            require_once 'ActivityLogger.php';
+            $logger = new ActivityLogger();
+            $logger->logInvoiceCreation($invoice_id, $customer_id);
 
             return [
                 'status' => 'success', 
@@ -252,10 +257,16 @@ class Invoice extends DBConnection {
             // Sync payment with customer_account_balances if invoice is linked to an account
             $this->syncReceiptToAccountBalance($invoice_id, $payment_data['amount_paid'], $receipt_number, $payment_data['payment_method'], $staff_id);
             
+            // Log admin action
+            require_once 'ActivityLogger.php';
+            $logger = new ActivityLogger();
+            $receipt_id = $this->conn->insert_id;
+            $logger->logReceiptCreation($receipt_id, $invoice['customer_id']);
+            
             return [
                 'status' => 'success', 
                 'msg' => 'Receipt created successfully',
-                'receipt_id' => $this->conn->insert_id,
+                'receipt_id' => $receipt_id,
                 'receipt_number' => $receipt_number
             ];
         } else {

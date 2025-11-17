@@ -1740,6 +1740,20 @@ Class Master extends DBConnection {
 		extract($_POST);
 		$update = $this->conn->query("UPDATE `order_list` set status = '{$status}' where id = '{$id}'");
 		if($update){
+			// Log admin action
+			require_once 'ActivityLogger.php';
+			$logger = new ActivityLogger();
+			
+			// Determine action type based on status
+			if($status == 1) {
+				// Approved
+				$logger->logOrderApproval($id);
+			} elseif($status == 5) {
+				// Rejected/Cancelled
+				$reason = isset($reason) ? $reason : null;
+				$logger->logOrderRejection($id, $reason);
+			}
+			
 			// Auto-generate invoice when order is marked as "Claimed" (status 6)
 			if($status == 6) {
 				require_once 'Invoice.php';
@@ -2371,6 +2385,11 @@ Class Master extends DBConnection {
 			// Commit transaction
 			$this->conn->commit();
 			
+			// Log admin action
+			require_once 'ActivityLogger.php';
+			$logger = new ActivityLogger();
+			$logger->logAccountBalanceUpdate($client_id, $new_balance);
+			
 			$resp['status'] = 'success';
 			$resp['msg'] = "Account balance adjusted successfully.";
 			
@@ -2444,6 +2463,12 @@ Class Master extends DBConnection {
                 $this->check_stock_alerts($product_id, $total_after);
                 
                 $this->conn->commit();
+                
+                // Log admin action
+                require_once 'ActivityLogger.php';
+                $logger = new ActivityLogger();
+                $logger->logStockUpdate($product_id, "Updated from {$old_qty} to {$quantity}. New total: {$total_after}");
+                
                 $resp['status'] = 'success';
                 $resp['msg'] = 'Stock updated successfully.';
                 $resp['new_stock'] = $total_after;
@@ -2464,6 +2489,11 @@ Class Master extends DBConnection {
                 $this->conn->query("INSERT INTO stock_movements (product_id, movement_type, quantity, previous_stock, new_stock, reason, reference_id, reference_type, date_created, created_by) VALUES {$movement_data}");
 			
 				$this->check_stock_alerts($product_id, $new_stock);
+				
+				// Log admin action
+				require_once 'ActivityLogger.php';
+				$logger = new ActivityLogger();
+				$logger->logStockUpdate($product_id, "Added {$quantity} units. New total: {$new_stock}");
 
 				// If previously out of stock and now available, trigger back-in-stock notifications
 				try {
@@ -2629,6 +2659,11 @@ Class Master extends DBConnection {
 			
 			// Commit transaction
 			$this->conn->commit();
+			
+			// Log admin action
+			require_once 'ActivityLogger.php';
+			$logger = new ActivityLogger();
+			$logger->logStockUpdate($product_id, "{$movement_type} {$quantity} units. New total: {$new_stock}");
 			
 			$resp['status'] = 'success';
 			$resp['msg'] = "Stock updated successfully.";
@@ -4060,6 +4095,15 @@ Class Master extends DBConnection {
             $resp['msg'] = 'No valid documents uploaded.';
             return json_encode($resp);
         }
+        
+        // Log admin action
+        require_once 'ActivityLogger.php';
+        $logger = new ActivityLogger();
+        $doc_types = [];
+        if($okOr) $doc_types[] = 'OR';
+        if($okCr) $doc_types[] = 'CR';
+        $doc_type_str = implode('/', $doc_types);
+        $logger->logORCRUpload($client_id, $doc_type_str);
         
         $resp['status'] = 'success';
         $resp['msg'] = 'Documents uploaded successfully for ' . $client_data['name'];

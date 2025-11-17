@@ -63,6 +63,11 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
 		);
 		
 		if($result){
+			// Log admin action
+			require_once('../../classes/ActivityLogger.php');
+			$logger = new ActivityLogger();
+			$logger->logOnsitePayment($account['client_id'], $amount);
+			
 			$response['status'] = 'success';
 			$response['msg'] = 'Payment recorded successfully';
 		} else {

@@ -22,6 +22,10 @@
     .log-entry.order {
         border-left-color: #6f42c1;
     }
+    .log-entry.admin_action {
+        border-left-color: #dc3545;
+        background-color: #fff5f5;
+    }
     .log-timestamp {
         font-size: 0.8rem;
         color: #6c757d;
@@ -57,6 +61,7 @@
 					<label for="user_type_filter">User Type:</label>
 					<select id="user_type_filter" class="form-control form-control-sm">
 						<option value="">All Users</option>
+						<option value="admin">Admin</option>
 						<option value="staff">Staff</option>
 						<option value="customer">Customer</option>
 					</select>
@@ -83,10 +88,24 @@
 					<label for="activity_filter">Filter by Activity:</label>
 					<select id="activity_filter" class="form-control form-control-sm">
 						<option value="">All Activities</option>
+						<option value="admin_action">Admin Actions</option>
 						<option value="service">Service Requests</option>
 						<option value="order">Orders</option>
 						<option value="login">Staff Logins</option>
 						<option value="transaction">Transactions</option>
+					</select>
+				</div>
+				<div class="col-md-2">
+					<label for="module_filter">Filter by Module:</label>
+					<select id="module_filter" class="form-control form-control-sm">
+						<option value="">All Modules</option>
+						<option value="Orders">Orders</option>
+						<option value="Invoices">Invoices</option>
+						<option value="Customer Accounts">Customer Accounts</option>
+						<option value="Inventory">Inventory</option>
+						<option value="OR/CR Documents">OR/CR Documents</option>
+						<option value="System Settings">System Settings</option>
+						<option value="Authentication">Authentication</option>
 					</select>
 				</div>
 				<div class="col-md-2">
@@ -108,6 +127,23 @@
 			<!-- Activity Log Display -->
 			<div id="activity_logs">
 				<?php
+				// Get admin activity logs
+				$admin_logs = $conn->query("
+					SELECT 
+						aal.log_id,
+						aal.action,
+						aal.module,
+						aal.reference_id,
+						aal.timestamp,
+						CONCAT(u.firstname, ' ', u.lastname) as admin_name,
+						u.id as admin_id
+					FROM admin_activity_log aal
+					INNER JOIN users u ON aal.user_id = u.id
+					WHERE aal.timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+					ORDER BY aal.timestamp DESC
+					LIMIT 100
+				");
+				
 				// Get service requests
 				$service_requests = $conn->query("
 					SELECT 
@@ -209,9 +245,24 @@
                         'user_name' => $lg['firstname'].' '.$lg['lastname'],
                         'action' => 'Staff Login',
                         'details' => 'Logged into the admin dashboard',
-                        'id' => $lg['id']
+                        'id' => $lg['id'],
+                        'module' => 'Authentication'
                     ];
                 }
+				
+				// Admin activity logs
+				while($admin_log = $admin_logs->fetch_assoc()){
+					$activities[] = [
+						'type' => 'admin_action',
+						'date' => $admin_log['timestamp'],
+						'user_id' => $admin_log['admin_id'],
+						'user_name' => $admin_log['admin_name'],
+						'action' => 'Admin Action',
+						'details' => $admin_log['action'],
+						'id' => $admin_log['log_id'],
+						'module' => $admin_log['module'] ?: 'General'
+					];
+				}
 
                 // Sort by date (newest first)
 				usort($activities, function($a, $b) {
@@ -220,17 +271,29 @@
 				
 				// Display activities
 				foreach($activities as $activity):
-					$user_type = ($activity['type'] == 'login') ? 'staff' : 'customer';
+					if($activity['type'] == 'admin_action') {
+						$user_type = 'admin';
+					} elseif($activity['type'] == 'login') {
+						$user_type = 'staff';
+					} else {
+						$user_type = 'customer';
+					}
+					$module = isset($activity['module']) ? $activity['module'] : '';
 				?>
-				<div class="log-entry <?= $activity['type'] ?>" data-user="<?= $activity['user_id'] ?>" data-type="<?= $activity['type'] ?>" data-date="<?= $activity['date'] ?>" data-user-type="<?= $user_type ?>">
+				<div class="log-entry <?= $activity['type'] ?>" data-user="<?= $activity['user_id'] ?>" data-type="<?= $activity['type'] ?>" data-date="<?= $activity['date'] ?>" data-user-type="<?= $user_type ?>" data-module="<?= $module ?>">
 					<div class="d-flex justify-content-between align-items-start">
 						<div>
 							<span class="log-user"><?= $activity['user_name'] ?></span>
 							<span class="log-action"><?= $activity['action'] ?></span>
-							<?php if($user_type == 'staff'): ?>
+							<?php if($user_type == 'admin'): ?>
+								<span class="badge badge-danger badge-sm">Admin</span>
+							<?php elseif($user_type == 'staff'): ?>
 								<span class="badge badge-info badge-sm">Staff</span>
 							<?php else: ?>
 								<span class="badge badge-success badge-sm">Customer</span>
+							<?php endif; ?>
+							<?php if(!empty($module)): ?>
+								<span class="badge badge-secondary badge-sm"><?= $module ?></span>
 							<?php endif; ?>
 						</div>
 						<span class="log-timestamp"><?= date('M d, Y H:i', strtotime($activity['date'])) ?></span>
@@ -257,6 +320,7 @@ $(document).ready(function(){
 		var userTypeFilter = $('#user_type_filter').val();
 		var userFilter = $('#user_filter').val();
 		var activityFilter = $('#activity_filter').val();
+		var moduleFilter = $('#module_filter').val();
 		var dateFrom = $('#date_from').val();
 		var dateTo = $('#date_to').val();
 		
@@ -278,6 +342,11 @@ $(document).ready(function(){
 			
 			// Activity filter - check if activity filter is set and matches
 			if(activityFilter && activityFilter !== '' && entry.data('type') != activityFilter) {
+				show = false;
+			}
+			
+			// Module filter - check if module filter is set and matches
+			if(moduleFilter && moduleFilter !== '' && entry.data('module') != moduleFilter) {
 				show = false;
 			}
 			
@@ -314,7 +383,7 @@ $(document).ready(function(){
 	}
 	
 	// Bind filter events
-	$('#user_type_filter, #user_filter, #activity_filter, #date_from, #date_to').on('change', filterLogs);
+	$('#user_type_filter, #user_filter, #activity_filter, #module_filter, #date_from, #date_to').on('change', filterLogs);
 	$('#apply_filters').on('click', filterLogs);
 	
 	// Update user filter options based on user type selection
@@ -349,14 +418,15 @@ $(document).ready(function(){
 			return;
 		}
 		
-		var csv = 'User,Action,Details,Date\n';
+		var csv = 'User,Action,Details,Module,Date\n';
 		visibleLogs.each(function() {
 			var user = $(this).find('.log-user').text();
 			var action = $(this).find('.log-action').text();
 			var details = $(this).find('.log-details').text().replace(/"/g, '""');
+			var module = $(this).data('module') || '';
 			var date = $(this).find('.log-timestamp').text();
 			
-			csv += '"' + user + '","' + action + '","' + details + '","' + date + '"\n';
+			csv += '"' + user + '","' + action + '","' + details + '","' + module + '","' + date + '"\n';
 		});
 		
 		var blob = new Blob([csv], { type: 'text/csv' });

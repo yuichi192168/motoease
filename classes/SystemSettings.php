@@ -50,6 +50,14 @@ class SystemSettings extends DBConnection{
 		if(isset($_POST['privacy_policy'])){
 			file_put_contents('../privacy_policy.html',$_POST['privacy_policy']);
 		}
+		
+		// Log admin action if settings were updated
+		if($success && isset($_SESSION['userdata']['login_type']) && $_SESSION['userdata']['login_type'] == 1){
+			require_once 'ActivityLogger.php';
+			$logger = new ActivityLogger();
+			$logger->logSystemSettingsUpdate();
+		}
+		
 		if(isset($_FILES['img']) && $_FILES['img']['tmp_name'] != ''){
 			$fname = 'uploads/'.strtotime(date('y-m-d H:i')).'_'.$_FILES['img']['name'];
 			$move = move_uploaded_file($_FILES['img']['tmp_name'],'../'. $fname);

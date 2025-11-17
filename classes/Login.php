@@ -80,12 +80,17 @@ class Login extends DBConnection {
 					$this->settings->set_userdata($k,$v);
 				}
 			}
-			$this->settings->set_userdata('login_type',1);
-			
-			// Update last login
-			$this->conn->query("UPDATE users SET last_login = NOW() WHERE username = '{$username}'");
-			
-		return json_encode(array('status'=>'success'));
+		$this->settings->set_userdata('login_type',1);
+		
+		// Update last login
+		$this->conn->query("UPDATE users SET last_login = NOW() WHERE username = '{$username}'");
+		
+		// Log admin login
+		require_once 'ActivityLogger.php';
+		$logger = new ActivityLogger();
+		$logger->logLogin();
+		
+	return json_encode(array('status'=>'success'));
         }else{
             // Increment failed login attempts and detect if locked now
 			$lockedNow = $this->updateLoginAttempts('users', 'username', $username, false);
@@ -103,6 +108,13 @@ class Login extends DBConnection {
         }
 	}
 	public function logout(){
+		// Log admin logout before destroying session
+		if($this->settings->userdata('login_type') == 1 && $this->settings->userdata('id')){
+			require_once 'ActivityLogger.php';
+			$logger = new ActivityLogger();
+			$logger->logLogout();
+		}
+		
 		if($this->settings->sess_des()){
 			redirect('admin/login.php');
 		}
