@@ -153,6 +153,23 @@ $customer_id = $_settings->userdata('id');
 </div>
 
 <script>
+function formatTransactionType(type){
+    if(!type) return 'Motorcycle Purchase';
+    var normalized = type.toString().trim().toLowerCase().replace(/\s+/g,'_');
+    switch(normalized){
+        case 'motorcycle_purchase':
+            return 'Motorcycle Purchase';
+        case 'motorcycle_parts_purchase':
+        case 'motorcycle_parts':
+            return 'Motorcycle Parts Purchase';
+        case 'oils_purchase':
+        case 'oil_purchase':
+            return 'Oils Purchase';
+        default:
+            var cleaned = type.toString().replace(/_/g,' ').trim();
+            return cleaned.replace(/\b\w/g, function(letter){ return letter.toUpperCase(); });
+    }
+}
 
 $(document).ready(function(){
     // Load initial data
@@ -283,12 +300,12 @@ $(document).ready(function(){
                         html += '<tr>';
                         html += '<td><strong>' + invoice.invoice_number + '</strong></td>';
                         html += '<td>' + new Date(invoice.generated_at).toLocaleDateString() + '</td>';
-                        html += '<td>' + invoice.transaction_type.replace('_', ' ').toUpperCase() + '</td>';
+                        html += '<td>' + formatTransactionType(invoice.transaction_type) + '</td>';
                         html += '<td class="text-right">₱' + parseFloat(invoice.total_amount).toLocaleString() + '</td>';
                         html += '<td><span class="' + status_class + '">' + status_text + '</span></td>';
                         html += '<td>';
                         html += '<button class="btn btn-sm btn-primary view_invoice" data-id="' + invoice.id + '">View Invoice</button>';
-                        if(invoice.receipt_date){
+                        if(parseInt(invoice.receipt_count || 0) > 0){
                             html += ' <button class="btn btn-sm btn-success view_receipt" data-id="' + invoice.id + '">View Receipt</button>';
                         }
                         html += '</td>';
@@ -379,7 +396,7 @@ $(document).ready(function(){
         html += '<h4>Invoice: ' + invoice.invoice_number + '</h4>';
         html += '<p><strong>Date:</strong> ' + new Date(invoice.generated_at).toLocaleDateString() + '</p>';
         html += '<p><strong>Due Date:</strong> ' + new Date(invoice.due_date).toLocaleDateString() + '</p>';
-        html += '<p><strong>Transaction Type:</strong> ' + invoice.transaction_type.replace('_', ' ').toUpperCase() + '</p>';
+        html += '<p><strong>Transaction Type:</strong> ' + formatTransactionType(invoice.transaction_type) + '</p>';
         html += '</div>';
         var statusClass = (invoice.payment_status == 'paid') ? 'success' : (invoice.payment_status == 'late' ? 'danger' : 'warning');
         html += '<div class="col-md-6 text-right">';

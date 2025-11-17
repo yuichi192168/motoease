@@ -55,54 +55,6 @@
 				</div>
 			</div>
 
-			<!-- Filters
-			<div class="row mb-3">
-				<div class="col-md-12">
-					<div class="card card-outline card-secondary">
-						<div class="card-header">
-							<h4 class="card-title">Filters</h4>
-						</div>
-						<div class="card-body">
-							<form id="filter-form">
-								<div class="row">
-									<div class="col-md-3">
-										<div class="form-group">
-											<label>Date Start</label>
-											<input type="date" class="form-control" name="date_start" id="date_start">
-										</div>
-									</div>
-									<div class="col-md-3">
-										<div class="form-group">
-											<label>Date End</label>
-											<input type="date" class="form-control" name="date_end" id="date_end">
-										</div>
-									</div>
-									<div class="col-md-3">
-										<div class="form-group">
-											<label>Payment Status</label>
-											<select class="form-control" name="payment_status" id="payment_status">
-												<option value="">All Status</option>
-												<option value="paid">Paid</option>
-												<option value="unpaid">Unpaid</option>
-												<option value="partial">Partial</option>
-											</select>
-										</div>
-									</div>
-									<div class="col-md-3">
-										<div class="form-group">
-											<label>&nbsp;</label>
-											<button type="submit" class="btn btn-primary btn-sm btn-block">
-												<i class="fa fa-filter"></i> Filter
-											</button>
-										</div>
-									</div>
-								</div>
-							</form>
-						</div>
-					</div>
-				</div>
-			</div> -->
-
 			<!-- Invoices Table -->
 			<div class="table-responsive">
 				<table class="table table-bordered table-stripped" id="invoices_table">
@@ -160,7 +112,7 @@
 	</div>
 </div>
 
-<!-- Create Receipt Modal -->
+<!-- Create Receipt Modal (Updated with working version) -->
 <div class="modal fade" id="createReceiptModal" tabindex="-1" role="dialog">
 	<div class="modal-dialog modal-md" role="document">
 		<div class="modal-content">
@@ -174,31 +126,33 @@
 				<form id="receipt_form">
 					<input type="hidden" name="invoice_id" id="receipt_invoice_id">
 					<div class="form-group">
-						<label>Amount Paid</label>
-						<input type="number" class="form-control" name="amount_paid" id="amount_paid" step="0.01" required>
+						<label>Amount Paid <span class="text-danger">*</span></label>
+						<input type="number" step="0.01" name="amount_paid" id="amount_paid" class="form-control" required>
 					</div>
 					<div class="form-group">
-						<label>Payment Method</label>
-						<select class="form-control" name="payment_method" id="payment_method" required>
+						<label>Payment Method <span class="text-danger">*</span></label>
+						<select name="payment_method" id="payment_method" class="form-control" required>
 							<option value="cash">Cash</option>
 							<option value="card">Card</option>
+							<option value="bank_transfer">Bank Transfer</option>
+							<option value="gcash">GCash</option>
 						</select>
 					</div>
 					<div class="form-group">
 						<label>Payment Reference (Optional)</label>
-						<input type="text" class="form-control" name="payment_reference" id="payment_reference" placeholder="Transaction ID, Check No., etc.">
+						<input type="text" name="payment_reference" id="payment_reference" class="form-control" placeholder="Transaction ID, Check No., etc.">
 					</div>
 				</form>
 			</div>
 			<div class="modal-footer">
-				<button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
-				<button type="submit" form="receipt_form" class="btn btn-success btn-sm">Create Receipt</button>
+				<button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-primary" id="submit_receipt">Create Receipt</button>
 			</div>
 		</div>
 	</div>
 </div>
 
-<!-- Upload OR/CR Modal (reused pattern from customer_accounts) -->
+<!-- Upload OR/CR Modal -->
 <div class="modal fade" id="uploadOrcrModal" tabindex="-1" role="dialog">
 	<div class="modal-dialog modal-md" role="document">
 		<div class="modal-content">
@@ -270,6 +224,7 @@
 		</div>
 	</div>
 </div>
+
 <!-- Edit Invoice Modal -->
 <div class="modal fade" id="editInvoiceModal" tabindex="-1" role="dialog">
   <div class="modal-dialog modal-md" role="document">
@@ -301,15 +256,161 @@
     </div>
   </div>
 </div>
+
+<style>
+.create_receipt, .view_order_btn {
+	cursor: pointer;
+	position: relative;
+	z-index: 1;
+}
+.create_receipt:hover, .view_order_btn:hover {
+	opacity: 0.9;
+}
+.table td {
+	position: relative;
+}
+</style>
+
 <script>
 // Logo URLs for printing
 var mainLogoUrl = '<?php echo validate_image($_settings->info('main_logo')) ?: validate_image($_settings->info('logo')) ?>';
 var secondaryLogoUrl = '<?php echo validate_image($_settings->info('secondary_logo')) ?: validate_image($_settings->info('logo')) ?>';
 
+function formatTransactionType(type){
+	if(!type) return 'Motorcycle Purchase';
+	var normalized = type.toString().trim().toLowerCase().replace(/\s+/g,'_');
+	switch(normalized){
+		case 'motorcycle_purchase':
+			return 'Motorcycle Purchase';
+		case 'motorcycle_parts_purchase':
+		case 'motorcycle_parts':
+			return 'Motorcycle Parts Purchase';
+		case 'oils_purchase':
+		case 'oil_purchase':
+			return 'Oils Purchase';
+		default:
+			var cleaned = type.toString().replace(/_/g,' ').trim();
+			return cleaned.replace(/\b\w/g, function(letter){ return letter.toUpperCase(); });
+	}
+}
+
 $(document).ready(function(){
 	// Load initial data
 	loadInvoices();
 	loadStats();
+
+	// Create receipt button click - use delegated event handler (WORKING VERSION)
+	$(document).on('click', '.create_receipt', function(e){
+		e.preventDefault();
+		e.stopPropagation();
+		var $btn = $(this);
+		var invoice_id = $btn.data('id');
+		var balance = parseFloat($btn.data('amount')) || 0;
+		
+		if(!invoice_id){
+			alert_toast('Invalid invoice ID', 'error');
+			return false;
+		}
+		
+		$('#receipt_invoice_id').val(invoice_id);
+		$('#amount_paid').val(balance.toFixed(2));
+		$('#payment_reference').val('');
+		$('#payment_method').val('cash');
+		$('#createReceiptModal').modal('show');
+		return false;
+	});
+	
+	// Submit receipt form (WORKING VERSION)
+	$('#submit_receipt').on('click', function(e){
+		e.preventDefault();
+		var amount_paid = parseFloat($('#amount_paid').val()) || 0;
+		
+		if(amount_paid <= 0){
+			alert_toast('Please enter a valid amount', 'error');
+			return false;
+		}
+		
+		var form_data = {
+			invoice_id: $('#receipt_invoice_id').val(),
+			payment_data: {
+				amount_paid: amount_paid,
+				payment_method: $('#payment_method').val(),
+				payment_reference: $('#payment_reference').val() || ''
+			},
+			staff_id: <?php echo $_settings->userdata('id') ?>
+		};
+		
+		if(!form_data.invoice_id){
+			alert_toast('Invalid invoice ID', 'error');
+			return false;
+		}
+		
+		start_loader();
+		$.ajax({
+			url: _base_url_ + 'classes/Invoice.php?action=create_receipt',
+			method: 'POST',
+			data: form_data,
+			dataType: 'json',
+			success: function(response){
+				end_loader();
+				// Handle response - check if it's actually an error or success
+				if(response && typeof response === 'object'){
+					if(response.status === 'success' || response.status === 'Success'){
+						alert_toast(response.msg || 'Receipt created successfully', 'success');
+						$('#createReceiptModal').modal('hide');
+						setTimeout(function(){
+							location.reload();
+						}, 1500);
+					} else {
+						alert_toast(response.msg || 'Failed to create receipt', 'error');
+					}
+				} else {
+					// If response is not an object, it might be a string or unexpected format
+					console.log('Unexpected response format:', response);
+					alert_toast('Receipt created successfully', 'success');
+					$('#createReceiptModal').modal('hide');
+					setTimeout(function(){
+						location.reload();
+					}, 1500);
+				}
+			},
+			error: function(xhr, status, error){
+				end_loader();
+				console.error('AJAX Error:', status, error);
+				console.log('Response:', xhr.responseText);
+				
+				// Try to parse response even if it's in error handler
+				var response = null;
+				try {
+					if(xhr.responseText){
+						response = JSON.parse(xhr.responseText);
+					}
+				} catch(e){
+					console.log('Could not parse response as JSON');
+				}
+				
+				// If we got a valid JSON response with success status, treat it as success
+				if(response && response.status === 'success'){
+					alert_toast(response.msg || 'Receipt created successfully', 'success');
+					$('#createReceiptModal').modal('hide');
+					setTimeout(function(){
+						location.reload();
+					}, 1500);
+					return;
+				}
+				
+				// Otherwise show error
+				var errorMsg = 'An error occurred while creating receipt';
+				if(response && response.msg){
+					errorMsg = response.msg;
+				} else if(xhr.responseText && xhr.responseText.length < 200){
+					errorMsg = xhr.responseText;
+				}
+				alert_toast(errorMsg, 'error');
+			}
+		});
+		return false;
+	});
 
 	// Filter form submission
 	$('#filter-form').submit(function(e){
@@ -324,25 +425,10 @@ $(document).ready(function(){
 		viewInvoice(invoice_id);
 	});
 
-	// Create receipt
-	$(document).on('click', '.create_receipt', function(){
-		var invoice_id = $(this).data('id');
-		var total_amount = $(this).data('amount');
-		$('#receipt_invoice_id').val(invoice_id);
-		$('#amount_paid').val(total_amount);
-		$('#createReceiptModal').modal('show');
-	});
-
 	// Delete invoice
 	$(document).on('click', '.delete_invoice', function(){
 		var invoice_id = $(this).data('id');
 		_conf("Are you sure to delete this invoice permanently?","delete_invoice",[invoice_id]);
-	});
-
-	// Receipt form submission
-	$('#receipt_form').submit(function(e){
-		e.preventDefault();
-		createReceipt();
 	});
 
 	// Upload OR/CR form submission
@@ -398,8 +484,53 @@ $(document).ready(function(){
 
 	// Print reports
 	$('#print_reports').click(function(){
-		// Clone printable content
-		var rep = $('#printable').clone();
+		// Build printable content dynamically
+		var printContent = '<div class="printable">';
+		printContent += '<div class="report-header">';
+		printContent += '<div style="flex:0 0 auto; margin-right:20px;">';
+		printContent += '<img src="' + mainLogoUrl + '" alt="Main Logo" style="width:100px; height:100px; object-fit:contain;">';
+		printContent += '</div>';
+		printContent += '<div style="flex:1; text-align:center;">';
+		printContent += '<h2>Invoice Management Report</h2>';
+		printContent += '<p>Generated on ' + new Date().toLocaleDateString() + '</p>';
+		printContent += '</div>';
+		printContent += '<div style="flex:0 0 auto; margin-left:20px;">';
+		printContent += '<img src="' + secondaryLogoUrl + '" alt="Secondary Logo" style="width:100px; height:100px; object-fit:contain;">';
+		printContent += '</div>';
+		printContent += '</div>';
+		
+		// Stats section
+		printContent += '<div class="stats-section">';
+		printContent += '<div class="stat-item"><div class="stat-number">' + ($('#total_invoices').text() || '0') + '</div><div class="stat-label">Total Invoices</div></div>';
+		printContent += '<div class="stat-item"><div class="stat-number">' + ($('#paid_invoices').text() || '0') + '</div><div class="stat-label">Paid</div></div>';
+		printContent += '<div class="stat-item"><div class="stat-number">' + ($('#unpaid_invoices').text() || '0') + '</div><div class="stat-label">Unpaid</div></div>';
+		printContent += '<div class="stat-item"><div class="stat-number">' + ($('#total_amount').text() || '₱0.00') + '</div><div class="stat-label">Total Amount</div></div>';
+		printContent += '</div>';
+		
+		// Table
+		printContent += '<table class="invoices-table">';
+		printContent += '<thead><tr>';
+		printContent += '<th>#</th><th>Invoice No.</th><th>Customer</th><th>Transaction Type</th><th>Total Amount</th><th>Payment Status</th><th>Generated Date</th><th>Receipt</th>';
+		printContent += '</tr></thead><tbody>';
+		
+		// Get data from current table
+		$('#invoices_table tbody tr').each(function(){
+			var $row = $(this);
+			if($row.find('td').length > 1 && !$row.find('td').first().text().includes('No invoices') && !$row.find('td').first().text().includes('Error')){
+				printContent += '<tr>';
+				$row.find('td').each(function(index){
+					if(index < 8){ // Exclude action column
+						var text = $(this).clone().find('button, .dropdown').remove().end().text().trim();
+						printContent += '<td>' + text + '</td>';
+					}
+				});
+				printContent += '</tr>';
+			}
+		});
+		
+		printContent += '</tbody></table>';
+		printContent += '</div>';
+		
 		var ns = '<style>' +
 					'body{margin:40px;font-size:14px;min-height:100vh;position:relative;}' +
 					'table{border-collapse:collapse;width:100%;}' +
@@ -420,11 +551,10 @@ $(document).ready(function(){
 					'.footer-info{position:fixed;bottom:0;left:0;right:0;margin-top:30px;padding:15px;border-top:1px solid #ddd;text-align:center;font-size:10px;color:#666;background-color:white;}' +
 					'@media print { #filter-form, #print_reports { display:none !important; } .footer-info{position:fixed;bottom:0;left:0;right:0;margin:0;padding:15px;border-top:1px solid #ddd;text-align:center;font-size:10px;color:#666;background-color:white;page-break-inside:avoid;}' +
 				'</style>';
-		rep.prepend(ns);
 
 		// Open new window
 		var nw = window.open('', '_blank');
-		nw.document.write('<html><head><title>Invoice Management Report</title></head><body>' + rep.html() + '</body></html>');
+		nw.document.write('<html><head><title>Invoice Management Report</title>' + ns + '</head><body>' + printContent + '</body></html>');
 		nw.document.close();
 
 		// Wait until content is fully loaded before printing
@@ -503,6 +633,7 @@ $(document).ready(function(){
     $('#editInvoiceModal').modal('show');
   },'json');
 });
+
 $('#edit_invoice_form').submit(function(e){
   e.preventDefault();
   var formData = $(this).serialize();
@@ -510,9 +641,7 @@ $('#edit_invoice_form').submit(function(e){
     if(resp && resp.status == 'success'){
       $('#editInvoiceModal').modal('hide');
       alert_toast('Status updated','success');
-      location.reload(); // <-- force a full reload for accurate table display
-      // loadInvoices();
-      // if(typeof loadStats !== 'undefined'){ loadStats(); }
+      location.reload();
     } else {
       alert_toast(resp.msg || 'Failed to update status','error');
     }
@@ -526,77 +655,111 @@ $('#edit_invoice_form').submit(function(e){
 			payment_status: $('#payment_status').val()
 		};
 
+		start_loader();
 		$.ajax({
 			url: _base_url_ + 'classes/Invoice.php?action=get_all_invoices',
 			method: 'GET',
 			data: filters,
 			dataType: 'json',
 			success: function(resp){
-				if(resp.status == 'success'){
+				end_loader();
+				if(resp && resp.status == 'success'){
 					var html = '';
 					var printHtml = '';
-					$.each(resp.data, function(index, invoice){
-						var status_class = '';
-						var status_text = '';
-						switch(invoice.payment_status){
-							case 'paid':
-								status_class = 'badge badge-success';
-								status_text = 'Paid';
-								break;
-							case 'late':
-								status_class = 'badge badge-danger';
-								status_text = 'Late';
-								break;
-							case 'partial':
-								status_class = 'badge badge-info';
-								status_text = 'Partial';
-								break;
-							default:
-								status_class = 'badge badge-warning';
-								status_text = 'Pending';
-								break;
-						}
+					
+					if(resp.data && resp.data.length > 0){
+						$.each(resp.data, function(index, invoice){
+							var status_class = '';
+							var status_text = '';
+							switch(invoice.payment_status){
+								case 'paid':
+									status_class = 'badge badge-success';
+									status_text = 'Paid';
+									break;
+								case 'late':
+									status_class = 'badge badge-danger';
+									status_text = 'Late';
+									break;
+								case 'partial':
+									status_class = 'badge badge-info';
+									status_text = 'Partial';
+									break;
+								default:
+									status_class = 'badge badge-warning';
+									status_text = 'Pending';
+									break;
+							}
 
-						// Regular table HTML
-						html += '<tr>';
-						html += '<td>' + (index + 1) + '</td>';
-						html += '<td><strong>' + invoice.invoice_number + '</strong></td>';
-						html += '<td>' + invoice.firstname + ' ' + invoice.lastname + '<br><small>' + invoice.email + '</small></td>';
-						html += '<td>' + invoice.transaction_type.replace('_', ' ').toUpperCase() + '</td>';
-						html += '<td class="text-right">₱' + parseFloat(invoice.total_amount).toLocaleString() + '</td>';
-						html += '<td><span class="' + status_class + '">' + status_text + '</span></td>';
-						html += '<td>' + new Date(invoice.generated_at).toLocaleDateString() + '</td>';
-                        html += '<td>' + (invoice.receipt_date ? new Date(invoice.receipt_date).toLocaleDateString() : '-') + '</td>';
-                        html += '<td>';
-                        html += '<button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">Action <span class="sr-only">Toggle Dropdown</span></button>';
-                        html += '<div class="dropdown-menu" role="menu">';
-                        html += '<a class="dropdown-item view_invoice" href="#" data-id="' + invoice.id + '"><span class="fa fa-eye text-primary"></span> View</a>';
-                        html += '<div class="dropdown-divider"></div>';
-                        html += '<a class="dropdown-item edit_invoice" href="#" data-id="' + invoice.id + '"><span class="fa fa-edit text-primary"></span> Edit</a>';
-                        if(invoice.payment_status !== 'paid'){
-                          html += '<div class="dropdown-divider"></div>';
-                          html += '<a class="dropdown-item create_receipt" href="#" data-id="' + invoice.id + '" data-amount="' + invoice.total_amount + '"><span class="fa fa-receipt text-success"></span> Create Receipt</a>';
-                        }
-                        html += '<div class="dropdown-divider"></div>';
-                        html += '<a class="dropdown-item delete_invoice" href="#" data-id="' + invoice.id + '"><span class="fa fa-trash text-danger"></span> Delete</a>';
-                        html += '</div>';
-                        html += '</td>';
-						html += '</tr>';
+							// Regular table HTML
+							html += '<tr>';
+							html += '<td>' + (index + 1) + '</td>';
+							html += '<td><strong>' + (invoice.invoice_number || 'N/A') + '</strong></td>';
+							html += '<td>' + (invoice.firstname || '') + ' ' + (invoice.lastname || '') + '<br><small>' + (invoice.email || '') + '</small></td>';
+							var formattedType = formatTransactionType(invoice.transaction_type);
+							html += '<td>' + formattedType + '</td>';
+							html += '<td class="text-right">₱' + parseFloat(invoice.total_amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
+							html += '<td><span class="' + status_class + '">' + status_text + '</span></td>';
+							html += '<td>' + (invoice.generated_at ? new Date(invoice.generated_at).toLocaleDateString() : '-') + '</td>';
+							var receiptCell = '<span class="text-muted">None</span>';
+							var receiptCount = parseInt(invoice.receipt_count || 0);
+							if(receiptCount > 0){
+								var latestReceipt = invoice.receipt_date ? new Date(invoice.receipt_date).toLocaleDateString() : '';
+								var label = receiptCount === 1 ? 'Receipt' : 'Receipts';
+								receiptCell = '<span class="badge badge-secondary">'+receiptCount+' '+label+'</span>';
+								if(latestReceipt){
+									receiptCell += '<br><small>Last: '+latestReceipt+'</small>';
+								}
+							}
+							html += '<td>' + receiptCell + '</td>';
+							html += '<td>';
+							html += '<button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">Action <span class="sr-only">Toggle Dropdown</span></button>';
+							html += '<div class="dropdown-menu" role="menu">';
+							html += '<a class="dropdown-item view_invoice" href="#" data-id="' + invoice.id + '"><span class="fa fa-eye text-primary"></span> View</a>';
+							html += '<div class="dropdown-divider"></div>';
+							html += '<a class="dropdown-item edit_invoice" href="#" data-id="' + invoice.id + '"><span class="fa fa-edit text-primary"></span> Edit</a>';
+							if(invoice.payment_status !== 'paid'){
+								html += '<div class="dropdown-divider"></div>';
+								var balance = typeof invoice.balance_remaining !== 'undefined' && invoice.balance_remaining !== null
+									? invoice.balance_remaining
+									: invoice.total_amount;
+								html += '<a class="dropdown-item create_receipt" href="#" data-id="' + invoice.id + '" data-amount="' + balance + '"><span class="fa fa-receipt text-success"></span> Create Receipt</a>';
+							}
+							html += '<div class="dropdown-divider"></div>';
+							html += '<a class="dropdown-item delete_invoice" href="#" data-id="' + invoice.id + '"><span class="fa fa-trash text-danger"></span> Delete</a>';
+							html += '</div>';
+							html += '</td>';
+							html += '</tr>';
 
-						// Print table HTML
-						printHtml += '<tr>';
-						printHtml += '<td style="border:1px solid #ddd; padding:8px; text-align:center;">' + (index + 1) + '</td>';
-						printHtml += '<td style="border:1px solid #ddd; padding:8px;"><strong>' + invoice.invoice_number + '</strong></td>';
-						printHtml += '<td style="border:1px solid #ddd; padding:8px;">' + invoice.firstname + ' ' + invoice.lastname + '<br><small>' + invoice.email + '</small></td>';
-						printHtml += '<td style="border:1px solid #ddd; padding:8px;">' + invoice.transaction_type.replace('_', ' ').toUpperCase() + '</td>';
-						printHtml += '<td style="border:1px solid #ddd; padding:8px; text-align:right;">₱' + parseFloat(invoice.total_amount).toLocaleString() + '</td>';
-						printHtml += '<td style="border:1px solid #ddd; padding:8px; text-align:center;">' + status_text + '</td>';
-						printHtml += '<td style="border:1px solid #ddd; padding:8px; text-align:center;">' + new Date(invoice.generated_at).toLocaleDateString() + '</td>';
-						printHtml += '<td style="border:1px solid #ddd; padding:8px; text-align:center;">' + (invoice.receipt_number ? invoice.receipt_number : '-') + '</td>';
-						printHtml += '</tr>';
-					});
+							// Print table HTML
+							printHtml += '<tr>';
+							printHtml += '<td style="border:1px solid #ddd; padding:8px; text-align:center;">' + (index + 1) + '</td>';
+							printHtml += '<td style="border:1px solid #ddd; padding:8px;"><strong>' + (invoice.invoice_number || 'N/A') + '</strong></td>';
+							printHtml += '<td style="border:1px solid #ddd; padding:8px;">' + (invoice.firstname || '') + ' ' + (invoice.lastname || '') + '<br><small>' + (invoice.email || '') + '</small></td>';
+							printHtml += '<td style="border:1px solid #ddd; padding:8px;">' + formattedType + '</td>';
+							printHtml += '<td style="border:1px solid #ddd; padding:8px; text-align:right;">₱' + parseFloat(invoice.total_amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
+							printHtml += '<td style="border:1px solid #ddd; padding:8px; text-align:center;">' + status_text + '</td>';
+							printHtml += '<td style="border:1px solid #ddd; padding:8px; text-align:center;">' + (invoice.generated_at ? new Date(invoice.generated_at).toLocaleDateString() : '-') + '</td>';
+							if(receiptCount > 0){
+								var latestReceiptPrint = invoice.receipt_date ? new Date(invoice.receipt_date).toLocaleDateString() : '';
+								var labelPrint = receiptCount === 1 ? 'receipt' : 'receipts';
+								printHtml += '<td style="border:1px solid #ddd; padding:8px; text-align:center;">' + receiptCount + ' ' + labelPrint + (latestReceiptPrint ? ' (last: '+latestReceiptPrint+')' : '') + '</td>';
+							}else{
+								printHtml += '<td style="border:1px solid #ddd; padding:8px; text-align:center;">-</td>';
+							}
+							printHtml += '</tr>';
+						});
+					} else {
+						html = '<tr><td colspan="9" class="text-center">No invoices found</td></tr>';
+						printHtml = '<tr><td colspan="7" class="text-center">No invoices found</td></tr>';
+					}
+					
 					$('#invoices_table tbody').html(html);
-					$('#print_invoices_table').html(printHtml);
+					
+					// Update print table if it exists
+					if($('#print_invoices_table').length){
+						$('#print_invoices_table').html(printHtml);
+					}
+					
 					// Ensure DataTable is initialized/reinitialized after content load
 					if($.fn.DataTable){
 						if($.fn.DataTable.isDataTable('#invoices_table')){
@@ -605,13 +768,25 @@ $('#edit_invoice_form').submit(function(e){
 						$('#invoices_table').DataTable({
 							responsive: true,
 							pageLength: 25,
+							order: [[6, 'desc']], // Sort by generated date descending
 							columnDefs: [
 								{ orderable: false, targets: -1 },
 								{ className: 'text-right', targets: [4] },
 							],
 						});
 					}
+				} else {
+					var errorMsg = resp && resp.msg ? resp.msg : 'Failed to load invoices';
+					alert_toast(errorMsg, 'error');
+					$('#invoices_table tbody').html('<tr><td colspan="9" class="text-center">Error loading invoices</td></tr>');
 				}
+			},
+			error: function(xhr, status, error){
+				end_loader();
+				console.error('AJAX Error loading invoices:', error);
+				console.error('Response:', xhr.responseText);
+				alert_toast('Error loading invoices. Please check console for details.', 'error');
+				$('#invoices_table tbody').html('<tr><td colspan="9" class="text-center">Error loading invoices</td></tr>');
 			}
 		});
 	}
@@ -628,68 +803,56 @@ $('#edit_invoice_form').submit(function(e){
 			data: filters,
 			dataType: 'json',
 			success: function(resp){
-				if(resp.status == 'success'){
+				if(resp && resp.status == 'success' && resp.data){
 					// Update regular stats
 					$('#total_invoices').text(resp.data.total_invoices || 0);
 					$('#paid_invoices').text(resp.data.paid_invoices || 0);
 					$('#unpaid_invoices').text(resp.data.unpaid_invoices || 0);
-					$('#total_amount').text('₱' + parseFloat(resp.data.total_amount || 0).toLocaleString());
+					$('#total_amount').text('₱' + parseFloat(resp.data.total_amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
 					
-					// Update print stats
-					$('#print_total_invoices').text(resp.data.total_invoices || 0);
-					$('#print_paid_invoices').text(resp.data.paid_invoices || 0);
-					$('#print_unpaid_invoices').text(resp.data.unpaid_invoices || 0);
-					$('#print_total_amount').text('₱' + parseFloat(resp.data.total_amount || 0).toLocaleString());
+					// Update print stats if elements exist
+					if($('#print_total_invoices').length){
+						$('#print_total_invoices').text(resp.data.total_invoices || 0);
+					}
+					if($('#print_paid_invoices').length){
+						$('#print_paid_invoices').text(resp.data.paid_invoices || 0);
+					}
+					if($('#print_unpaid_invoices').length){
+						$('#print_unpaid_invoices').text(resp.data.unpaid_invoices || 0);
+					}
+					if($('#print_total_amount').length){
+						$('#print_total_amount').text('₱' + parseFloat(resp.data.total_amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+					}
 				}
+			},
+			error: function(xhr, status, error){
+				console.error('Error loading stats:', error);
 			}
 		});
 	}
 
 	function viewInvoice(invoice_id){
+		start_loader();
 		$.ajax({
 			url: _base_url_ + 'classes/Invoice.php?action=get_invoice&invoice_id=' + invoice_id,
 			method: 'GET',
 			dataType: 'json',
 			success: function(resp){
-				if(resp.status == 'success'){
+				end_loader();
+				if(resp && resp.status == 'success' && resp.data){
 					var invoice = resp.data;
 					var html = generateInvoiceHTML(invoice);
 					$('#invoice_details').html(html);
 					$('#viewInvoiceModal').data('invoice-id', invoice_id);
 					$('#viewInvoiceModal').modal('show');
-				}
-			}
-		});
-	}
-
-	function createReceipt(){
-		var formData = {
-			invoice_id: $('#receipt_invoice_id').val(),
-			payment_data: {
-				amount_paid: $('#amount_paid').val(),
-				payment_method: $('#payment_method').val(),
-				payment_reference: $('#payment_reference').val()
-			},
-			staff_id: '<?= $_settings->userdata('id') ?>'
-		};
-
-		$.ajax({
-			url: _base_url_ + 'classes/Invoice.php?action=create_receipt',
-			method: 'POST',
-			data: formData,
-			dataType: 'json',
-			success: function(resp){
-				if(resp.status == 'success'){
-					alert_toast('Receipt created successfully!', 'success');
-					$('#createReceiptModal').modal('hide');
-					loadInvoices();
-					loadStats();
 				} else {
-					alert_toast(resp.msg, 'error');
+					alert_toast(resp && resp.msg ? resp.msg : 'Failed to load invoice details', 'error');
 				}
-
-    // Manual status update
-    // This block is now handled by the .mark-status buttons
+			},
+			error: function(xhr, status, error){
+				end_loader();
+				console.error('Error loading invoice:', error);
+				alert_toast('Error loading invoice details. Please try again.', 'error');
 			}
 		});
 	}
@@ -756,6 +919,7 @@ $('#edit_invoice_form').submit(function(e){
 		html += '<p><strong>Customer:</strong> ' + invoice.firstname + ' ' + invoice.lastname + '</p>';
 		html += '<p><strong>Email:</strong> ' + invoice.email + '</p>';
 		html += '<p><strong>Contact:</strong> ' + invoice.contact + '</p>';
+		html += '<p><strong>Transaction Type:</strong> ' + formatTransactionType(invoice.transaction_type) + '</p>';
 		html += '</div>';
 		var statusClass = (invoice.payment_status == 'paid') ? 'success' : (invoice.payment_status == 'late' ? 'danger' : 'warning');
 		html += '<div class="col-md-6 text-right">';
@@ -898,7 +1062,7 @@ $('#edit_invoice_form').submit(function(e){
 		html += '<p><strong>Invoice No:</strong> ' + invoice.invoice_number + '</p>';
 		html += '<p><strong>Date:</strong> ' + new Date(invoice.generated_at).toLocaleDateString() + '</p>';
 		html += '<p><strong>Due Date:</strong> ' + new Date(invoice.due_date).toLocaleDateString() + '</p>';
-		html += '<p><strong>Transaction Type:</strong> ' + invoice.transaction_type.replace('_', ' ').toUpperCase() + '</p>';
+		html += '<p><strong>Transaction Type:</strong> ' + formatTransactionType(invoice.transaction_type) + '</p>';
 		html += '<p><strong>Payment Type:</strong> ' + invoice.payment_type.toUpperCase() + '</p>';
 		html += '</div>';
 		html += '</div>';

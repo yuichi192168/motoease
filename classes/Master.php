@@ -450,11 +450,13 @@ Class Master extends DBConnection {
 		
 		// Get selected cart items from form data
 		$selected_items = isset($_POST['selected_items']) ? $_POST['selected_items'] : '';
+		$selected_items_str = '';
 		
 		// Check if cart has items (either selected items or all items if none selected)
 		if(!empty($selected_items)) {
 			$selected_items = explode(',', $selected_items);
 			$selected_items = array_map('intval', $selected_items); // Convert to integers for security
+			$selected_items = array_filter($selected_items);
 			$selected_items_str = implode(',', $selected_items);
 			$cart_items = $this->conn->query("SELECT COUNT(*) as count FROM cart_list WHERE client_id = '{$client_id}' AND id IN ({$selected_items_str})");
 		} else {
@@ -470,27 +472,54 @@ Class Master extends DBConnection {
 		// Check if customer has completed Motorcentral Credit Application for motorcycle orders
 		// Only enforce when payment method is installment; allow cash/full payments without the requirement
 		$payment_method = isset($_POST['payment_method']) ? strtolower(trim($_POST['payment_method'])) : '';
-		// Check for motorcycle items in selected cart items
-		if(!empty($selected_items)) {
-			$motorcycle_cart_items = $this->conn->query("SELECT COUNT(*) as count FROM cart_list c 
-												INNER JOIN product_list p ON c.product_id = p.id 
-												INNER JOIN categories cat ON p.category_id = cat.id 
-												WHERE c.client_id = '{$client_id}' 
-												AND c.id IN ({$selected_items_str})
-												AND (cat.category LIKE '%motorcycle%' OR cat.category LIKE '%bike%' OR p.name LIKE '%motorcycle%' OR p.name LIKE '%bike%')");
-		} else {
-			$motorcycle_cart_items = $this->conn->query("SELECT COUNT(*) as count FROM cart_list c 
-												INNER JOIN product_list p ON c.product_id = p.id 
-												INNER JOIN categories cat ON p.category_id = cat.id 
-												WHERE c.client_id = '{$client_id}' 
-												AND (cat.category LIKE '%motorcycle%' OR cat.category LIKE '%bike%' OR p.name LIKE '%motorcycle%' OR p.name LIKE '%bike%')");
+		$cart_filter = '';
+		if(!empty($selected_items_str)){
+			$cart_filter = " AND c.id IN ({$selected_items_str})";
 		}
-		$motorcycle_count_row = $motorcycle_cart_items ? $motorcycle_cart_items->fetch_assoc() : ['count' => 0];
-		$has_motorcycle = isset($motorcycle_count_row['count']) && (int)$motorcycle_count_row['count'] > 0;
+		$item_type_query = $this->conn->query("SELECT p.name, cat.category 
+											  FROM cart_list c 
+												INNER JOIN product_list p ON c.product_id = p.id 
+											  LEFT JOIN categories cat ON p.category_id = cat.id 
+											  WHERE c.client_id = '{$client_id}' {$cart_filter}");
+		$motorcycle_count = 0;
+		$parts_count = 0;
+		$oils_count = 0;
+		if($item_type_query){
+			while($row = $item_type_query->fetch_assoc()){
+				$category = strtolower($row['category'] ?? '');
+				$product_name = strtolower($row['name'] ?? '');
+				$is_oil = (strpos($category, 'oil') !== false) || (strpos($category, 'lubricant') !== false) || (strpos($product_name, 'oil') !== false);
+				$is_part = (strpos($category, 'part') !== false) || (strpos($category, 'accessor') !== false) || (strpos($category, 'gear') !== false) || (strpos($product_name, 'part') !== false);
+				$is_motorcycle = (
+					(strpos($category, 'motorcycle') !== false || strpos($category, 'bike') !== false || strpos($product_name, 'motorcycle') !== false || strpos($product_name, 'bike') !== false)
+					&& !$is_part && !$is_oil
+				);
+				
+				if($is_motorcycle){
+					$motorcycle_count++;
+				}elseif($is_oil){
+					$oils_count++;
+				}else{
+					$parts_count++;
+				}
+			}
+		}
+		$has_motorcycle = $motorcycle_count > 0;
+		$has_parts = $parts_count > 0;
+		$has_oils = $oils_count > 0;
 		
 		if($has_motorcycle && $payment_method === 'installment'){
 		// Note: Credit application validation is now handled on the frontend
 		// The frontend will redirect users to the credit application form if needed
+		}
+		
+		$transaction_type = 'motorcycle_purchase';
+		if($has_motorcycle){
+			$transaction_type = 'motorcycle_purchase';
+		}elseif($has_oils && !$has_parts){
+			$transaction_type = 'oils_purchase';
+		}elseif($has_parts){
+			$transaction_type = 'motorcycle_parts_purchase';
 		}
 		
 		// Start transaction
@@ -608,7 +637,7 @@ Class Master extends DBConnection {
                     require_once base_app.'classes/Invoice.php';
                     $invoiceSvc = new Invoice();
                     // Use staff_id = 0 to denote system-generated when placed by client
-                    $invRes = $invoiceSvc->createInvoiceFromOrder($order_id, 0);
+                    $invRes = $invoiceSvc->createInvoiceFromOrder($order_id, 0, $transaction_type);
                     if(is_array($invRes) && isset($invRes['status']) && $invRes['status'] !== 'success'){
                         // Non-fatal: log error
                         error_log('Auto-invoice generation failed for order ' . $order_id . ': ' . ($invRes['msg'] ?? 'unknown error'));

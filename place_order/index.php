@@ -21,62 +21,13 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                             return;
                         }
                         
-                        // Enhanced motorcycle detection logic (case-insensitive and excludes parts/oils/accessories variants)
-                        $motorcycle_items = $conn->query("SELECT COUNT(*) as count FROM cart_list c 
-                                                        INNER JOIN product_list p ON c.product_id = p.id 
-                                                        INNER JOIN categories cat ON p.category_id = cat.id 
-                                                        WHERE c.client_id = '{$customer_id}' 
-                                                        AND (LOWER(cat.category) LIKE '%motorcycle%' OR LOWER(cat.category) LIKE '%bike%' OR LOWER(p.name) LIKE '%motorcycle%' OR LOWER(p.name) LIKE '%bike%')
-                                                        AND LOWER(cat.category) NOT IN ('motorcycle parts', 'oils', 'genuine oils', 'accessories')");
-                        $has_motorcycles = $motorcycle_items->fetch_assoc()['count'] > 0;
-                        
-                        // Check for non-motorcycle items (parts, oils, accessories) including 'genuine oils' (case-insensitive)
-                        $non_motorcycle_items = $conn->query("SELECT COUNT(*) as count FROM cart_list c 
-                                                             INNER JOIN product_list p ON c.product_id = p.id 
-                                                             INNER JOIN categories cat ON p.category_id = cat.id 
-                                                             WHERE c.client_id = '{$customer_id}' 
-                                                             AND LOWER(cat.category) IN ('motorcycle parts', 'oils', 'genuine oils', 'accessories')");
-                        $has_parts_oils = $non_motorcycle_items->fetch_assoc()['count'] > 0;
-                        
                         // Always check application status for motorcycle orders
                         $application_status = $conn->query("SELECT credit_application_completed FROM client_list WHERE id = '{$customer_id}'")->fetch_assoc();
                         $application_completed = $application_status && $application_status['credit_application_completed'] == 1;
                         
-                        // Display appropriate checkout flow information
-                        if($has_motorcycles):
-                        ?>
-                        <div class="alert <?= $application_completed ? 'alert-success' : 'alert-warning' ?> mb-3">
-                            <div class="d-flex align-items-center">
-                                <i class="fa fa-file-alt fa-2x me-3"></i>
-                                <div>
-                                    <h6 class="mb-1">Motorcentral Credit Application Required</h6>
-                                    <?php if($application_completed): ?>
-                                        <p class="mb-0"><i class="fa fa-check-circle text-success"></i> Application completed - Ready to proceed with motorcycle order</p>
-                                        <small class="text-muted">You can now complete your motorcycle purchase</small>
-                                    <?php else: ?>
-                                        <p class="mb-0"><i class="fa fa-exclamation-triangle text-warning"></i> Credit application required for motorcycle purchase</p>
-                                        <small class="text-muted">You'll be redirected to complete the Motorcentral Credit Application form</small>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-                        <?php elseif($has_parts_oils): ?>
-                        <div class="alert alert-info mb-3">
-                            <div class="d-flex align-items-center">
-                                <i class="fa fa-shopping-cart fa-2x me-3"></i>
-                                <div>
-                                    <h6 class="mb-1">Advance Order Process</h6>
-                                    <p class="mb-0"><i class="fa fa-info-circle text-info"></i> Parts and accessories order - No credit application required</p>
-                                    <small class="text-muted">You can proceed directly to advance order</small>
-                                </div>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-                        <?php 
-                        $total = 0;
-                        
                         // Get selected cart items from POST data (preferred) or URL parameter (fallback)
                         $selected_items = isset($_POST['selected_items']) ? $_POST['selected_items'] : (isset($_GET['selected_items']) ? $_GET['selected_items'] : '');
+                        $selected_items_str = '';
                         
                         if(!empty($selected_items)) {
                             // Filter cart items to only include selected ones
@@ -112,8 +63,83 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                             $cart = $conn->query("SELECT c.*,p.name, p.price, p.image_path,b.name as brand, cc.category FROM `cart_list` c inner join product_list p on c.product_id = p.id inner join brand_list b on p.brand_id = b.id inner join categories cc on p.category_id = cc.id where c.client_id = '{$customer_id}' AND c.product_id > 0 AND p.id > 0 AND p.delete_flag = 0 AND p.status = 1 order by p.name asc");
                         }
                         
-                        if($cart && $cart->num_rows > 0) {
-                            while($row = $cart->fetch_assoc()):
+                        $cart_items = [];
+                        if($cart && $cart->num_rows > 0){
+                            while($row = $cart->fetch_assoc()){
+                                $cart_items[] = $row;
+                            }
+                        }
+                        
+                        // Determine item composition and transaction type
+                        $motorcycle_count = 0;
+                        $parts_count = 0;
+                        $oils_count = 0;
+                        foreach($cart_items as $item_row){
+                            $category = strtolower($item_row['category'] ?? '');
+                            $product_name = strtolower($item_row['name'] ?? '');
+                            
+                            $is_oil = (strpos($category, 'oil') !== false) || (strpos($category, 'lubricant') !== false) || (strpos($product_name, 'oil') !== false);
+                            $is_part = (strpos($category, 'part') !== false) || (strpos($category, 'accessor') !== false) || (strpos($category, 'gear') !== false) || (strpos($product_name, 'part') !== false);
+                            $is_motorcycle = (
+                                (strpos($category, 'motorcycle') !== false || strpos($category, 'bike') !== false || strpos($product_name, 'motorcycle') !== false || strpos($product_name, 'bike') !== false)
+                                && !$is_part && !$is_oil
+                            );
+                            
+                            if($is_motorcycle){
+                                $motorcycle_count++;
+                            } elseif($is_oil){
+                                $oils_count++;
+                            } else {
+                                $parts_count++;
+                            }
+                        }
+                        
+                        $has_motorcycles = $motorcycle_count > 0;
+                        $has_parts = $parts_count > 0;
+                        $has_oils = $oils_count > 0;
+                        $has_parts_oils = !$has_motorcycles && ($has_parts || $has_oils);
+                        
+                        $transaction_type = 'motorcycle_purchase';
+                        if($has_motorcycles){
+                            $transaction_type = 'motorcycle_purchase';
+                        } elseif($has_oils && !$has_parts){
+                            $transaction_type = 'oils_purchase';
+                        } elseif($has_parts){
+                            $transaction_type = 'motorcycle_parts_purchase';
+                        }
+                        ?>
+                        <?php if($has_motorcycles): ?>
+                        <div class="alert <?= $application_completed ? 'alert-success' : 'alert-warning' ?> mb-3">
+                            <div class="d-flex align-items-center">
+                                <i class="fa fa-file-alt fa-2x me-3"></i>
+                                <div>
+                                    <h6 class="mb-1">Motorcentral Credit Application Required</h6>
+                                    <?php if($application_completed): ?>
+                                        <p class="mb-0"><i class="fa fa-check-circle text-success"></i> Application completed - Ready to proceed with motorcycle order</p>
+                                        <small class="text-muted">You can now complete your motorcycle purchase</small>
+                                    <?php else: ?>
+                                        <p class="mb-0"><i class="fa fa-exclamation-triangle text-warning"></i> Credit application required for motorcycle purchase</p>
+                                        <small class="text-muted">You'll be redirected to complete the Motorcentral Credit Application form</small>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <?php elseif($has_parts_oils): ?>
+                        <div class="alert alert-info mb-3">
+                            <div class="d-flex align-items-center">
+                                <i class="fa fa-shopping-cart fa-2x me-3"></i>
+                                <div>
+                                    <h6 class="mb-1">Advance Order Process</h6>
+                                    <p class="mb-0"><i class="fa fa-info-circle text-info"></i> Parts, accessories, or oils order - No credit application required</p>
+                                    <small class="text-muted">You can proceed directly to advance order</small>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        <?php 
+                        $total = 0;
+                        if(count($cart_items) > 0) {
+                            foreach($cart_items as $row):
                             $total += ($row['quantity'] * $row['price']);
                         ?>
                         <div class="d-flex align-items-center w-100 border-bottom py-2">
@@ -132,7 +158,7 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                                 <strong>₱<?= number_format($row['quantity'] * $row['price'],2) ?></strong>
                             </div>
                         </div>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                         <?php } else { ?>
                         <div class="text-center py-3">
                             <i class="fa fa-shopping-cart fa-2x text-muted mb-2"></i>
@@ -190,7 +216,7 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                             <ul class="mb-2">
                                 <?php foreach($addon_details as $addon): ?>
                                 <li><strong><?= htmlspecialchars($addon['name']) ?></strong> - ₱<?= number_format($addon['price'], 2) ?></li>
-                                <?php endforeach; ?>
+                        <?php endforeach; ?>
                             </ul>
                             <small class="text-muted">Total add-ons: ₱<?= number_format($addons_total, 2) ?></small>
                         </div>
@@ -200,13 +226,14 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                             <input type="hidden" name="selected_items" value="<?= htmlspecialchars(is_array($selected_items) ? implode(',', $selected_items) : $selected_items) ?>">
                             <input type="hidden" name="addons" value="<?= htmlspecialchars($addons) ?>">
                             <input type="hidden" name="addons_total" value="<?= $addons_total ?>">
+                            <input type="hidden" name="transaction_type" value="<?= htmlspecialchars($transaction_type) ?>">
                             
                             <!-- Payment Method Selection -->
                             <div class="form-group payment-method-section">
                                 <label for="payment_method" class="form-label"><strong>Payment Method *</strong></label>
                                 <select class="form-control" name="payment_method" id="payment_method" required>
                                     <option value="">-- Select Payment Method --</option>
-                                    <option value="full_payment">Full Payment (Cash/Card)</option>
+                                    <option value="full_payment">Full Payment (Cash)</option>
                                     <?php if(isset($has_motorcycles) && $has_motorcycles): ?>
                                     <option value="installment">Installment Plan</option>
                                     <?php endif; ?>
@@ -236,7 +263,7 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                                 <select class="form-control" name="payment_type" id="payment_type">
                                     <option value="">-- Select Payment Type --</option>
                                     <option value="cash">Cash</option>
-                                    <option value="card">Credit/Debit Card</option>
+                                    <!-- <option value="card">Credit/Debit Card</option> -->
                                 </select>
                                 <div class="invalid-feedback" id="payment_type_error"></div>
                             </div>
