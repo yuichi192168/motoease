@@ -233,7 +233,7 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                                 <label for="payment_method" class="form-label"><strong>Payment Method *</strong></label>
                                 <select class="form-control" name="payment_method" id="payment_method" required>
                                     <option value="">-- Select Payment Method --</option>
-                                    <option value="full_payment">Full Payment (Cash)</option>
+                                    <option value="full_payment">Full Payment</option>
                                     <?php if(isset($has_motorcycles) && $has_motorcycles): ?>
                                     <option value="installment">Installment Plan</option>
                                     <?php endif; ?>
@@ -263,6 +263,7 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                                 <select class="form-control" name="payment_type" id="payment_type">
                                     <option value="">-- Select Payment Type --</option>
                                     <option value="cash">Cash</option>
+                                    <option value="card">Credit/Debit Card</option>
                                     <!-- <option value="card">Credit/Debit Card</option> -->
                                 </select>
                                 <div class="invalid-feedback" id="payment_type_error"></div>

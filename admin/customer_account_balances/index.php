@@ -221,7 +221,7 @@ if($_settings->chk_flashdata('success')): ?>
 				<form id="payment_form">
 					<input type="hidden" name="account_id" id="payment_account_id">
 					<div class="form-group">
-						<label for="schedule_id" class="control-label">Payment For (Optional)</label>
+						<label for="schedule_id" class="control-label">Payment For</label>
 						<select name="schedule_id" id="schedule_id" class="form-control">
 							<option value="">General Payment</option>
 						</select>
