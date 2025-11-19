@@ -5,6 +5,7 @@
  */
 class CustomerAccountBalance {
     private $conn;
+    private $notifier = null;
     
     public function __construct($connection) {
         if(!$connection){
@@ -168,6 +169,18 @@ class CustomerAccountBalance {
                 'Payment Received', 
                 "Payment of ₱" . number_format($amount, 2) . " has been recorded for your account."
             );
+            
+            if($processed_by){
+                $customer_name = trim(($account_info['firstname'] ?? '').' '.($account_info['lastname'] ?? '')) ?: 'Customer #'.$account_info['client_id'];
+                $payload = [
+                    'account_id' => $account_id,
+                    'schedule_id' => $schedule_id,
+                    'amount' => $amount,
+                    'processed_by' => $processed_by
+                ];
+                $admin_message = "{$customer_name} payment of ₱" . number_format($amount, 2) . " recorded by staff.";
+                $this->notifyAdminUsers('payment_update', 'Payment Recorded', $admin_message, $payload);
+            }
         }
         
         return $transaction_id;
@@ -339,6 +352,14 @@ class CustomerAccountBalance {
                             'Late Payment Fee Applied', 
                             "A late fee of ₱" . number_format($late_fee_amount, 2) . " has been applied to your payment due on " . date('M d, Y', $due_date) . ". Please settle your account to avoid additional charges."
                         );
+                        
+                        $payload = [
+                            'account_id' => $account_id,
+                            'schedule_id' => $schedule['id'],
+                            'late_fee' => $late_fee_amount
+                        ];
+                        $admin_message = "Late fee of ₱" . number_format($late_fee_amount, 2) . " applied to account #{$account_id}.";
+                        $this->notifyAdminUsers('late_payment', 'Late Payment Fee Applied', $admin_message, $payload);
                     }
                     
                     $updated = true;
@@ -507,6 +528,15 @@ class CustomerAccountBalance {
         $result = $stmt->execute();
         $stmt->close();
         
+        if($result){
+            $payload = [
+                'account_id' => $account_id,
+                'schedule_id' => $schedule_id,
+                'notification_type' => $type
+            ];
+            $this->sendGlobalNotification($client_id, $type, $title, $message, $payload);
+        }
+        
         return $result;
     }
     
@@ -526,6 +556,23 @@ class CustomerAccountBalance {
         $stmt->bind_param("si", $status, $account_id);
         $result = $stmt->execute();
         $stmt->close();
+        
+        if($result){
+            $account = $this->getAccountInfo($account_id);
+            if($account){
+                $status_label = ucfirst($status);
+                $payload = [
+                    'account_id' => $account_id,
+                    'status' => $status_label,
+                    'order_id' => $account['order_id'],
+                    'contract_id' => $account['contract_id']
+                ];
+                $customer_message = "Your installment account for {$account['item_purchased']} is now {$status_label}.";
+                $this->sendGlobalNotification($account['client_id'], 'account_status', 'Account Status Updated', $customer_message, $payload);
+                $admin_message = "Account #{$account_id} ({$account['item_purchased']}) is now {$status_label}.";
+                $this->notifyAdminUsers('account_status', 'Customer Account Status Updated', $admin_message, $payload);
+            }
+        }
         
         return $result;
     }
@@ -580,6 +627,44 @@ class CustomerAccountBalance {
         $stmt->close();
         
         return $result;
+    }
+
+    /**
+     * Helpers for pushing events into the global notifications table
+     */
+    private function getNotifier(){
+        if($this->notifier !== null){
+            return $this->notifier;
+        }
+        $path = defined('base_app') ? base_app.'classes/Notification.php' : __DIR__.'/Notification.php';
+        if(file_exists($path)){
+            require_once $path;
+            $this->notifier = new Notification();
+            return $this->notifier;
+        }
+        return null;
+    }
+    
+    private function sendGlobalNotification($user_id, $type, $title, $message, $data = []){
+        $notifier = $this->getNotifier();
+        if($notifier){
+            try{
+                $notifier->createNotification($user_id, $type, $title, $message, $data);
+            }catch(Exception $e){
+                // non-fatal; logging handled by Notification class
+            }
+        }
+    }
+    
+    private function notifyAdminUsers($type, $title, $message, $data = []){
+        $notifier = $this->getNotifier();
+        if($notifier && method_exists($notifier, 'notifyAdmins')){
+            try{
+                $notifier->notifyAdmins($type, $title, $message, $data);
+            }catch(Exception $e){
+                // silent fallback
+            }
+        }
     }
 }
 

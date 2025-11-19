@@ -74,9 +74,12 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                         $motorcycle_count = 0;
                         $parts_count = 0;
                         $oils_count = 0;
+                        $motorcycle_total_amount = 0;
+                        $non_motorcycle_total_amount = 0;
                         foreach($cart_items as $item_row){
                             $category = strtolower($item_row['category'] ?? '');
                             $product_name = strtolower($item_row['name'] ?? '');
+                            $line_total = ($item_row['quantity'] ?? 0) * ($item_row['price'] ?? 0);
                             
                             $is_oil = (strpos($category, 'oil') !== false) || (strpos($category, 'lubricant') !== false) || (strpos($product_name, 'oil') !== false);
                             $is_part = (strpos($category, 'part') !== false) || (strpos($category, 'accessor') !== false) || (strpos($category, 'gear') !== false) || (strpos($product_name, 'part') !== false);
@@ -87,10 +90,13 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                             
                             if($is_motorcycle){
                                 $motorcycle_count++;
+                                $motorcycle_total_amount += $line_total;
                             } elseif($is_oil){
                                 $oils_count++;
+                                $non_motorcycle_total_amount += $line_total;
                             } else {
                                 $parts_count++;
+                                $non_motorcycle_total_amount += $line_total;
                             }
                         }
                         
@@ -98,7 +104,6 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                         $has_parts = $parts_count > 0;
                         $has_oils = $oils_count > 0;
                         $has_parts_oils = !$has_motorcycles && ($has_parts || $has_oils);
-                        
                         $transaction_type = 'motorcycle_purchase';
                         if($has_motorcycles){
                             $transaction_type = 'motorcycle_purchase';
@@ -178,6 +183,12 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                         $addon_details = isset($_POST['addon_details']) ? json_decode($_POST['addon_details'], true) : (isset($_GET['addon_details']) ? json_decode($_GET['addon_details'], true) : []);
                         $addons_total = isset($_POST['addons_total']) ? floatval($_POST['addons_total']) : (isset($_GET['addons_total']) ? floatval($_GET['addons_total']) : 0);
                         $grand_total = $total + $addons_total;
+                        if($has_motorcycles){
+                            $non_motorcycle_total_amount += $addons_total;
+                        }
+                        $mixed_cart_upfront_total = ($has_motorcycles && ($has_parts || $has_oils)) ? $non_motorcycle_total_amount : 0;
+                        $installment_principal_amount = $has_motorcycles ? $motorcycle_total_amount : $grand_total;
+                        $minimum_down_payment = $installment_principal_amount * 0.2;
                         ?>
                         
                         <?php if($addons_total > 0): ?>
@@ -197,6 +208,15 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                         <div class="d-flex justify-content-between align-items-center w-100 border-top pt-3 mt-3">
                             <h5 class="mb-0">Total Amount:</h5>
                             <h4 class="mb-0 text-primary">₱<?= number_format($total,2) ?></h4>
+                        </div>
+                        <?php endif; ?>
+                        <?php if($mixed_cart_upfront_total > 0): ?>
+                        <div class="d-flex justify-content-between align-items-center w-100 border-top pt-3 mt-3">
+                            <div>
+                                <h6 class="mb-0 text-muted">Motorcycle Spare Parts & Genuine Oil</h6>
+                                <small class="text-muted">Excluded from installment computation</small>
+                            </div>
+                            <h5 class="mb-0 text-muted">₱<?= number_format($mixed_cart_upfront_total,2) ?></h5>
                         </div>
                         <?php endif; ?>
                     </div>
@@ -250,6 +270,11 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                                         <li>Late payment fees may apply for overdue installments</li>
                                     </ul>
                                 </div>
+                                <?php if($mixed_cart_upfront_total > 0): ?>
+                                <div class="alert alert-secondary mt-2 mb-0">
+                                    <i class="fa fa-tools"></i> <strong>Mixed Cart:</strong> Spare parts and Genuine oil totaling ₱<?= number_format($mixed_cart_upfront_total, 2) ?> are payable upfront and will not be included in your monthly installment.
+                                </div>
+                                <?php endif; ?>
                                 <?php else: ?>
                                 <div class="alert alert-info mt-2">
                                     <i class="fa fa-info-circle"></i> <strong>Motorcycle Parts Only:</strong> Installment plans are available only for motorcycle purchases. You can proceed directly to Advance Order.
@@ -286,8 +311,13 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                                 <div class="mt-2">
                                     <label for="down_payment" class="form-label"><strong>Down Payment Amount *</strong></label>
                                     <input type="number" class="form-control" name="down_payment" id="down_payment" 
-                                           min="0" step="0.01" placeholder="Enter down payment amount">
-                                    <small class="form-text text-muted">Minimum down payment: ₱<?= number_format($grand_total * 0.2, 2) ?></small>
+                                           min="<?= max($minimum_down_payment, 0) ?>" step="0.01" placeholder="Enter down payment amount">
+                                    <small class="form-text text-muted">
+                                        Minimum down payment (20% of motorcycle total): ₱<?= number_format($minimum_down_payment, 2) ?>
+                                        <?php if($mixed_cart_upfront_total > 0): ?>
+                                            <br><strong>Note:</strong> Spare parts/accessories (₱<?= number_format($mixed_cart_upfront_total, 2) ?>) are due upfront and excluded from installments.
+                                        <?php endif; ?>
+                                    </small>
                                     <div class="invalid-feedback" id="down_payment_error"></div>
                                 </div>
                                 
@@ -518,6 +548,7 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
 </style>
 
 <script>
+    var cartInstallmentPrincipal = <?= json_encode($installment_principal_amount) ?>;
     $(function(){
         // Payment method change handler
         $('#payment_method').change(function(){
@@ -547,6 +578,7 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                 $('#installment_months, #down_payment').prop('required', true);
                 $('#payment_type').prop('required', false);
             }
+            updateButtonText();
         });
         
         // Installment calculation
@@ -557,11 +589,11 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
         function calculateInstallment() {
             var months = parseInt($('#installment_months').val());
             var downPayment = parseFloat($('#down_payment').val()) || 0;
-            var totalAmount = <?= $grand_total ?>;
-            var minimumDown = totalAmount * 0.2;
+            var principalAmount = cartInstallmentPrincipal && cartInstallmentPrincipal > 0 ? cartInstallmentPrincipal : <?= $grand_total ?>;
+            var minimumDown = principalAmount * 0.2;
             
             if(months > 0 && downPayment >= minimumDown) {
-                var remainingAmount = totalAmount - downPayment;
+                var remainingAmount = principalAmount - downPayment;
                 var monthlyPayment = remainingAmount / months;
                 $('#monthly_payment').val('₱' + monthlyPayment.toFixed(2));
             } else {
@@ -605,8 +637,8 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
             if(paymentMethod === 'installment' && hasMotorcycles) {
                 var months = $('#installment_months').val();
                 var downPayment = parseFloat($('#down_payment').val()) || 0;
-                var totalAmount = <?= $grand_total ?>;
-                var minimumDown = totalAmount * 0.2;
+                var principalAmount = cartInstallmentPrincipal && cartInstallmentPrincipal > 0 ? cartInstallmentPrincipal : <?= $grand_total ?>;
+                var minimumDown = principalAmount * 0.2;
                 
                 if(!months) {
                     $('#installment_months').addClass('is-invalid');
@@ -619,7 +651,7 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                 
                 if(!downPayment || downPayment < minimumDown) {
                     $('#down_payment').addClass('is-invalid');
-                    $('#down_payment_error').text('Down payment must be at least ₱' + minimumDown.toFixed(2) + ' (20% of total amount)').show();
+                    $('#down_payment_error').text('Down payment must be at least ₱' + minimumDown.toFixed(2) + ' (20% of financed motorcycle total)').show();
                     isValid = false;
                 } else {
                     $('#down_payment').addClass('is-valid');
@@ -665,16 +697,31 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
         
         // Function to update button text based on current state
         function updateButtonText() {
-            if(hasMotorcycles) {
-                if(!applicationCompleted) {
-                    $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Proceed to Credit Application');
+            var paymentMethod = $('#payment_method').val();
+            if(paymentMethod === 'installment') {
+                if(hasMotorcycles) {
+                    if(!applicationCompleted) {
+                        $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Proceed to Credit Application');
+                    } else {
+                        $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Continue to Order');
+                    }
                 } else {
-                    $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Continue to Order');
+                    $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Advance Order');
                 }
-            } else if(hasPartsOils) {
+            } else if(paymentMethod === 'full_payment') {
                 $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Advance Order');
             } else {
-                $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Place Order');
+                if(hasMotorcycles) {
+                    if(!applicationCompleted) {
+                        $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Proceed to Credit Application');
+                    } else {
+                        $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Continue to Order');
+                    }
+                } else if(hasPartsOils) {
+                    $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Advance Order');
+                } else {
+                    $('#place_order_btn').html('<i class="fa fa-shopping-cart"></i> Place Order');
+                }
             }
         }
 
@@ -714,10 +761,10 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
             
             // Redirect to credit application for motorcycle orders if not completed
             console.log('Debug - hasMotorcycles:', hasMotorcycles, 'applicationCompleted:', applicationCompleted);
-            if(hasMotorcycles && !applicationCompleted) {
+            if(paymentMethod === 'installment' && hasMotorcycles && !applicationCompleted) {
                 // Prefer embedded modal; fallback to new tab if modal fails
                 try {
-                    $('#creditAppModal').modal('show');
+                    showCreditApplicationModal("https://form.jotform.com/242488642552463", 'Credit application required for motorcycle installment purchases.');
                 } catch(e) {
                     window.open("https://form.jotform.com/242488642552463", '_blank');
                 }
@@ -869,6 +916,8 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                 }
             });
         });
+
+        updateButtonText();
     });
 
     // Embedded modal completion button

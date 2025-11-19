@@ -94,15 +94,19 @@
               <span class="badge badge-warning navbar-badge" id="admin-notifications-count" style="display:none;">0</span>
             </a>
             <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" id="admin-notifications-list">
-              <span class="dropdown-header">Notifications</span>
-              <div class="dropdown-divider"></div>
+              <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+                <span class="dropdown-header mb-0">Notifications</span>
+                <button class="btn btn-sm btn-link text-primary p-0" type="button" onclick="adminMarkAllNotificationsRead()">
+                  Mark all read
+                </button>
+              </div>
               <div id="admin-notifications-content">
                 <div class="text-center p-3">
                   <i class="fas fa-spinner fa-spin"></i> Loading...
                 </div>
               </div>
-              <div class="dropdown-divider"></div>
-              <a href="#" class="dropdown-item dropdown-footer" onclick="adminLoadAllNotifications()">View All Notifications</a>
+              <div class="dropdown-divider mb-0"></div>
+              <a href="#" class="dropdown-item dropdown-footer" onclick="adminOpenNotificationHistory(event)">View Notification History</a>
             </div>
           </li>
           <!-- Navbar Search -->
@@ -152,30 +156,39 @@
         </ul>
       </nav>
       <!-- /.navbar -->
+      
+<div class="modal fade" id="adminNotificationHistoryModal" tabindex="-1" role="dialog" aria-labelledby="adminNotificationHistoryLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-md" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="adminNotificationHistoryLabel">Notification History</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body p-0">
+        <div id="adminNotificationHistoryList" class="list-group list-group-flush">
+          <div class="text-center p-4">
+            <i class="fas fa-spinner fa-spin"></i> Loading history...
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer d-flex justify-content-between">
+        <small class="text-muted" id="adminNotificationHistoryMeta"></small>
+        <button type="button" class="btn btn-outline-primary btn-sm" id="adminNotificationHistoryLoadMore" onclick="adminLoadNotificationHistory()" style="display:none;">
+          Load more
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
 (function(){
-  function adminLoadNotificationsCount(){
-    $.ajax({
-      url: _base_url_ + "classes/Master.php?f=get_notifications_count",
-      method: "POST",
-      dataType: "json",
-      success: function(resp){
-        if(resp && resp.status === 'success'){
-          var c = parseInt(resp.count || 0, 10);
-          var $badge = $('#admin-notifications-count');
-          $badge.text(c);
-          if(c > 0){ $badge.show(); } else { $badge.hide(); }
-          // Toggle sidebar red dot if present
-          if(c > 0){
-            $('#sidebar-notif-dot').show();
-          }else{
-            $('#sidebar-notif-dot').hide();
-          }
-        }
-      }
-    });
-  }
-
+  var adminNotificationHistoryPage = 0;
+  var adminNotificationHistoryLimit = 20;
+  var adminNotificationHistoryLoading = false;
+  var adminNotificationHistoryHasMore = false;
+  
   function adminFormatTimeAgo(dateString){
     var now = new Date();
     var date = new Date(dateString);
@@ -190,9 +203,33 @@
     return 'Just now';
   }
 
+  function adminToggleSidebarDot(count){
+    if($('#sidebar-notif-dot').length){
+      if(count > 0) $('#sidebar-notif-dot').show();
+      else $('#sidebar-notif-dot').hide();
+    }
+  }
+
+  window.adminLoadNotificationsCount = function(){
+    $.ajax({
+      url: _base_url_ + "classes/Master.php?f=get_admin_notifications_count",
+      method: "POST",
+      dataType: "json",
+      success: function(resp){
+        if(resp && resp.status === 'success'){
+          var c = parseInt(resp.count || 0, 10);
+          var $badge = $('#admin-notifications-count');
+          $badge.text(c);
+          if(c > 0){ $badge.show(); } else { $badge.hide(); }
+          adminToggleSidebarDot(c);
+        }
+      }
+    });
+  }
+
   window.adminLoadNotifications = function(){
     $.ajax({
-      url: _base_url_ + "classes/Master.php?f=get_notifications",
+      url: _base_url_ + "classes/Master.php?f=get_admin_notifications",
       method: "POST",
       data: {limit: 7},
       dataType: "json",
@@ -201,15 +238,18 @@
           var html = '';
           if(resp.data && resp.data.length){
             resp.data.forEach(function(n){
-              html += '<a href="#" class="dropdown-item notification-item ' + (n.is_read == 0 ? 'unread' : '') + '" onclick="adminMarkNotificationRead(' + n.id + ')">';
+              var message = n.message || '';
+              var title = n.title || 'Notification';
+              html += '<a href="#" class="dropdown-item notification-item ' + (n.is_read == 0 ? 'unread' : '') + '" onclick="adminMarkNotificationRead(' + n.id + '); return false;">';
               html += '<div class="d-flex align-items-start">';
               html += '<div class="notification-icon mr-2"><i class="fas fa-bell text-warning"></i></div>';
               html += '<div class="notification-content">';
-              html += '<div class="notification-title">' + (n.title || 'Notification') + '</div>';
-              html += '<div class="notification-text">' + (n.message || n.description || '') + '</div>';
+              html += '<div class="notification-title">' + title + '</div>';
+              if(message){
+                html += '<div class="notification-text">' + message + '</div>';
+              }
               html += '<div class="notification-time">' + adminFormatTimeAgo(n.date_created) + '</div>';
               html += '</div></div></a>';
-              html += '<div class="dropdown-divider"></div>';
             });
           } else {
             html = '<div class="text-center p-3 text-muted">No notifications</div>';
@@ -222,9 +262,9 @@
 
   window.adminMarkNotificationRead = function(id){
     $.ajax({
-      url: _base_url_ + "classes/Master.php?f=mark_notification_read",
+      url: _base_url_ + "classes/Master.php?f=mark_admin_notification_read",
       method: "POST",
-      data: {notification_id: id},
+      data: {id: id},
       dataType: "json",
       success: function(resp){
         if(resp && resp.status === 'success'){
@@ -234,10 +274,89 @@
       }
     });
   }
-
-  window.adminLoadAllNotifications = function(){
-    // Placeholder for an admin notifications list page
-    toastr.info('Coming soon: Notifications list page');
+  
+  window.adminMarkAllNotificationsRead = function(){
+    $.ajax({
+      url: _base_url_ + "classes/Master.php?f=mark_all_admin_notifications_read",
+      method: "POST",
+      dataType: "json",
+      complete: function(){
+        adminLoadNotificationsCount();
+        adminLoadNotifications();
+      }
+    });
+  }
+  
+  window.adminOpenNotificationHistory = function(event){
+    if(event) event.preventDefault();
+    adminNotificationHistoryPage = 0;
+    adminNotificationHistoryHasMore = false;
+    $('#adminNotificationHistoryList').html('<div class="text-center p-4"><i class="fas fa-spinner fa-spin"></i> Loading history...</div>');
+    $('#adminNotificationHistoryMeta').text('');
+    $('#adminNotificationHistoryLoadMore').hide();
+    $('#adminNotificationHistoryModal').modal('show');
+    adminLoadNotificationHistory(true);
+  }
+  
+  window.adminLoadNotificationHistory = function(reset){
+    if(adminNotificationHistoryLoading) return;
+    if(!reset && !adminNotificationHistoryHasMore) return;
+    adminNotificationHistoryLoading = true;
+    var offset = adminNotificationHistoryPage * adminNotificationHistoryLimit;
+    $.ajax({
+      url: _base_url_ + "classes/Master.php?f=get_admin_notification_history",
+      method: "POST",
+      data: {limit: adminNotificationHistoryLimit, offset: offset},
+      dataType: "json",
+      success: function(resp){
+        if(resp && resp.status === 'success'){
+          renderAdminNotificationHistory(resp.items || [], reset);
+          adminNotificationHistoryHasMore = !!resp.has_more;
+          $('#adminNotificationHistoryMeta').text((resp.total || 0) + ' total notifications');
+          if(adminNotificationHistoryHasMore){
+            adminNotificationHistoryPage++;
+            $('#adminNotificationHistoryLoadMore').show();
+          }else{
+            $('#adminNotificationHistoryLoadMore').hide();
+          }
+          if(reset){
+            adminMarkAllNotificationsRead();
+          }
+        }else{
+          $('#adminNotificationHistoryList').html('<div class="text-center p-4 text-muted">Unable to load history.</div>');
+          $('#adminNotificationHistoryLoadMore').hide();
+        }
+      },
+      complete: function(){
+        adminNotificationHistoryLoading = false;
+      }
+    });
+  }
+  
+  function renderAdminNotificationHistory(items, reset){
+    var container = $('#adminNotificationHistoryList');
+    if(reset){
+      container.empty();
+    }
+    if(!items.length && reset){
+      container.html('<div class="text-center p-4 text-muted">No notifications yet.</div>');
+      return;
+    }
+    items.forEach(function(n){
+      var message = n.message || '';
+      var title = n.title || 'Notification';
+      var badge = n.is_read == 0 ? '<span class="badge badge-warning badge-pill ml-2">New</span>' : '';
+      var item = '<div class="list-group-item">';
+      item += '<div class="d-flex justify-content-between align-items-center">';
+      item += '<h6 class="mb-1">' + title + ' ' + badge + '</h6>';
+      item += '<small class="text-muted">' + adminFormatTimeAgo(n.date_created) + '</small>';
+      item += '</div>';
+      if(message){
+        item += '<p class="mb-1 text-muted">' + message + '</p>';
+      }
+      item += '</div>';
+      container.append(item);
+    });
   }
 
   $(document).ready(function(){

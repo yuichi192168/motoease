@@ -165,18 +165,82 @@ foreach($qry->fetch_array() as $k => $v){
     </div>
 </div>
 <script>
+let svcSelected = 0;
+
+function svcHighlight(v, isHover = false){
+    $('#svc_rating_stars .star').each(function(){
+        const s = parseInt($(this).data('val'));
+        const $star = $(this);
+        
+        $star.removeClass('selected hovered');
+        
+        if (isHover) {
+            if (s <= v) {
+                $star.addClass('hovered');
+            }
+        } else {
+            if (s <= v) {
+                $star.addClass('selected');
+            }
+        }
+    });
+}
+
+function showSvcRatingError() {
+    $('#svc_rating_error').show();
+}
+
+function hideSvcRatingError() {
+    $('#svc_rating_error').hide();
+}
+
+function submitSvcReviewForm(){
+    hideSvcRatingError();
+    $('#svc_review_comment').removeClass('is-invalid');
+    
+    if(svcSelected < 1){
+        showSvcRatingError();
+        return;
+    }
+    
+    const comment = $('#svc_review_comment').val().trim();
+    if(comment.length > 0 && comment.length < 10){
+        $('#svc_review_comment').addClass('is-invalid');
+        alert_toast('Please provide a more detailed comment (at least 10 characters) or leave it empty.', 'warning');
+        return;
+    }
+    
+    start_loader();
+    $.ajax({
+        url:_base_url_+"classes/Master.php?f=save_review",
+        method:'POST',
+        data:{ target_type:'service', target_id:'<?= isset($id)?$id:"" ?>', rating: svcSelected, comment: comment },
+        dataType:'json',
+        error:err=>{ console.error(err); alert_toast('An error occurred','error'); end_loader(); },
+        success:function(resp){
+            if(resp.status=='success'){
+                $('#svc_review_comment').val(''); 
+                svcSelected = 0; 
+                svcHighlight(0, false); 
+                loadSvcReviews(); 
+                alert_toast(resp.msg,'success');
+            }else{ 
+                alert_toast(resp.msg||'An error occurred','error'); 
+            }
+            end_loader();
+        }
+    });
+}
+
+window.submitSvcReviewForm = submitSvcReviewForm;
+
 $(function(){
     loadSvcReviews();
-    let svcSelected = 0;
-    let isHovering = false;
     
-    // Enhanced star rating functionality
     $('#svc_rating_stars .star').on('mouseenter', function(){
-        isHovering = true;
         const v = parseInt($(this).data('val'));
         svcHighlight(v, true);
     }).on('mouseleave', function(){
-        isHovering = false;
         svcHighlight(svcSelected, false);
     }).on('click', function(){
         svcSelected = parseInt($(this).data('val'));
@@ -184,101 +248,7 @@ $(function(){
         hideSvcRatingError();
     });
     
-    function svcHighlight(v, isHover = false){
-        $('#svc_rating_stars .star').each(function(){
-            const s = parseInt($(this).data('val'));
-            const $star = $(this);
-            
-            // Remove all classes
-            $star.removeClass('selected hovered');
-            
-            if (isHover) {
-                // During hover, show hover effect up to hovered star
-                if (s <= v) {
-                    $star.addClass('hovered');
-                }
-            } else {
-                // When not hovering, show selected stars
-                if (s <= v) {
-                    $star.addClass('selected');
-                }
-            }
-        });
-    }
-    
-    function showSvcRatingError() {
-        $('#svc_rating_error').show();
-    }
-    
-    function hideSvcRatingError() {
-        $('#svc_rating_error').hide();
-    }
-    
-    // Initialize with no rating selected
     svcHighlight(0, false);
-
-    // Define login validation function using the working pattern from footer.php
-    function validateLoginRequired(action = 'perform this action') {
-        if("<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>" != 1){
-            Swal.fire({
-                title: 'Login Required',
-                text: 'Please login first to ' + action + '.',
-                icon: 'warning',
-                confirmButtonText: 'Login Now',
-                showCancelButton: true,
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    location.href = './login.php';
-                }
-            });
-            return false;
-        }
-        return true;
-    }
-
-    // Function to handle service review submission (called from onclick)
-    function submitSvcReviewForm(){
-        // Clear previous validation errors
-        hideSvcRatingError();
-        $('#svc_review_comment').removeClass('is-invalid');
-        
-        // Validate rating selection
-        if(svcSelected < 1){
-            showSvcRatingError();
-            return;
-        }
-        
-        // Validate comment (optional but if provided, should not be empty)
-        const comment = $('#svc_review_comment').val().trim();
-        if(comment.length > 0 && comment.length < 10){
-            $('#svc_review_comment').addClass('is-invalid');
-            alert_toast('Please provide a more detailed comment (at least 10 characters) or leave it empty.', 'warning');
-            return;
-        }
-        
-        // Submit the review
-        start_loader();
-        $.ajax({
-            url:_base_url_+"classes/Master.php?f=save_review",
-            method:'POST',
-            data:{ target_type:'service', target_id:'<?= isset($id)?$id:"" ?>', rating: svcSelected, comment: comment },
-            dataType:'json',
-            error:err=>{ console.error(err); alert_toast('An error occurred','error'); end_loader(); },
-            success:function(resp){
-                if(resp.status=='success'){
-                    $('#svc_review_comment').val(''); 
-                    svcSelected = 0; 
-                    svcHighlight(0, false); 
-                    loadSvcReviews(); 
-                    alert_toast(resp.msg,'success');
-                }else{ 
-                    alert_toast(resp.msg||'An error occurred','error'); 
-                }
-                end_loader();
-            }
-        });
-    }
 });
 
 function loadSvcReviews(){

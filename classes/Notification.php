@@ -3,6 +3,7 @@ require_once('../config.php');
 
 class Notification extends DBConnection {
     private $settings;
+    private $tableEnsured = false;
     
     public function __construct(){
         global $_settings;
@@ -12,6 +13,27 @@ class Notification extends DBConnection {
     
     public function __destruct(){
         parent::__destruct();
+    }
+    
+    /**
+     * Ensure notifications table exists (idempotent)
+     */
+    private function ensureNotificationTable(){
+        if($this->tableEnsured){
+            return;
+        }
+        $this->conn->query("CREATE TABLE IF NOT EXISTS notifications (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            type VARCHAR(50) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            data JSON DEFAULT NULL,
+            is_read TINYINT(1) NOT NULL DEFAULT 0,
+            date_created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY user_id (user_id), KEY is_read (is_read), KEY type (type)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $this->tableEnsured = true;
     }
     
     /**
@@ -46,16 +68,55 @@ class Notification extends DBConnection {
      * Create notification record in database
      */
     public function createNotification($user_id, $type, $title, $message, $data = null) {
-        $user_id = $this->conn->real_escape_string($user_id);
-        $type = $this->conn->real_escape_string($type);
-        $title = $this->conn->real_escape_string($title);
-        $message = $this->conn->real_escape_string($message);
-        $data = $data ? $this->conn->real_escape_string(json_encode($data)) : null;
-        
-        $sql = "INSERT INTO notifications (user_id, type, title, message, data, is_read, date_created) 
-                VALUES ('{$user_id}', '{$type}', '{$title}', '{$message}', '{$data}', 0, NOW())";
-        
-        return $this->conn->query($sql);
+        $this->ensureNotificationTable();
+        $uid = (int)$user_id;
+        $type = trim($type);
+        $title = trim($title);
+        $message = trim($message);
+        $dataJson = null;
+        if(is_array($data) || is_object($data)){
+            $dataJson = json_encode($data);
+        }elseif(is_string($data) && strlen(trim($data))){
+            $dataJson = trim($data);
+        }
+        if($dataJson === null){
+            $stmt = $this->conn->prepare("INSERT INTO notifications (user_id, type, title, message, data, is_read, date_created) VALUES (?, ?, ?, ?, NULL, 0, NOW())");
+            $stmt->bind_param("isss", $uid, $type, $title, $message);
+        }else{
+            $stmt = $this->conn->prepare("INSERT INTO notifications (user_id, type, title, message, data, is_read, date_created) VALUES (?, ?, ?, ?, ?, 0, NOW())");
+            $stmt->bind_param("issss", $uid, $type, $title, $message, $dataJson);
+        }
+        $result = $stmt->execute();
+        $stmt->close();
+        return $result;
+    }
+    
+    /**
+     * Create notification for multiple users at once
+     */
+    public function createNotificationsForUsers(array $user_ids, $type, $title, $message, $data = null){
+        foreach($user_ids as $uid){
+            $this->createNotification($uid, $type, $title, $message, $data);
+        }
+    }
+    
+    /**
+     * Helper to notify admin/staff roles
+     */
+    public function notifyAdmins($type, $title, $message, $data = null, $roles = ['admin','branch_supervisor','service_admin','accounting']){
+        if(empty($roles)){
+            $roles = ['admin'];
+        }
+        $role_list = array_map(function($role){
+            return $this->conn->real_escape_string($role);
+        }, $roles);
+        $role_sql = "'" . implode("','", $role_list) . "'";
+        $admins = $this->conn->query("SELECT id FROM users WHERE status = 1 AND role_type IN ({$role_sql})");
+        if($admins){
+            while($row = $admins->fetch_assoc()){
+                $this->createNotification($row['id'], $type, $title, $message, $data);
+            }
+        }
     }
     
     /**
@@ -71,20 +132,65 @@ class Notification extends DBConnection {
      * Get unread notifications count
      */
     public function getUnreadCount($user_id) {
-        $user_id = $this->conn->real_escape_string($user_id);
-        $result = $this->conn->query("SELECT COUNT(*) as count FROM notifications WHERE user_id = '{$user_id}' AND is_read = 0");
-        return $result->fetch_assoc()['count'];
+        $uid = (int)$user_id;
+        $result = $this->conn->query("SELECT COUNT(*) as count FROM notifications WHERE user_id = '{$uid}' AND is_read = 0");
+        $row = $result ? $result->fetch_assoc() : ['count' => 0];
+        return isset($row['count']) ? (int)$row['count'] : 0;
     }
     
     /**
      * Get user notifications
      */
-    public function getUserNotifications($user_id, $limit = 10) {
-        $user_id = $this->conn->real_escape_string($user_id);
-        $limit = (int)$limit;
-        
-        $sql = "SELECT * FROM notifications WHERE user_id = '{$user_id}' ORDER BY date_created DESC LIMIT {$limit}";
-        return $this->conn->query($sql);
+    public function getUserNotifications($user_id, $limit = 10, $offset = 0) {
+        $uid = (int)$user_id;
+        $limit = max(1, (int)$limit);
+        $offset = max(0, (int)$offset);
+        $sql = "SELECT * FROM notifications WHERE user_id = '{$uid}' ORDER BY date_created DESC LIMIT {$offset},{$limit}";
+        $rows = [];
+        if($result = $this->conn->query($sql)){
+            while($row = $result->fetch_assoc()){
+                $rows[] = $this->formatNotificationRow($row);
+            }
+        }
+        return $rows;
+    }
+    
+    /**
+     * Format row (decode JSON, add helpers)
+     */
+    private function formatNotificationRow($row){
+        if(isset($row['data']) && !is_null($row['data'])){
+            $decoded = json_decode($row['data'], true);
+            if(json_last_error() === JSON_ERROR_NONE){
+                $row['data'] = $decoded;
+            }
+        }
+        $row['is_read'] = isset($row['is_read']) ? (int)$row['is_read'] : 0;
+        $row['date_created'] = isset($row['date_created']) ? $row['date_created'] : date('Y-m-d H:i:s');
+        return $row;
+    }
+    
+    /**
+     * Fetch history with pagination metadata
+     */
+    public function getNotificationHistory($user_id, $limit = 20, $offset = 0){
+        $rows = $this->getUserNotifications($user_id, $limit, $offset);
+        $uid = (int)$user_id;
+        $total = $this->conn->query("SELECT COUNT(*) as cnt FROM notifications WHERE user_id = '{$uid}'");
+        $count = $total ? (int)$total->fetch_assoc()['cnt'] : 0;
+        return [
+            'items' => $rows,
+            'total' => $count,
+            'has_more' => ($offset + $limit) < $count
+        ];
+    }
+    
+    /**
+     * Mark all notifications read for user
+     */
+    public function markAllRead($user_id){
+        $uid = (int)$user_id;
+        return $this->conn->query("UPDATE notifications SET is_read = 1 WHERE user_id = '{$uid}' AND is_read = 0");
     }
     
     /**
@@ -314,26 +420,26 @@ class Notification extends DBConnection {
     }
 }
 
-$action = !isset($_GET['f']) ? 'none' : strtolower($_GET['f']);
-$notification = new Notification();
-
-switch ($action) {
-    case 'mark_read':
-        echo $notification->markAsRead($_POST['notification_id']);
-        break;
-    case 'get_unread_count':
-        echo json_encode(['count' => $notification->getUnreadCount($_POST['user_id'])]);
-        break;
-    case 'get_notifications':
-        $notifications = $notification->getUserNotifications($_POST['user_id'], $_POST['limit'] ?? 10);
-        $data = [];
-        while($row = $notifications->fetch_assoc()) {
-            $data[] = $row;
-        }
-        echo json_encode($data);
-        break;
-    default:
-        echo "Access Denied";
-        break;
+if(php_sapi_name() !== 'cli' && basename($_SERVER['SCRIPT_FILENAME']) === basename(__FILE__)){
+    $action = !isset($_GET['f']) ? 'none' : strtolower($_GET['f']);
+    $notification = new Notification();
+    
+    switch ($action) {
+        case 'mark_read':
+            echo $notification->markAsRead($_POST['notification_id']);
+            break;
+        case 'get_unread_count':
+            echo json_encode(['count' => $notification->getUnreadCount($_POST['user_id'])]);
+            break;
+        case 'get_notifications':
+            $limit = isset($_POST['limit']) ? (int)$_POST['limit'] : 10;
+            $offset = isset($_POST['offset']) ? (int)$_POST['offset'] : 0;
+            $data = $notification->getUserNotifications($_POST['user_id'], $limit, $offset);
+            echo json_encode($data);
+            break;
+        default:
+            echo "Access Denied";
+            break;
+    }
 }
 ?>

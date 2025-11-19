@@ -91,8 +91,8 @@
                         html += '<i class="fas fa-bell text-warning"></i>';
                         html += '</div>';
                         html += '<div class="notification-content">';
-                        html += '<div class="notification-title">' + notification.title + '</div>';
-                        html += '<div class="notification-text">' + notification.description + '</div>';
+                        html += '<div class="notification-title">' + (notification.title || 'Notification') + '</div>';
+                        html += '<div class="notification-text">' + (notification.message || '') + '</div>';
                         html += '<div class="notification-time">' + formatTimeAgo(notification.date_created) + '</div>';
                         html += '</div>';
                         html += '</div>';

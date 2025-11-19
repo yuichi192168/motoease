@@ -413,7 +413,7 @@ $(document).ready(function(){
 
         html += '<div class="table-responsive">';
         html += '<table class="table table-bordered">';
-        html += '<thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>';
+        html += '<thead><tr><th>Item</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>';
         html += '<tbody>';
         $.each(invoice.items, function(index, item){
             // Calculate unit_price if it's zero or missing, using total_price and quantity
@@ -423,7 +423,6 @@ $(document).ready(function(){
             }
             html += '<tr>';
             html += '<td>' + item.item_name + '</td>';
-            html += '<td>' + (item.item_description || '-') + '</td>';
             html += '<td>' + item.quantity + '</td>';
             html += '<td>₱' + unit_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
             html += '<td>₱' + parseFloat(item.total_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
@@ -432,6 +431,37 @@ $(document).ready(function(){
         html += '</tbody>';
         html += '</table>';
         html += '</div>';
+
+        if(invoice.service_details && invoice.service_details.length){
+            html += '<div class="mt-4">';
+            html += '<h5>Service Summary</h5>';
+            html += '<div class="table-responsive">';
+            html += '<table class="table table-sm table-bordered mb-2">';
+            html += '<thead><tr><th>Service</th><th class="text-right">Price</th></tr></thead><tbody>';
+            invoice.service_details.forEach(function(service){
+                var amount = parseFloat(service.amount || 0);
+                html += '<tr>';
+                html += '<td>' + (service.name || 'Service') + '</td>';
+                html += '<td class="text-right">₱' + amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            html += '</div>';
+            if(invoice.service_schedule && (invoice.service_schedule.preferred_date || invoice.service_schedule.preferred_time)){
+                var scheduleParts = [];
+                if(invoice.service_schedule.preferred_date){
+                    var formattedDate = new Date(invoice.service_schedule.preferred_date).toLocaleDateString();
+                    scheduleParts.push(formattedDate);
+                }
+                if(invoice.service_schedule.preferred_time){
+                    scheduleParts.push(invoice.service_schedule.preferred_time);
+                }
+                if(scheduleParts.length){
+                    html += '<p class="text-muted mb-0"><strong>Preferred Schedule:</strong> ' + scheduleParts.join(' at ') + '</p>';
+                }
+            }
+            html += '</div>';
+        }
 
         html += '<div class="row">';
         html += '<div class="col-md-6">';
@@ -475,12 +505,11 @@ $(document).ready(function(){
 
         html += '<div class="table-responsive">';
         html += '<table class="table table-bordered">';
-        html += '<thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>';
+        html += '<thead><tr><th>Item</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>';
         html += '<tbody>';
         $.each(receipt.items, function(index, item){
             html += '<tr>';
             html += '<td>' + item.item_name + '</td>';
-            html += '<td>' + (item.item_description || '-') + '</td>';
             html += '<td>' + item.quantity + '</td>';
             html += '<td>₱' + parseFloat(item.unit_price).toLocaleString() + '</td>';
             html += '<td>₱' + parseFloat(item.total_price).toLocaleString() + '</td>';

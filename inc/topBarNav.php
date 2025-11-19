@@ -39,18 +39,22 @@
                 <div class="nav-item dropdown">
                     <a class="nav-link position-relative" data-toggle="dropdown" href="#" id="notifications-dropdown">
                         <i class="far fa-bell"></i>
-                        <span class="badge badge-warning navbar-badge" id="notifications-count">0</span>
+                        <span class="badge badge-warning navbar-badge" id="notifications-count" style="display:none;">0</span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" id="notifications-list">
-                        <span class="dropdown-header">Notifications</span>
-                        <div class="dropdown-divider"></div>
+                        <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+                            <span class="dropdown-header mb-0">Notifications</span>
+                            <button class="btn btn-sm btn-link text-primary p-0" type="button" onclick="markAllNotificationsRead()">
+                                Mark all read
+                            </button>
+                        </div>
                         <div id="notifications-content">
                             <div class="text-center p-3">
                                 <i class="fas fa-spinner fa-spin"></i> Loading...
                             </div>
                         </div>
-                        <div class="dropdown-divider"></div>
-                        <a href="#" class="dropdown-item dropdown-footer" onclick="loadAllNotifications()">View All Notifications</a>
+                        <div class="dropdown-divider mb-0"></div>
+                        <a href="#" class="dropdown-item dropdown-footer" onclick="openNotificationHistory(event)">View Notification History</a>
                     </div>
                 </div>
                 
@@ -84,6 +88,33 @@
         </div>
     </div>
 </nav>
+
+<!-- Notification History Modal -->
+<div class="modal fade" id="notificationHistoryModal" tabindex="-1" role="dialog" aria-labelledby="notificationHistoryLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-md" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="notificationHistoryLabel">Notification History</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body p-0">
+        <div id="notificationHistoryList" class="list-group list-group-flush">
+          <div class="text-center p-4">
+            <i class="fas fa-spinner fa-spin"></i> Loading history...
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer d-flex justify-content-between">
+        <small class="text-muted" id="notificationHistoryMeta"></small>
+        <button type="button" class="btn btn-outline-primary btn-sm" id="notificationHistoryLoadMore" onclick="loadNotificationHistory()" style="display:none;">
+          Load more
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Mobile Sidebar -->
 <div class="mobile-sidebar" id="mobileSidebar">
@@ -238,6 +269,11 @@
   })
   
   // Notification functions
+  var notificationHistoryPage = 0;
+  var notificationHistoryLimit = 20;
+  var notificationHistoryHasMore = false;
+  var notificationHistoryLoading = false;
+  
   function loadNotificationsCount(){
     $.ajax({
         url: _base_url_ + "classes/Master.php?f=get_notifications_count",
@@ -263,21 +299,25 @@
     $.ajax({
         url: _base_url_ + "classes/Master.php?f=get_notifications",
         method: "POST",
-        data: {limit: 5},
+        data: {limit: 7},
         dataType: "json",
         success: function(resp){
             if(resp.status == 'success'){
                 var html = '';
                 if(resp.data.length > 0){
                     resp.data.forEach(function(notification){
-                        html += '<a href="#" class="dropdown-item notification-item ' + (notification.is_read == 0 ? 'unread' : '') + '" onclick="markNotificationRead(' + notification.id + ')">';
+                        var message = notification.message || '';
+                        var title = notification.title || 'Notification';
+                        html += '<a href="#" class="dropdown-item notification-item ' + (notification.is_read == 0 ? 'unread' : '') + '" onclick="markNotificationRead(' + notification.id + '); return false;">';
                         html += '<div class="d-flex align-items-start">';
                         html += '<div class="notification-icon me-2">';
                         html += '<i class="fas fa-bell text-warning"></i>';
                         html += '</div>';
                         html += '<div class="notification-content">';
-                        html += '<div class="notification-title">' + notification.title + '</div>';
-                        html += '<div class="notification-text">' + notification.description + '</div>';
+                        html += '<div class="notification-title">' + title + '</div>';
+                        if(message){
+                            html += '<div class="notification-text">' + message + '</div>';
+                        }
                         html += '<div class="notification-time">' + formatTimeAgo(notification.date_created) + '</div>';
                         html += '</div>';
                         html += '</div>';
@@ -307,6 +347,18 @@
     });
   }
   
+  function markAllNotificationsRead(){
+    $.ajax({
+        url: _base_url_ + "classes/Master.php?f=mark_all_notifications_read",
+        method: "POST",
+        dataType: "json",
+        complete: function(){
+            loadNotificationsCount();
+            loadNotifications();
+        }
+    });
+  }
+  
   function formatTimeAgo(dateString){
     var now = new Date();
     var date = new Date(dateString);
@@ -326,6 +378,78 @@
     window.location.href = './?p=notifications';
   }
   
+  function openNotificationHistory(event){
+    if(event) event.preventDefault();
+    notificationHistoryPage = 0;
+    notificationHistoryHasMore = false;
+    $('#notificationHistoryList').html('<div class="text-center p-4"><i class="fas fa-spinner fa-spin"></i> Loading history...</div>');
+    $('#notificationHistoryMeta').text('');
+    $('#notificationHistoryLoadMore').hide();
+    $('#notificationHistoryModal').modal('show');
+    loadNotificationHistory(true);
+  }
+  
+  function loadNotificationHistory(reset){
+    if(notificationHistoryLoading) return;
+    if(!reset && !notificationHistoryHasMore) return;
+    notificationHistoryLoading = true;
+    var offset = notificationHistoryPage * notificationHistoryLimit;
+    $.ajax({
+        url: _base_url_ + "classes/Master.php?f=get_notification_history",
+        method: "POST",
+        data: {limit: notificationHistoryLimit, offset: offset},
+        dataType: "json",
+        success: function(resp){
+            if(resp.status === 'success'){
+                renderNotificationHistory(resp.items || [], reset);
+                notificationHistoryHasMore = !!resp.has_more;
+                $('#notificationHistoryMeta').text((resp.total || 0) + ' total notifications');
+                if(notificationHistoryHasMore){
+                    notificationHistoryPage++;
+                    $('#notificationHistoryLoadMore').show();
+                }else{
+                    $('#notificationHistoryLoadMore').hide();
+                }
+                if(reset){
+                    markAllNotificationsRead();
+                }
+            }else{
+                $('#notificationHistoryList').html('<div class="text-center p-4 text-muted">Unable to load history.</div>');
+                $('#notificationHistoryLoadMore').hide();
+            }
+        },
+        complete: function(){
+            notificationHistoryLoading = false;
+        }
+    });
+  }
+  
+  function renderNotificationHistory(items, reset){
+    var container = $('#notificationHistoryList');
+    if(reset){
+        container.empty();
+    }
+    if(!items.length && reset){
+        container.html('<div class="text-center p-4 text-muted">No notifications yet.</div>');
+        return;
+    }
+    items.forEach(function(notification){
+        var message = notification.message || '';
+        var title = notification.title || 'Notification';
+        var badge = notification.is_read == 0 ? '<span class="badge badge-warning badge-pill ml-2">New</span>' : '';
+        var item = '<div class="list-group-item">';
+        item += '<div class="d-flex justify-content-between align-items-center">';
+        item += '<h6 class="mb-1">' + title + ' ' + badge + '</h6>';
+        item += '<small class="text-muted">' + formatTimeAgo(notification.date_created) + '</small>';
+        item += '</div>';
+        if(message){
+            item += '<p class="mb-1 text-muted">' + message + '</p>';
+        }
+        item += '</div>';
+        container.append(item);
+    });
+  }
+  
   // Load notifications on page load
   $(document).ready(function(){
     if('<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>' == 1){
@@ -336,6 +460,10 @@
         setInterval(function(){
             loadNotificationsCount();
         }, 30000);
+        
+        $('#notifications-dropdown').on('click', function(){
+            loadNotifications();
+        });
     }
     
     // Mobile sidebar functionality

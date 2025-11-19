@@ -39,6 +39,12 @@ if ($is_standalone) {
 // Get available services
 $services = $conn->query("SELECT * FROM service_list WHERE status = 1 ORDER BY service ASC");
 
+// Define consistent preferred time slots (shared with appointment booking)
+$time_slots = [
+    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'
+];
+
 // Get user's existing service requests
 $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = '{$_settings->userdata('id')}' ORDER BY date_created DESC");
 ?>
@@ -155,7 +161,12 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
             </div>
             <div class="form-group col-md-4">
                 <label for="preferred_time" class="control-label">Preferred Time</label>
-                <input type="time" id="preferred_time" name="preferred_time" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>">
+                <select id="preferred_time" name="preferred_time" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>">
+                    <option value="">Select Time</option>
+                    <?php foreach($time_slots as $time): ?>
+                        <option value="<?= $time ?>"><?= $time ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
             
             <!-- Terms and Conditions -->
@@ -304,6 +315,7 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
 </div>
 <?php endif; ?>
 <script>
+    var serviceSlotAvailable = true;
     $(function(){
         $('.select2').select2({
             placeholder:"Please Select Services",
@@ -422,6 +434,9 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
         $('#service_id').change(validateServices);
         $('#service_description').on('input', validateServiceDescription);
         $('#terms_accepted').change(validateTermsAccepted);
+        $('#preferred_date, #preferred_time').on('change', function(){
+            checkPreferredSlotAvailability();
+        });
 
         // Form submission
         $('#request_form').submit(function(e){
@@ -441,76 +456,83 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                 return false;
             }
             
-            start_loader();
-            
-            var formData = new FormData($(this)[0]);
-            
-            $.ajax({
-                url: _base_url_ + 'classes/Master.php?f=save_request',
-                method: 'POST',
-                data: formData,
-                cache: false,
-                contentType: false,
-                processData: false,
-                dataType: 'text', // Changed to text to handle response manually
-                complete: function(xhr, status) {
-                    end_loader();
-                    
-                    var resp = null;
-                    var responseText = xhr.responseText || '';
-                    
-                    // Try to parse JSON response
-                    try {
-                        // Remove any whitespace or PHP notices that might be before JSON
-                        responseText = responseText.trim();
-                        // Find JSON in response (in case there's output before it)
-                        var jsonMatch = responseText.match(/\{[\s\S]*\}/);
-                        if(jsonMatch) {
-                            resp = JSON.parse(jsonMatch[0]);
-                        } else {
-                            resp = JSON.parse(responseText);
-                        }
-                    } catch(e) {
-                        console.error('Failed to parse response:', responseText);
-                        console.error('Parse error:', e);
-                        // If response contains success keywords, assume it worked
-                        if(responseText.toLowerCase().includes('success') || responseText.toLowerCase().includes('submitted')) {
-                            resp = {status: 'success', msg: 'Service request submitted successfully!'};
-                        } else {
-                            resp = {status: 'failed', msg: 'Failed to process response. Please check if your request was saved.'};
-                        }
-                    }
-                    
-                    // Handle response
-                    if(resp && (resp.status === 'success' || resp.status === 'Success')) {
-                        // Show success notification with better styling
-                        alert_toast(
-                            resp.msg || '✓ Service request submitted successfully! We will review your request shortly.', 
-                            'success'
-                        );
-                        
-                        // Clear form on success
-                        $('#request_form')[0].reset();
-                        $('#service_id').val(null).trigger('change');
-                        
-                        <?php if ($is_standalone): ?>
-                        setTimeout(function(){
-                            location.reload();
-                        }, 2500);
-                        <?php else: ?>
-                        setTimeout(function(){
-                            location.href = "./?p=my_services";
-                        }, 2500);
-                        <?php endif; ?>
-                    } else {
-                        // Show error with actual message
-                        var errorMsg = (resp && resp.msg) ? resp.msg : 'Failed to submit service request. Please try again.';
-                        if(resp && resp.error) {
-                            console.error('Server error:', resp.error);
-                        }
-                        alert_toast(errorMsg, 'error');
-                    }
+            checkPreferredSlotAvailability().then(function(isSlotAvailable){
+                if(!isSlotAvailable){
+                    alert_toast('This time slot is not available. Please choose another time.', 'error');
+                    return false;
                 }
+                
+                start_loader();
+                
+                var formData = new FormData($('#request_form')[0]);
+                
+                $.ajax({
+                    url: _base_url_ + 'classes/Master.php?f=save_request',
+                    method: 'POST',
+                    data: formData,
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    dataType: 'text', // Changed to text to handle response manually
+                    complete: function(xhr, status) {
+                        end_loader();
+                        
+                        var resp = null;
+                        var responseText = xhr.responseText || '';
+                        
+                        // Try to parse JSON response
+                        try {
+                            // Remove any whitespace or PHP notices that might be before JSON
+                            responseText = responseText.trim();
+                            // Find JSON in response (in case there's output before it)
+                            var jsonMatch = responseText.match(/\{[\s\S]*\}/);
+                            if(jsonMatch) {
+                                resp = JSON.parse(jsonMatch[0]);
+                            } else {
+                                resp = JSON.parse(responseText);
+                            }
+                        } catch(e) {
+                            console.error('Failed to parse response:', responseText);
+                            console.error('Parse error:', e);
+                            // If response contains success keywords, assume it worked
+                            if(responseText.toLowerCase().includes('success') || responseText.toLowerCase().includes('submitted')) {
+                                resp = {status: 'success', msg: 'Service request submitted successfully!'};
+                            } else {
+                                resp = {status: 'failed', msg: 'Failed to process response. Please check if your request was saved.'};
+                            }
+                        }
+                        
+                        // Handle response
+                        if(resp && (resp.status === 'success' || resp.status === 'Success')) {
+                            // Show success notification with better styling
+                            alert_toast(
+                                resp.msg || '✓ Service request submitted successfully! We will review your request shortly.', 
+                                'success'
+                            );
+                            
+                            // Clear form on success
+                            $('#request_form')[0].reset();
+                            $('#service_id').val(null).trigger('change');
+                            
+                            <?php if ($is_standalone): ?>
+                            setTimeout(function(){
+                                location.reload();
+                            }, 2500);
+                            <?php else: ?>
+                            setTimeout(function(){
+                                location.href = "./?p=my_services";
+                            }, 2500);
+                            <?php endif; ?>
+                        } else {
+                            // Show error with actual message
+                            var errorMsg = (resp && resp.msg) ? resp.msg : 'Failed to submit service request. Please try again.';
+                            if(resp && resp.error) {
+                                console.error('Server error:', resp.error);
+                            }
+                            alert_toast(errorMsg, 'error');
+                        }
+                    }
+                });
             });
         });
 
@@ -522,6 +544,50 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
         });
 
     });
+    
+    function checkPreferredSlotAvailability(){
+        return new Promise(function(resolve){
+            var date = $('#preferred_date').val();
+            var time = $('#preferred_time').val();
+            $('.availability-message').remove();
+            if(!date || !time){
+                serviceSlotAvailable = true;
+                $('#preferred_time').removeClass('is-invalid is-valid');
+                return resolve(true);
+            }
+            $.ajax({
+                url: _base_url_ + 'classes/Master.php?f=check_service_slot',
+                method: 'POST',
+                data: {
+                    preferred_date: date,
+                    preferred_time: time,
+                    exclude_id: $('input[name="id"]').val()
+                },
+                dataType: 'json',
+                success: function(resp){
+                    $('.availability-message').remove();
+                    if(resp.status === 'success'){
+                        if(resp.available){
+                            serviceSlotAvailable = true;
+                            $('#preferred_time').removeClass('is-invalid').addClass('is-valid');
+                            $('#preferred_time').after('<small class="text-success availability-message">This time slot is available!</small>');
+                        }else{
+                            serviceSlotAvailable = false;
+                            $('#preferred_time').removeClass('is-valid').addClass('is-invalid');
+                            $('#preferred_time').after('<small class="text-danger availability-message">This time slot is not available. Please choose another time.</small>');
+                        }
+                    }else{
+                        serviceSlotAvailable = true;
+                    }
+                    resolve(serviceSlotAvailable);
+                },
+                error: function(){
+                    serviceSlotAvailable = true;
+                    resolve(true);
+                }
+            });
+        });
+    }
     
     function cancelServiceRequest(request_id){
         _conf("Are you sure you want to cancel this service request?","cancel_service_request",[request_id]);

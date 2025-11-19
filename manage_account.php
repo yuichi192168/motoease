@@ -54,6 +54,55 @@ $installments = $conn->query("SELECT
 
 // Get OR/CR documents
 $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_settings->userdata('id')}' ORDER BY date_created DESC");
+
+// Determine if client has installment-based orders
+$has_installments = false;
+$installment_check = $conn->query("SELECT COUNT(*) as cnt FROM order_list WHERE client_id = '{$client_id}' AND requires_credit = 1");
+if($installment_check){
+    $installment_row = $installment_check->fetch_assoc();
+    $has_installments = isset($installment_row['cnt']) && (int)$installment_row['cnt'] > 0;
+}
+
+// Load customer account balances / payment schedules if available
+$customer_accounts = [];
+$account_schedule_map = [];
+$account_balance_summary = [
+    'total' => 0,
+    'paid' => 0,
+    'pending' => 0
+];
+$customer_accounts_helper = null;
+if(file_exists(base_app.'classes/CustomerAccountBalance.php')){
+    require_once(base_app.'classes/CustomerAccountBalance.php');
+}
+if(class_exists('CustomerAccountBalance')){
+    $customer_accounts_helper = new CustomerAccountBalance($conn);
+    $customer_accounts = $customer_accounts_helper->getCustomerAccounts($client_id);
+    if(!empty($customer_accounts)){
+        $has_installments = true;
+        foreach($customer_accounts as $account_row){
+            $account_balance_summary['total'] += (float)($account_row['total_price'] ?? 0);
+            $account_balance_summary['paid'] += (float)($account_row['paid_amount'] ?? 0);
+            $account_balance_summary['pending'] += (float)($account_row['remaining_balance'] ?? 0);
+            $account_schedule_map[$account_row['id']] = $customer_accounts_helper->getPaymentSchedule($account_row['id']);
+        }
+    }
+}
+$has_customer_payment_schedule = !empty($customer_accounts);
+$summary_total_amount = $has_customer_payment_schedule ? $account_balance_summary['total'] : ($account_balance['total_balance'] ?? 0);
+$summary_pending_amount = $has_customer_payment_schedule ? $account_balance_summary['pending'] : ($account_balance['pending_amount'] ?? 0);
+$summary_paid_amount = $has_customer_payment_schedule ? $account_balance_summary['paid'] : ($account_balance['delivered_amount'] ?? 0);
+$summary_installment_plan = null;
+$summary_installment_monthly = null;
+if($has_customer_payment_schedule){
+    $primary_account = $customer_accounts[0];
+    if(isset($primary_account['installment_plan_months']) && (int)$primary_account['installment_plan_months'] > 0){
+        $summary_installment_plan = (int)$primary_account['installment_plan_months'];
+    }
+    if(isset($primary_account['monthly_payment_amount']) && (float)$primary_account['monthly_payment_amount'] > 0){
+        $summary_installment_monthly = (float)$primary_account['monthly_payment_amount'];
+    }
+}
 ?>
 <style>
 /* Ensure customer info boxes use the requested teal color */
@@ -81,11 +130,6 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
             </div>
         </div>
         
-        <?php
-        // Determine if the client has any installment plans (orders requiring credit)
-        $has_installments_q = $conn->query("SELECT COUNT(*) as cnt FROM order_list WHERE client_id = '{$client_id}' AND requires_credit = 1");
-        $has_installments = $has_installments_q ? ((int)$has_installments_q->fetch_assoc()['cnt'] > 0) : false;
-        ?>
         <!-- Account Balance Section (shown only when client has installment plans) -->
         <?php if($has_installments): ?>
         <div class="row mb-4">
@@ -96,96 +140,146 @@ $documents = $conn->query("SELECT * FROM or_cr_documents WHERE client_id = '{$_s
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="info-box bg-primary" style="min-height: 80px; display: flex; align-items: center;">
                                     <span class="info-box-icon" style="display: flex; align-items: center; justify-content: center;"><i class="fas fa-money-bill-wave"></i></span>
                                     <div class="info-box-content" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
-                                        <span class="info-box-text" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 5px;">Total Order Amount</span>
-                                        <span class="info-box-number" style="display: block; font-size: 24px; font-weight: bold;">₱<?= number_format($account_balance['total_balance'] ?? 0, 2) ?></span>
+                                        <span class="info-box-text" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 5px;">Total Price</span>
+                                        <span class="info-box-number" style="display: block; font-size: 24px; font-weight: bold;">₱<?= number_format($summary_total_amount, 2) ?></span>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="info-box bg-warning" style="min-height: 80px; display: flex; align-items: center;">
                                     <span class="info-box-icon" style="display: flex; align-items: center; justify-content: center;"><i class="fas fa-credit-card"></i></span>
                                     <div class="info-box-content" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
-                                        <span class="info-box-text" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 5px;">Pending Amount</span>
-                                        <span class="info-box-number" style="display: block; font-size: 24px; font-weight: bold;">₱<?= number_format($account_balance['pending_amount'] ?? 0, 2) ?></span>
+                                        <span class="info-box-text" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 5px;">Paid Amount</span>
+                                        <span class="info-box-number" style="display: block; font-size: 24px; font-weight: bold;">₱<?= number_format($summary_paid_amount, 2) ?></span>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="info-box bg-info" style="min-height: 80px; display: flex; align-items: center;">
                                     <span class="info-box-icon" style="display: flex; align-items: center; justify-content: center;"><i class="fas fa-calendar-alt"></i></span>
                                     <div class="info-box-content" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
-                                        <span class="info-box-text" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 5px;">Paid Amount</span>
-                                        <span class="info-box-number" style="display: block; font-size: 24px; font-weight: bold;">₱<?= number_format($account_balance['delivered_amount'] ?? 0, 2) ?></span>
+                                        <span class="info-box-text" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 5px;">Remaining Balance</span>
+                                        <span class="info-box-number" style="display: block; font-size: 24px; font-weight: bold;">₱<?= number_format($summary_pending_amount, 2) ?></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-box bg-secondary" style="min-height: 80px; display: flex; align-items: center;">
+                                    <span class="info-box-icon" style="display: flex; align-items: center; justify-content: center;"><i class="fas fa-stream"></i></span>
+                                    <div class="info-box-content" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                                        <span class="info-box-text" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 5px;">Installment Plan</span>
+                                        <span class="info-box-number" style="display: block; font-size: 24px; font-weight: bold;">
+                                            <?= $summary_installment_plan ? $summary_installment_plan . ' mos' : '—' ?>
+                                        </span>
+                                        <?php if($summary_installment_monthly): ?>
+                                            <small class="text-light" style="font-size: 12px;">₱<?= number_format($summary_installment_monthly, 2) ?>/month</small>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         
-                        <!-- Payment Status Alert -->
-                        
-                        <?php 
-                        // Invoices & Receipts summary aligned with Admin
-                        $invoices_rs = $conn->query("SELECT i.id, i.invoice_number, i.total_amount, i.payment_status, i.generated_at, i.due_date,
-                                                            COALESCE(SUM(r.amount_paid), 0) as total_paid,
-                                                            MAX(r.issued_at) as last_paid_at,
-                                                            COUNT(r.id) as receipt_count,
-                                                            MAX(r.receipt_number) as last_receipt_number
-                                                       FROM invoices i
-                                                       LEFT JOIN receipts r ON r.invoice_id = i.id
-                                                       WHERE i.customer_id = '{$client_id}'
-                                                       GROUP BY i.id
-                                                       ORDER BY i.generated_at DESC");
-                        ?>
-                        <!-- Payment History (Invoices & Receipts) -->
-                        <div class="table-responsive mt-3">
-                            <table class="table table-bordered table-striped">
-                                <thead class="thead-dark">
-                                    <tr>
-                                        <th>Invoice #</th>
-                                        <th>Payment Date</th>
-                                        <th>Amount Paid</th>
-                                        <th>Remaining Balance</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php if($invoices_rs && $invoices_rs->num_rows > 0): ?>
-                                        <?php while($inv = $invoices_rs->fetch_assoc()): 
-                                            $paid = (float)$inv['total_paid'];
-                                            $total = (float)$inv['total_amount'];
-                                            $remaining = max(0, $total - $paid);
-                                            $status = $remaining <= 0 ? 'Paid' : ($paid > 0 ? 'Partial' : ($inv['payment_status'] === 'unpaid' ? 'Unpaid' : ucfirst($inv['payment_status'])));
-                                            $badge = $remaining <= 0 ? 'success' : ($paid > 0 ? 'info' : 'warning');
-                                        ?>
-                                        <tr>
-                                            <td>
-                                                <strong><?= htmlspecialchars($inv['invoice_number']) ?></strong>
-                                                <?php if(!empty($inv['last_receipt_number'])): ?>
-                                                    <br><small class="text-muted">Receipt: <?= htmlspecialchars($inv['last_receipt_number']) ?><?= ($inv['receipt_count'] > 1 ? ' (+' . ((int)$inv['receipt_count']-1) . ' more)' : '') ?></small>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <?php if(!empty($inv['last_paid_at'])): ?>
-                                                    <?= date('M d, Y H:i', strtotime($inv['last_paid_at'])) ?>
-                                                <?php else: ?>
-                                                    <span class="text-muted">—</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>₱<?= number_format($paid, 2) ?></td>
-                                            <td class="<?= $remaining > 0 ? 'text-danger' : 'text-success' ?>">₱<?= number_format($remaining, 2) ?></td>
-                                            <td><span class="badge badge-<?= $badge ?>"><?= $status ?></span></td>
-                                        </tr>
-                                        <?php endwhile; ?>
-                                    <?php else: ?>
-                                        <tr><td colspan="5" class="text-center text-muted">No invoices/receipts found.</td></tr>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
-                        </div>
+                        <!-- Payment Schedule replicated from Admin Account Details -->
+                        <?php if($has_customer_payment_schedule): ?>
+                            <?php foreach($customer_accounts as $client_account): 
+                                $schedule_items = $account_schedule_map[$client_account['id']] ?? [];
+                                $account_status = strtolower($client_account['status'] ?? 'active');
+                                $account_status_badge = 'secondary';
+                                switch($account_status){
+                                    case 'paid': $account_status_badge = 'success'; break;
+                                    case 'active': $account_status_badge = 'primary'; break;
+                                    case 'defaulted': $account_status_badge = 'danger'; break;
+                                }
+                            ?>
+                            <div class="border rounded p-3 mt-3 account-payment-schedule">
+                                <div class="d-flex flex-wrap justify-content-between align-items-start">
+                                    <div class="mb-2">
+                                        <h5 class="mb-1 text-dark"><?= htmlspecialchars($client_account['item_purchased'] ?? 'Account #'.$client_account['id']) ?></h5>
+                                        <p class="text-muted mb-0">Order #<?= htmlspecialchars($client_account['order_id'] ?? 'N/A') ?></p>
+                                    </div>
+                                    <div class="text-right">
+                                        <small class="text-muted d-block">Status</small>
+                                        <span class="badge badge-<?= $account_status_badge ?>"><?= ucfirst($account_status) ?></span>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-sm-3 mb-2">
+                                        <small class="text-muted d-block">Total Price</small>
+                                        <span class="h5 mb-0 text-dark">₱<?= number_format($client_account['total_price'] ?? 0, 2) ?></span>
+                                    </div>
+                                    <div class="col-sm-3 mb-2">
+                                        <small class="text-muted d-block">Paid Amount</small>
+                                        <span class="h5 mb-0 text-success">₱<?= number_format($client_account['paid_amount'] ?? 0, 2) ?></span>
+                                    </div>
+                                    <div class="col-sm-3 mb-2">
+                                        <small class="text-muted d-block">Remaining Balance</small>
+                                        <span class="h5 mb-0 text-danger">₱<?= number_format($client_account['remaining_balance'] ?? 0, 2) ?></span>
+                                    </div>
+                                    <div class="col-sm-3 mb-2">
+                                        <small class="text-muted d-block">Installment Plan</small>
+                                        <span class="h5 mb-0 text-dark">
+                                            <?= !empty($client_account['installment_plan_months']) ? intval($client_account['installment_plan_months']).' mos' : '—' ?>
+                                        </span>
+                                        <?php if(!empty($client_account['monthly_payment_amount'])): ?>
+                                            <div class="text-muted small">Monthly: ₱<?= number_format($client_account['monthly_payment_amount'], 2) ?></div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                <?php if(!empty($schedule_items)): ?>
+                                <div class="table-responsive mt-3">
+                                    <table class="table table-bordered table-striped table-sm mb-0">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th>Installment</th>
+                                                <th>Due Date</th>
+                                                <th>Amount Due</th>
+                                                <th>Paid Amount</th>
+                                                <th>Late Fee</th>
+                                                <th>Remaining Balance</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach($schedule_items as $item): 
+                                                $schedule_status = $item['payment_status'] ?? 'Unpaid';
+                                                $schedule_badge = 'info';
+                                                switch($schedule_status){
+                                                    case 'Paid': $schedule_badge = 'success'; break;
+                                                    case 'Late': $schedule_badge = 'danger'; break;
+                                                    case 'Partial': $schedule_badge = 'warning'; break;
+                                                    case 'Unpaid': $schedule_badge = 'info'; break;
+                                                    default: $schedule_badge = 'secondary'; break;
+                                                }
+                                            ?>
+                                            <tr>
+                                                <td><?= htmlspecialchars($item['installment_number']) ?></td>
+                                                <td><?= date('M d, Y', strtotime($item['due_date'])) ?></td>
+                                                <td class="text-right">₱<?= number_format($item['amount_due'], 2) ?></td>
+                                                <td class="text-right text-success">₱<?= number_format($item['paid_amount'], 2) ?></td>
+                                                <td class="text-right text-danger">₱<?= number_format($item['late_fee'], 2) ?></td>
+                                                <td class="text-right">₱<?= number_format($item['remaining_balance'], 2) ?></td>
+                                                <td class="text-center">
+                                                    <span class="badge badge-<?= $schedule_badge ?>"><?= $schedule_status ?></span>
+                                                </td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <?php else: ?>
+                                    <p class="text-muted mb-0 mt-3">No payment schedule entries yet for this account.</p>
+                                <?php endif; ?>
+                            </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="alert alert-info mt-3 mb-0">
+                                No payment schedule is available yet. Please check back after your account has been enrolled.
+                            </div>
+                        <?php endif; ?>
 
                         <?php 
                         // Balance adjustments/payment transactions (admin changes reflected here)

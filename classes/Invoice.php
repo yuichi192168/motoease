@@ -300,6 +300,44 @@ class Invoice extends DBConnection {
             while($item = $items->fetch_assoc()) {
                 $invoice['items'][] = $item;
             }
+            $invoice['service_details'] = [];
+            $invoice['service_schedule'] = [];
+            if(!empty($invoice['service_request_id'])){
+                $service_request_id = $this->conn->real_escape_string($invoice['service_request_id']);
+                $meta = $this->conn->query("SELECT meta_field, meta_value FROM request_meta WHERE request_id = '{$service_request_id}' AND meta_field IN ('service_id','preferred_date','preferred_time')");
+                $service_ids = [];
+                if($meta){
+                    while($row = $meta->fetch_assoc()){
+                        if($row['meta_field'] === 'service_id'){
+                            $service_ids = array_filter(array_map('trim', explode(',', (string)$row['meta_value'])));
+                        }elseif($row['meta_field'] === 'preferred_date' || $row['meta_field'] === 'preferred_time'){
+                            $invoice['service_schedule'][$row['meta_field']] = $row['meta_value'];
+                        }
+                    }
+                }
+                if(!empty($service_ids)){
+                    $ids = array_values(array_filter(array_map('intval', $service_ids)));
+                    if(!empty($ids)){
+                        $id_list = implode(',', $ids);
+                        $services_q = $this->conn->query("SELECT id, service, service_amount FROM service_list WHERE id IN ({$id_list})");
+                        $services_map = [];
+                        if($services_q){
+                            while($svc = $services_q->fetch_assoc()){
+                                $services_map[$svc['id']] = [
+                                    'id' => (int)$svc['id'],
+                                    'name' => $svc['service'],
+                                    'amount' => isset($svc['service_amount']) ? (float)$svc['service_amount'] : 0
+                                ];
+                            }
+                        }
+                        foreach($ids as $sid){
+                            if(isset($services_map[$sid])){
+                                $invoice['service_details'][] = $services_map[$sid];
+                            }
+                        }
+                    }
+                }
+            }
         }
         return $invoice;
     }

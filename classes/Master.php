@@ -476,7 +476,7 @@ Class Master extends DBConnection {
 		if(!empty($selected_items_str)){
 			$cart_filter = " AND c.id IN ({$selected_items_str})";
 		}
-		$item_type_query = $this->conn->query("SELECT p.name, cat.category 
+        $item_type_query = $this->conn->query("SELECT p.name, p.price, c.quantity, cat.category 
 											  FROM cart_list c 
 												INNER JOIN product_list p ON c.product_id = p.id 
 											  LEFT JOIN categories cat ON p.category_id = cat.id 
@@ -484,10 +484,13 @@ Class Master extends DBConnection {
 		$motorcycle_count = 0;
 		$parts_count = 0;
 		$oils_count = 0;
-		if($item_type_query){
+        $motorcycle_subtotal_amount = 0;
+        $non_motorcycle_subtotal_amount = 0;
+        if($item_type_query){
 			while($row = $item_type_query->fetch_assoc()){
 				$category = strtolower($row['category'] ?? '');
 				$product_name = strtolower($row['name'] ?? '');
+                $line_total = (isset($row['price']) ? floatval($row['price']) : 0) * (isset($row['quantity']) ? floatval($row['quantity']) : 0);
 				$is_oil = (strpos($category, 'oil') !== false) || (strpos($category, 'lubricant') !== false) || (strpos($product_name, 'oil') !== false);
 				$is_part = (strpos($category, 'part') !== false) || (strpos($category, 'accessor') !== false) || (strpos($category, 'gear') !== false) || (strpos($product_name, 'part') !== false);
 				$is_motorcycle = (
@@ -495,12 +498,15 @@ Class Master extends DBConnection {
 					&& !$is_part && !$is_oil
 				);
 				
-				if($is_motorcycle){
+                if($is_motorcycle){
 					$motorcycle_count++;
+                    $motorcycle_subtotal_amount += $line_total;
 				}elseif($is_oil){
 					$oils_count++;
+                    $non_motorcycle_subtotal_amount += $line_total;
 				}else{
 					$parts_count++;
+                    $non_motorcycle_subtotal_amount += $line_total;
 				}
 			}
 		}
@@ -544,6 +550,9 @@ Class Master extends DBConnection {
 			// Add add-ons total if provided
 			$addons_total = isset($_POST['addons_total']) ? floatval($_POST['addons_total']) : 0;
 			$total_amount += $addons_total;
+            if($has_motorcycle){
+                $non_motorcycle_subtotal_amount += $addons_total;
+            }
 			
 			// Create order - only use columns required in the database
 			$addons_data = isset($_POST['addons']) ? $this->conn->real_escape_string($_POST['addons']) : '';
@@ -654,6 +663,8 @@ Class Master extends DBConnection {
                 if($has_motorcycle && file_exists(base_app.'classes/CustomerAccountBalance.php')){
                     require_once base_app.'classes/CustomerAccountBalance.php';
                     $accountBalance = new CustomerAccountBalance($this->conn);
+                    $financed_amount = $motorcycle_subtotal_amount > 0 ? $motorcycle_subtotal_amount : $total_amount;
+                    $upfront_accessory_total = $non_motorcycle_subtotal_amount;
                     
                     // Get motorcycle product name(s)
                     $motorcycle_query = $this->conn->query("SELECT p.name, p.price, oi.quantity 
@@ -666,7 +677,7 @@ Class Master extends DBConnection {
                     
                     if($motorcycle_query && $motorcycle_row = $motorcycle_query->fetch_assoc()){
                         $item_purchased = $motorcycle_row['name'];
-                        $total_price = $total_amount; // Without VAT (already calculated without VAT in order)
+                        $total_price = $financed_amount; // Only finance motorcycle portion
                         
                         // Get payment method and installment details from form
                         $payment_method = isset($_POST['payment_method']) ? strtolower(trim($_POST['payment_method'])) : 'cash';
@@ -855,20 +866,37 @@ Class Master extends DBConnection {
 	
 	// Notification functions
 	function getNotifications(){
-		$client_id = $this->settings->userdata('id');
-		$limit = isset($_POST['limit']) ? (int)$_POST['limit'] : 10;
-		
-		$notifications = $this->conn->query("SELECT * FROM notifications WHERE user_id = '{$client_id}' ORDER BY date_created DESC LIMIT {$limit}");
-		
-		$data = [];
-		while($row = $notifications->fetch_assoc()){
-			$data[] = $row;
+		$user_id = $this->settings->userdata('id');
+		if(empty($user_id)){
+			return json_encode(['status'=>'failed','msg'=>'User not logged in.']);
 		}
-		
-		$resp['status'] = 'success';
-		$resp['data'] = $data;
-		
-		return json_encode($resp);
+		$limit = isset($_POST['limit']) ? max(1, (int)$_POST['limit']) : 10;
+		$offset = isset($_POST['offset']) ? max(0, (int)$_POST['offset']) : 0;
+		$data = [];
+		try{
+			if(file_exists(base_app.'classes/Notification.php')){
+				require_once base_app.'classes/Notification.php';
+				$notif = new Notification();
+				$data = $notif->getUserNotifications($user_id, $limit, $offset);
+			}else{
+				$query = $this->conn->query("SELECT id, type, title, message, data, is_read, date_created FROM notifications WHERE user_id = '{$user_id}' ORDER BY date_created DESC LIMIT {$offset},{$limit}");
+				if($query){
+					while($row = $query->fetch_assoc()){
+						if(isset($row['data']) && !is_null($row['data'])){
+							$decoded = json_decode($row['data'], true);
+							if(json_last_error() === JSON_ERROR_NONE){
+								$row['data'] = $decoded;
+							}
+						}
+						$row['is_read'] = isset($row['is_read']) ? (int)$row['is_read'] : 0;
+						$data[] = $row;
+					}
+				}
+			}
+			return json_encode(['status'=>'success','data'=>$data]);
+		}catch(Exception $e){
+			return json_encode(['status'=>'failed','msg'=>'Failed to load notifications.','error'=>$e->getMessage()]);
+		}
 	}
 	
 	function markNotificationRead(){
@@ -902,30 +930,87 @@ Class Master extends DBConnection {
 	}
 	
 	function get_notifications_count(){
-		$client_id = $this->settings->userdata('id');
-		if(empty($client_id)){
-			$resp['status'] = 'failed';
-			$resp['msg'] = "User not logged in.";
-			return json_encode($resp);
+		$user_id = $this->settings->userdata('id');
+		if(empty($user_id)){
+			return json_encode(['status'=>'success','count'=>0]);
 		}
-		
-		$count = $this->conn->query("SELECT COUNT(*) as count FROM notifications WHERE user_id = '{$client_id}' AND is_read = 0")->fetch_assoc()['count'];
-		
-		$resp['status'] = 'success';
-		$resp['count'] = $count;
-		return json_encode($resp);
+		$query = $this->conn->query("SELECT COUNT(*) as count FROM notifications WHERE user_id = '{$user_id}' AND is_read = 0");
+		$count = $query ? (int)$query->fetch_assoc()['count'] : 0;
+		return json_encode(['status'=>'success','count'=>$count]);
+	}
+	
+	function get_notification_history(){
+		$user_id = $this->settings->userdata('id');
+		if(empty($user_id)){
+			return json_encode(['status'=>'failed','msg'=>'User not logged in.']);
+		}
+		$limit = isset($_POST['limit']) ? max(1,(int)$_POST['limit']) : 20;
+		$offset = isset($_POST['offset']) ? max(0,(int)$_POST['offset']) : 0;
+		$result = ['items'=>[], 'total'=>0, 'has_more'=>false];
+		try{
+			if(file_exists(base_app.'classes/Notification.php')){
+				require_once base_app.'classes/Notification.php';
+				$notif = new Notification();
+				$result = $notif->getNotificationHistory($user_id, $limit, $offset);
+			}else{
+				$query = $this->conn->query("SELECT id, type, title, message, data, is_read, date_created FROM notifications WHERE user_id = '{$user_id}' ORDER BY date_created DESC LIMIT {$offset},{$limit}");
+				$items = [];
+				if($query){
+					while($row = $query->fetch_assoc()){
+						if(isset($row['data']) && !is_null($row['data'])){
+							$decoded = json_decode($row['data'], true);
+							if(json_last_error() === JSON_ERROR_NONE){
+								$row['data'] = $decoded;
+							}
+						}
+						$row['is_read'] = isset($row['is_read']) ? (int)$row['is_read'] : 0;
+						$items[] = $row;
+					}
+				}
+				$total = $this->conn->query("SELECT COUNT(*) as cnt FROM notifications WHERE user_id = '{$user_id}'");
+				$total_count = $total ? (int)$total->fetch_assoc()['cnt'] : 0;
+				$result = [
+					'items' => $items,
+					'total' => $total_count,
+					'has_more' => ($offset + $limit) < $total_count
+				];
+			}
+			return json_encode(['status'=>'success'] + $result);
+		}catch(Exception $e){
+			return json_encode(['status'=>'failed','msg'=>'Failed to load notification history.','error'=>$e->getMessage()]);
+		}
+	}
+	
+	function mark_all_notifications_read(){
+		$user_id = $this->settings->userdata('id');
+		if(empty($user_id)){
+			return json_encode(['status'=>'failed','msg'=>'User not logged in.']);
+		}
+		try{
+			if(file_exists(base_app.'classes/Notification.php')){
+				require_once base_app.'classes/Notification.php';
+				$notif = new Notification();
+				$notif->markAllRead($user_id);
+			}else{
+				$this->conn->query("UPDATE notifications SET is_read = 1 WHERE user_id = '{$user_id}' AND is_read = 0");
+			}
+			return json_encode(['status'=>'success']);
+		}catch(Exception $e){
+			return json_encode(['status'=>'failed','msg'=>'Failed to update notifications.','error'=>$e->getMessage()]);
+		}
 	}
 
 	// Admin notification functions
 	function get_admin_notifications_count(){
 		$role = $this->settings->userdata('role_type');
-		$allowed = array('admin','branch_supervisor','service_admin');
+		$allowed = array('admin','branch_supervisor','service_admin','accounting');
 		if(!in_array($role, $allowed)){
-			$resp = ['status' => 'failed','msg'=>'Access denied.'];
-			return json_encode($resp);
+			return json_encode(['status' => 'failed','msg'=>'Access denied.']);
 		}
-		$count = $this->conn->query("SELECT COUNT(*) as cnt FROM notifications WHERE is_read = 0")->fetch_assoc()['cnt'];
-		return json_encode(['status'=>'success','count'=>(int)$count]);
+		$admin_id = $this->settings->userdata('id');
+		$query = $this->conn->query("SELECT COUNT(*) as cnt FROM notifications WHERE user_id = '{$admin_id}' AND is_read = 0");
+		$count = $query ? (int)$query->fetch_assoc()['cnt'] : 0;
+		return json_encode(['status'=>'success','count'=>$count]);
 	}
 
 	function get_admin_notifications(){
@@ -934,84 +1019,33 @@ Class Master extends DBConnection {
 		if(!in_array($role, $allowed)){
 			return json_encode(['status' => 'failed','msg'=>'Access denied.']);
 		}
-		$limit = isset($_POST['limit']) ? (int)$_POST['limit'] : 20;
-		$offset = isset($_POST['offset']) ? (int)$_POST['offset'] : 0;
+		$limit = isset($_POST['limit']) ? max(1,(int)$_POST['limit']) : 20;
+		$offset = isset($_POST['offset']) ? max(0,(int)$_POST['offset']) : 0;
 		$data = [];
-		// 1) Fetch explicit notifications (global/admin notifications stored in notifications table)
-		$qn = $this->conn->query("SELECT * FROM notifications ORDER BY date_created DESC LIMIT {$offset},{$limit}");
-		while($row = $qn->fetch_assoc()){
-			// normalize
-			$data[] = [
-				'id' => 'n_'.$row['id'],
-				'type' => $row['type'],
-				'title' => $row['title'],
-				'message' => $row['message'],
-				'data' => $row['data'],
-				'date_created' => $row['date_created'],
-				'is_read' => isset($row['is_read']) ? (int)$row['is_read'] : 0,
-				'target' => null
-			];
-		}
-		// 2) Also include recent system events (orders, service_requests, appointments)
-		// we fetch recent pending items and append if not enough results
-		$remaining = $limit - count($data);
-		if($remaining > 0){
-			// orders pending
-			$qo = $this->conn->query("SELECT id, ref_code, client_id, date_created FROM order_list WHERE status = 0 ORDER BY date_created DESC LIMIT {$remaining}");
-			while($r = $qo->fetch_assoc()){
-				$data[] = [
-					'id' => 'order_'.$r['id'],
-					'type' => 'order',
-					'title' => 'New Order #'.($r['ref_code']?:$r['id']),
-					'message' => 'Pending order received',
-					'data' => json_encode(['order_id'=>$r['id'],'client_id'=>$r['client_id']]),
-					'date_created' => $r['date_created'],
-					'is_read' => 0,
-					'target' => './?page=orders/view_order&id='.$r['id']
-				];
+		try{
+			if(file_exists(base_app.'classes/Notification.php')){
+				require_once base_app.'classes/Notification.php';
+				$notif = new Notification();
+				$data = $notif->getUserNotifications($this->settings->userdata('id'), $limit, $offset);
+			}else{
+				$query = $this->conn->query("SELECT id, type, title, message, data, is_read, date_created FROM notifications WHERE user_id = '{$this->settings->userdata('id')}' ORDER BY date_created DESC LIMIT {$offset},{$limit}");
+				if($query){
+					while($row = $query->fetch_assoc()){
+						if(isset($row['data']) && !is_null($row['data'])){
+							$decoded = json_decode($row['data'], true);
+							if(json_last_error() === JSON_ERROR_NONE){
+								$row['data'] = $decoded;
+							}
+						}
+						$row['is_read'] = isset($row['is_read']) ? (int)$row['is_read'] : 0;
+						$data[] = $row;
+					}
+				}
 			}
+			return json_encode(['status'=>'success','data'=>$data]);
+		}catch(Exception $e){
+			return json_encode(['status'=>'failed','msg'=>'Failed to load notifications.','error'=>$e->getMessage()]);
 		}
-		// services
-		$remaining = $limit - count($data);
-		if($remaining > 0){
-			$qs = $this->conn->query("SELECT id, client_id, date_created FROM service_requests WHERE status = 0 ORDER BY date_created DESC LIMIT {$remaining}");
-			while($r = $qs->fetch_assoc()){
-				$data[] = [
-					'id' => 'service_'.$r['id'],
-					'type' => 'service',
-					'title' => 'New Service Request #'.$r['id'],
-					'message' => 'Pending service request',
-					'data' => json_encode(['request_id'=>$r['id'],'client_id'=>$r['client_id']]),
-					'date_created' => $r['date_created'],
-					'is_read' => 0,
-					'target' => './?page=service_requests/view_request&id='.$r['id']
-				];
-			}
-		}
-		// appointments
-		$remaining = $limit - count($data);
-		if($remaining > 0){
-			$qa = $this->conn->query("SELECT id, client_id, appointment_date as date_created FROM appointments WHERE status IN ('pending',0) ORDER BY appointment_date DESC LIMIT {$remaining}");
-			while($r = $qa->fetch_assoc()){
-				$data[] = [
-					'id' => 'appointment_'.$r['id'],
-					'type' => 'appointment',
-					'title' => 'New Appointment #'.$r['id'],
-					'message' => 'Pending appointment',
-					'data' => json_encode(['appointment_id'=>$r['id'],'client_id'=>$r['client_id']]),
-					'date_created' => $r['date_created'],
-					'is_read' => 0,
-					'target' => './?page=appointments&view_id='.$r['id']
-				];
-			}
-		}
-		// Sort combined by date_created desc
-		usort($data, function($a,$b){
-			$ta = strtotime($a['date_created']);
-			$tb = strtotime($b['date_created']);
-			return $tb <=> $ta;
-		});
-		return json_encode(['status'=>'success','data'=>$data]);
 	}
 
 	function mark_admin_notification_read(){
@@ -1022,16 +1056,18 @@ Class Master extends DBConnection {
 			return json_encode(['status'=>'failed','msg'=>'Access denied.']);
 		}
 		$id = $this->conn->real_escape_string($id);
-		$upd = $this->conn->query("UPDATE notifications SET is_read = 1 WHERE id = '{$id}'");
+		$admin_id = $this->settings->userdata('id');
+		$upd = $this->conn->query("UPDATE notifications SET is_read = 1 WHERE id = '{$id}' AND user_id = '{$admin_id}'");
 		if($upd) return json_encode(['status'=>'success']);
 		return json_encode(['status'=>'failed','msg'=>$this->conn->error]);
 	}
 
 	function mark_all_admin_notifications_read(){
 		$role = $this->settings->userdata('role_type');
-		$allowed = array('admin','branch_supervisor','service_admin');
+		$allowed = array('admin','branch_supervisor','service_admin','accounting');
 		if(!in_array($role, $allowed)) return json_encode(['status'=>'failed','msg'=>'Access denied.']);
-		$upd = $this->conn->query("UPDATE notifications SET is_read = 1 WHERE is_read = 0");
+		$admin_id = $this->settings->userdata('id');
+		$upd = $this->conn->query("UPDATE notifications SET is_read = 1 WHERE user_id = '{$admin_id}' AND is_read = 0");
 		if($upd) return json_encode(['status'=>'success']);
 		return json_encode(['status'=>'failed','msg'=>$this->conn->error]);
 	}
@@ -1039,10 +1075,11 @@ Class Master extends DBConnection {
 	function delete_admin_notification(){
 		extract($_POST);
 		$role = $this->settings->userdata('role_type');
-		$allowed = array('admin','branch_supervisor','service_admin');
+		$allowed = array('admin','branch_supervisor','service_admin','accounting');
 		if(!in_array($role, $allowed)) return json_encode(['status'=>'failed','msg'=>'Access denied.']);
 		$id = $this->conn->real_escape_string($id);
-		$del = $this->conn->query("DELETE FROM notifications WHERE id = '{$id}'");
+		$admin_id = $this->settings->userdata('id');
+		$del = $this->conn->query("DELETE FROM notifications WHERE id = '{$id}' AND user_id = '{$admin_id}'");
 		if($del) return json_encode(['status'=>'success']);
 		return json_encode(['status'=>'failed','msg'=>$this->conn->error]);
 	}
@@ -1416,7 +1453,9 @@ Class Master extends DBConnection {
 	
 	// Service request functions
 	function save_request(){
+		header('Content-Type: application/json');
 		$resp = array('status' => 'failed', 'msg' => 'An error occurred');
+		$is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 		
 		if(empty($_POST['id']))
 			$_POST['client_id'] = $this->settings->userdata('id');
@@ -1438,6 +1477,16 @@ Class Master extends DBConnection {
 				if(!empty($data)){ $data .= ", "; }
 				$v = $this->conn->real_escape_string($v);
 				$data .= " `{$k}` = '{$v}'";
+			}
+		}
+		$preferred_date_val = isset($_POST['preferred_date']) ? trim($_POST['preferred_date']) : '';
+		$preferred_time_val = isset($_POST['preferred_time']) ? trim($_POST['preferred_time']) : '';
+		if(!empty($preferred_date_val) && !empty($preferred_time_val)){
+			$exclude_id = !empty($id) ? $id : null;
+			if(!$this->isServiceSlotAvailable($preferred_date_val, $preferred_time_val, $exclude_id)){
+				$resp['status'] = 'failed';
+				$resp['msg'] = "This time slot is not available. Please choose another time.";
+				return json_encode($resp);
 			}
 		}
 		if(empty($id)){
@@ -1509,12 +1558,37 @@ Class Master extends DBConnection {
 			else
 			$resp['msg'] = " Service Request details has failed to update.";
 		}
-		if($resp['status'] == 'success')
+		if($resp['status'] == 'success' && !$is_ajax)
 			$this->settings->set_flashdata("success", $resp['msg']);
 		
-		// Ensure we return clean JSON (no extra output)
-		header('Content-Type: application/json');
 		return json_encode($resp);
+	}
+
+	private function isServiceSlotAvailable($preferred_date, $preferred_time, $exclude_id = null){
+		if(empty($preferred_date) || empty($preferred_time)){
+			return true;
+		}
+		$date = $this->conn->real_escape_string($preferred_date);
+		$time = $this->conn->real_escape_string($preferred_time);
+		$exclude = '';
+		if(!empty($exclude_id)){
+			$exclude_id = $this->conn->real_escape_string($exclude_id);
+			$exclude = " AND sr.id != '{$exclude_id}'";
+		}
+		$sql = "SELECT COUNT(*) as count
+				FROM service_requests sr
+				INNER JOIN request_meta md_date ON sr.id = md_date.request_id AND md_date.meta_field = 'preferred_date'
+				INNER JOIN request_meta md_time ON sr.id = md_time.request_id AND md_time.meta_field = 'preferred_time'
+				WHERE md_date.meta_value = '{$date}'
+				  AND md_time.meta_value = '{$time}'
+				  AND sr.status != 4
+				  {$exclude}";
+		$count = 0;
+		if($qry = $this->conn->query($sql)){
+			$row = $qry->fetch_assoc();
+			$count = isset($row['count']) ? (int)$row['count'] : 0;
+		}
+		return $count === 0;
 	}
 	
 	function delete_request(){
@@ -1801,6 +1875,34 @@ Class Master extends DBConnection {
 				$resp['status'] = 'success';
 				$resp['msg'] = "Order status successfully updated.";
 			}
+			
+			// Notify customer and admins about status change
+			try{
+				$notif_path = base_app.'classes/Notification.php';
+				if(file_exists($notif_path)){
+					require_once $notif_path;
+					$notif = new Notification();
+					if(method_exists($notif, 'sendOrderStatusNotification')){
+						$notif->sendOrderStatusNotification($id);
+					}else{
+						$order = $this->conn->query("SELECT client_id, ref_code FROM order_list WHERE id = '{$id}'")->fetch_assoc();
+						if($order){
+							$status_text = isset($invoice_result) && isset($invoice_result['invoice_number']) ? 'Claimed' : $status;
+							$notif->createNotification($order['client_id'], 'order_status', 'Order Status Updated', "Your order {$order['ref_code']} status is now {$status_text}.", ['order_id'=>$id,'status'=>$status]);
+						}
+					}
+					if(in_array($status, [1,5])){
+						$title = $status == 1 ? 'Order Approved' : 'Order Rejected';
+						$msg = $status == 1 ? "Order #{$id} has been approved." : "Order #{$id} has been rejected.";
+						if(isset($reason) && $status == 5 && !empty($reason)){
+							$msg .= " Reason: {$reason}.";
+						}
+						if(method_exists($notif, 'notifyAdmins')){
+							$notif->notifyAdmins('order_status', $title, $msg, ['order_id'=>$id,'status'=>$status]);
+						}
+					}
+				}
+			}catch(Exception $e){ /* non-fatal */ }
 		}else{
 			$resp['status'] = 'failed';
 			$resp['msg'] = "Order status update failed.";
@@ -3436,6 +3538,16 @@ Class Master extends DBConnection {
         if($update){
             $resp['status'] = 'success';
             $resp['msg'] = "Credit application marked as completed successfully.";
+			try{
+				$notif_path = base_app.'classes/Notification.php';
+				if(file_exists($notif_path)){
+					require_once $notif_path;
+					$notif = new Notification();
+					if(method_exists($notif, 'notifyAdmins')){
+						$notif->notifyAdmins('credit_application', 'Credit Application Submitted', "Customer #{$customer_id} submitted their credit application.", ['client_id'=>$customer_id]);
+					}
+				}
+			}catch(Exception $e){ /* non-fatal */ }
         }else{
             $resp['status'] = 'failed';
             $resp['msg'] = "Failed to update application status.";
@@ -3574,12 +3686,14 @@ Class Master extends DBConnection {
         }
         
         // Check if service exists
-        $service_check = $this->conn->query("SELECT id FROM service_list WHERE id = '{$service_type}' AND status = 1 AND delete_flag = 0");
+        $service_check = $this->conn->query("SELECT id, service FROM service_list WHERE id = '{$service_type}' AND status = 1 AND delete_flag = 0");
         if($service_check->num_rows == 0){
             $resp['status'] = 'failed';
             $resp['msg'] = "Selected service is not available.";
             return json_encode($resp);
         }
+        $service_row = $service_check->fetch_assoc();
+        $service_name = isset($service_row['service']) ? $service_row['service'] : 'Service';
         
         // Check if mechanic exists (if specified)
         if($mechanic_id != 'NULL'){
@@ -3598,7 +3712,30 @@ Class Master extends DBConnection {
         if($save){
             $resp['status'] = 'success';
             $resp['msg'] = "Appointment booked successfully!";
-            $resp['appointment_id'] = $this->conn->insert_id;
+            $appointment_id = $this->conn->insert_id;
+            $resp['appointment_id'] = $appointment_id;
+            
+            $eventData = [
+                'appointment_id' => $appointment_id,
+                'service_type' => $service_type,
+                'service_name' => $service_name,
+                'appointment_date' => $appointment_date,
+                'appointment_time' => $appointment_time
+            ];
+            try{
+                $notif_path = base_app.'classes/Notification.php';
+                if(file_exists($notif_path)){
+                    require_once $notif_path;
+                    $notif = new Notification();
+                    $formatted_date = date('M d, Y', strtotime($appointment_date));
+                    $customer_msg = "Your {$service_name} appointment request is set for {$formatted_date} at {$appointment_time}.";
+                    $notif->createNotification($client_id, 'appointment', 'Appointment Booked', $customer_msg, $eventData);
+                    if(method_exists($notif, 'notifyAdmins')){
+                        $admin_msg = "New appointment #{$appointment_id} requested by customer #{$client_id} for {$service_name}.";
+                        $notif->notifyAdmins('service_booking', 'New Service Appointment', $admin_msg, $eventData);
+                    }
+                }
+            }catch(Exception $e){ /* non-fatal */ }
         }else{
             $resp['status'] = 'failed';
             $resp['msg'] = "Failed to book appointment.";
@@ -3626,6 +3763,17 @@ Class Master extends DBConnection {
         $vehicle_info = isset($vehicle_info) ? $this->conn->real_escape_string($vehicle_info) : '';
         $notes = isset($notes) ? $this->conn->real_escape_string($notes) : '';
         $status = isset($status) && in_array($status, ['pending','confirmed','cancelled','completed']) ? $this->conn->real_escape_string($status) : 'pending';
+        $service_info = $this->conn->query("SELECT service FROM service_list WHERE id = '{$service_type}'");
+        $service_name = $service_info && $service_info->num_rows ? $service_info->fetch_assoc()['service'] : 'Service';
+        
+        $existing = null;
+        if(!empty($id)){
+            $safe_id = $this->conn->real_escape_string($id);
+            $existing_q = $this->conn->query("SELECT * FROM appointments WHERE id = '{$safe_id}'");
+            if($existing_q && $existing_q->num_rows){
+                $existing = $existing_q->fetch_assoc();
+            }
+        }
 
         if(empty($id)){
             // ensure slot availability on create
@@ -3645,7 +3793,43 @@ Class Master extends DBConnection {
         if($save){
             $resp['status'] = 'success';
             $resp['msg'] = empty($id) ? 'Appointment saved successfully.' : 'Appointment updated successfully.';
-            if(empty($id)) $resp['id'] = $this->conn->insert_id; else $resp['id'] = $id;
+            $appointment_id = empty($id) ? $this->conn->insert_id : $id;
+            $resp['id'] = $appointment_id;
+            
+            $eventData = [
+                'appointment_id' => $appointment_id,
+                'service_type' => $service_type,
+                'service_name' => $service_name,
+                'appointment_date' => $appointment_date,
+                'appointment_time' => $appointment_time,
+                'status' => $status
+            ];
+            try{
+                $notif_path = base_app.'classes/Notification.php';
+                if(file_exists($notif_path)){
+                    require_once $notif_path;
+                    $notif = new Notification();
+                    $formatted_date = date('M d, Y', strtotime($appointment_date));
+                    if(empty($existing)){
+                        $customer_msg = "Your {$service_name} appointment has been scheduled for {$formatted_date} at {$appointment_time}.";
+                        $notif->createNotification($client_id, 'appointment', 'Appointment Scheduled', $customer_msg, $eventData);
+                        if(method_exists($notif, 'notifyAdmins')){
+                            $admin_msg = "Appointment #{$appointment_id} created for customer #{$client_id}.";
+                            $notif->notifyAdmins('service_booking', 'New Service Appointment', $admin_msg, $eventData);
+                        }
+                    }else{
+                        if($existing['status'] !== $status){
+                            $status_label = ucfirst($status);
+                            $customer_msg = "Your appointment #{$appointment_id} is now {$status_label}.";
+                            $notif->createNotification($client_id, 'appointment_status', 'Appointment Status Updated', $customer_msg, $eventData);
+                        }
+                        if($existing['appointment_date'] !== $appointment_date || $existing['appointment_time'] !== $appointment_time){
+                            $customer_msg = "Your appointment #{$appointment_id} has been moved to {$formatted_date} at {$appointment_time}.";
+                            $notif->createNotification($client_id, 'appointment', 'Appointment Rescheduled', $customer_msg, $eventData);
+                        }
+                    }
+                }
+            }catch(Exception $e){ /* non-fatal */ }
         }else{
             $resp['status'] = 'failed';
             $resp['msg'] = 'Failed to save appointment.';
@@ -3700,6 +3884,22 @@ Class Master extends DBConnection {
         
         return json_encode($resp);
     }
+
+    function check_service_slot_availability(){
+        $preferred_date = isset($_POST['preferred_date']) ? trim($_POST['preferred_date']) : '';
+        $preferred_time = isset($_POST['preferred_time']) ? trim($_POST['preferred_time']) : '';
+        $exclude_id = isset($_POST['exclude_id']) ? trim($_POST['exclude_id']) : '';
+        $resp = ['status' => 'failed', 'available' => false];
+        if(empty($preferred_date) || empty($preferred_time)){
+            $resp['msg'] = "Date and time are required.";
+            return json_encode($resp);
+        }
+        $available = $this->isServiceSlotAvailable($preferred_date, $preferred_time, $exclude_id);
+        $resp['status'] = 'success';
+        $resp['available'] = $available;
+        $resp['msg'] = $available ? "Time slot is available." : "This time slot is not available. Please choose another time.";
+        return json_encode($resp);
+    }
     
     function cancel_appointment(){
         extract($_POST);
@@ -3736,6 +3936,23 @@ Class Master extends DBConnection {
         if($update){
             $resp['status'] = 'success';
             $resp['msg'] = 'Appointment cancelled successfully.';
+            try{
+                $notif_path = base_app.'classes/Notification.php';
+                if(file_exists($notif_path)){
+                    require_once $notif_path;
+                    $notif = new Notification();
+                    $eventData = [
+                        'appointment_id' => $id,
+                        'service_type' => $appointment['service_type'],
+                        'appointment_date' => $appointment['appointment_date'],
+                        'appointment_time' => $appointment['appointment_time']
+                    ];
+                    if(method_exists($notif, 'notifyAdmins')){
+                        $admin_msg = "Customer #{$currentClientId} cancelled appointment #{$id}.";
+                        $notif->notifyAdmins('service_booking', 'Appointment Cancelled', $admin_msg, $eventData);
+                    }
+                }
+            }catch(Exception $e){ /* non-fatal */ }
         } else {
             $resp['status'] = 'failed';
             $resp['msg'] = 'Failed to cancel appointment.';
@@ -4311,6 +4528,9 @@ $sysset = new SystemSettings();
 	case 'cancel_service':
 		echo $Master->cancel_service();
 	break;
+	case 'check_service_slot':
+		echo $Master->check_service_slot_availability();
+		break;
 	case 'save_to_cart':
 		echo $Master->save_to_cart();
 	break;
@@ -4342,8 +4562,32 @@ $sysset = new SystemSettings();
 	case 'get_notifications':
 		echo $Master->getNotifications();
 	break;
+	case 'get_admin_notifications':
+		echo $Master->get_admin_notifications();
+	break;
+	case 'get_notification_history':
+		echo $Master->get_notification_history();
+	break;
+	case 'get_admin_notification_history':
+		echo $Master->get_notification_history();
+	break;
 	case 'mark_notification_read':
 		echo $Master->markNotificationRead();
+	break;
+	case 'mark_admin_notification_read':
+		echo $Master->mark_admin_notification_read();
+	break;
+	case 'mark_all_notifications_read':
+		echo $Master->mark_all_notifications_read();
+	break;
+	case 'mark_all_admin_notifications_read':
+		echo $Master->mark_all_admin_notifications_read();
+	break;
+	case 'get_admin_notifications_count':
+		echo $Master->get_admin_notifications_count();
+	break;
+	case 'delete_admin_notification':
+		echo $Master->delete_admin_notification();
 	break;
 	case 'create_test_notification':
 		echo $Master->createTestNotification();
