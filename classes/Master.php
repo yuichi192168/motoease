@@ -896,7 +896,7 @@ Class Master extends DBConnection {
 			return json_encode(['status'=>'success','data'=>$data]);
 		}catch(Exception $e){
 			return json_encode(['status'=>'failed','msg'=>'Failed to load notifications.','error'=>$e->getMessage()]);
-		}
+		} 
 	}
 	
 	function markNotificationRead(){
