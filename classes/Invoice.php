@@ -1,5 +1,6 @@
 ﻿<?php
 require_once dirname(__DIR__) . '/config.php';
+require_once dirname(__DIR__) . '/inc/transaction_type_helper.php';
 if(file_exists(base_app.'classes/CustomerAccountBalance.php')){
     require_once base_app.'classes/CustomerAccountBalance.php';
 }
@@ -69,38 +70,22 @@ class Invoice extends DBConnection {
         if(!$query || $query->num_rows === 0){
             return 'motorcycle_purchase';
         }
-        $counts = [
-            'motorcycle' => 0,
-            'oils' => 0,
-            'parts' => 0
+        $flags = [
+            'has_motorcycle' => false,
+            'has_parts' => false,
+            'has_genuine_oil' => false,
         ];
         while($row = $query->fetch_assoc()){
-            $category = strtolower($row['category'] ?? '');
-            $product = strtolower($row['product_name'] ?? '');
-            if(strpos($category, 'oil') !== false || strpos($product, 'oil') !== false){
-                $counts['oils']++;
-                continue;
+            $classification = classify_transaction_item($row['category'] ?? '', $row['product_name'] ?? '');
+            if($classification['is_motorcycle']){
+                $flags['has_motorcycle'] = true;
+            } elseif($classification['is_parts']){
+                $flags['has_parts'] = true;
+            } elseif($classification['is_genuine_oil']){
+                $flags['has_genuine_oil'] = true;
             }
-            if(strpos($category, 'motorcycle') !== false || strpos($category, 'bike') !== false ||
-               strpos($product, 'motorcycle') !== false || strpos($product, 'bike') !== false){
-                $counts['motorcycle']++;
-                continue;
-            }
-            $counts['parts']++;
         }
-        if($counts['motorcycle'] > 0){
-            return 'motorcycle_purchase';
-        }
-        if($counts['oils'] > 0 && $counts['parts'] === 0){
-            return 'oils_purchase';
-        }
-        if($counts['parts'] > 0){
-            return 'motorcycle_parts_purchase';
-        }
-        if($counts['oils'] > 0){
-            return 'oils_purchase';
-        }
-        return 'motorcycle_purchase';
+        return resolve_transaction_type($flags['has_motorcycle'], $flags['has_parts'], $flags['has_genuine_oil']);
     }
     
     /**

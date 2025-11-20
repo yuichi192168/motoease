@@ -1,6 +1,22 @@
 <?php
 $date_start = isset($_GET['date_start']) ? $_GET['date_start'] : '2025-01-01';
 $date_end = isset($_GET['date_end']) ? $_GET['date_end'] : date("Y-m-d");
+
+function format_transaction_type_label($type){
+    $normalized = strtolower(trim((string)$type));
+    $map = [
+        'motorcycle_purchase' => 'Motorcycle Purchase',
+        'motorcycle_parts_purchase' => 'Motorcycle Parts Purchase',
+        'genuine_oil_purchase' => 'Genuine Oil Purchase',
+    ];
+    if(isset($map[$normalized])){
+        return $map[$normalized];
+    }
+    if(empty($normalized)){
+        return 'Motorcycle Purchase';
+    }
+    return ucwords(str_replace('_',' ', $normalized));
+}
 ?>
 <style>
 table td, table th {
@@ -53,8 +69,9 @@ table td, table th {
                 <colgroup>
                     <col width="5%">
                     <col width="15%">
-                    <col width="35%">
+                    <col width="25%">
                     <col width="15%">
+                    <col width="10%">
                     <col width="15%">
                     <col width="15%">
                 </colgroup>
@@ -63,6 +80,7 @@ table td, table th {
                         <th>#</th>
                         <th>Invoice No.</th>
                         <th>Customer</th>
+                        <th>Transaction Type</th>
                         <th>Total Amount</th>
                         <th>Payment Status</th>
                         <th>Date Created</th>
@@ -79,6 +97,7 @@ table td, table th {
                         <td class="text-center"><?php echo $i++ ?></td>
                         <td><strong><?php echo htmlspecialchars($row['invoice_number']) ?></strong></td>
                         <td><?php echo ucwords($row['lastname'] . ', ' . $row['firstname'] . ' ' . $row['middlename']) ?><br><small><?php echo htmlspecialchars($row['email']) ?></small></td>
+                        <td><?php echo format_transaction_type_label($row['transaction_type']); ?></td>
                         <td class="text-right">₱<?php echo number_format($row['total_amount'],2) ?></td>
                         <td class="text-center">
                             <?php $ps = strtolower($row['payment_status']); ?>
@@ -90,7 +109,7 @@ table td, table th {
                     <?php endwhile; ?>
                     <?php if($qry->num_rows <= 0): ?>
                     <tr>
-                        <td class="text-center" colspan="6">No Data...</td>
+                        <td class="text-center" colspan="7">No Data...</td>
                     </tr>
                     <?php endif; ?>
                 </tbody>

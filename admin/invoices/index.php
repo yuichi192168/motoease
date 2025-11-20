@@ -269,6 +269,13 @@
 .table td {
 	position: relative;
 }
+.invoice-items-table th,
+.invoice-items-table td{
+	vertical-align: middle;
+}
+.invoice-items-table small{
+	white-space: normal;
+}
 </style>
 
 <script>
@@ -285,9 +292,10 @@ function formatTransactionType(type){
 		case 'motorcycle_parts_purchase':
 		case 'motorcycle_parts':
 			return 'Motorcycle Parts Purchase';
+		case 'genuine_oil_purchase':
 		case 'oils_purchase':
 		case 'oil_purchase':
-			return 'Oils Purchase';
+			return 'Genuine Oil Purchase';
 		default:
 			var cleaned = type.toString().replace(/_/g,' ').trim();
 			return cleaned.replace(/\b\w/g, function(letter){ return letter.toUpperCase(); });
@@ -904,8 +912,13 @@ $('#edit_invoice_form').submit(function(e){
 		html += '</div>';
 
 		html += '<div class="table-responsive">';
-		html += '<table class="table table-bordered">';
-		html += '<thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>';
+		html += '<table class="table table-bordered mb-4 invoice-items-table">';
+		html += '<thead><tr>';
+		html += '<th>Item</th>';
+		html += '<th class="text-center" style="width:110px;">Qty</th>';
+		html += '<th class="text-right" style="width:140px;">Unit Price</th>';
+		html += '<th class="text-right" style="width:140px;">Total</th>';
+		html += '</tr></thead>';
 		html += '<tbody>';
 		$.each(invoice.items, function(index, item){
 			// Calculate unit_price if it's zero or missing, using total_price and quantity
@@ -914,11 +927,10 @@ $('#edit_invoice_form').submit(function(e){
 				unit_price = parseFloat(item.total_price) / parseFloat(item.quantity);
 			}
 			html += '<tr>';
-			html += '<td>' + item.item_name + '</td>';
-			html += '<td>' + (item.item_description || '-') + '</td>';
-			html += '<td>' + item.quantity + '</td>';
-			html += '<td>₱' + unit_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
-			html += '<td>₱' + parseFloat(item.total_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
+			html += '<td><strong>' + item.item_name + '</strong></td>';
+			html += '<td class="text-center align-middle">' + item.quantity + '</td>';
+			html += '<td class="text-right align-middle">₱' + unit_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
+			html += '<td class="text-right align-middle">₱' + parseFloat(item.total_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>';
 			html += '</tr>';
 		});
 		html += '</tbody>';

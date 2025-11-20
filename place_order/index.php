@@ -1,5 +1,6 @@
 <?php 
 require_once(__DIR__ . '/../inc/sess_auth.php');
+require_once(__DIR__ . '/../inc/transaction_type_helper.php');
 ?>
 <div class="content py-5 mt-3">
     <div class="container">
@@ -73,26 +74,21 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                         // Determine item composition and transaction type
                         $motorcycle_count = 0;
                         $parts_count = 0;
-                        $oils_count = 0;
+                        $genuine_oil_count = 0;
                         $motorcycle_total_amount = 0;
                         $non_motorcycle_total_amount = 0;
                         foreach($cart_items as $item_row){
-                            $category = strtolower($item_row['category'] ?? '');
-                            $product_name = strtolower($item_row['name'] ?? '');
+                            $category = $item_row['category'] ?? '';
+                            $product_name = $item_row['name'] ?? '';
                             $line_total = ($item_row['quantity'] ?? 0) * ($item_row['price'] ?? 0);
                             
-                            $is_oil = (strpos($category, 'oil') !== false) || (strpos($category, 'lubricant') !== false) || (strpos($product_name, 'oil') !== false);
-                            $is_part = (strpos($category, 'part') !== false) || (strpos($category, 'accessor') !== false) || (strpos($category, 'gear') !== false) || (strpos($product_name, 'part') !== false);
-                            $is_motorcycle = (
-                                (strpos($category, 'motorcycle') !== false || strpos($category, 'bike') !== false || strpos($product_name, 'motorcycle') !== false || strpos($product_name, 'bike') !== false)
-                                && !$is_part && !$is_oil
-                            );
+                            $classification = classify_transaction_item($category, $product_name);
                             
-                            if($is_motorcycle){
+                            if($classification['is_motorcycle']){
                                 $motorcycle_count++;
                                 $motorcycle_total_amount += $line_total;
-                            } elseif($is_oil){
-                                $oils_count++;
+                            } elseif($classification['is_genuine_oil']){
+                                $genuine_oil_count++;
                                 $non_motorcycle_total_amount += $line_total;
                             } else {
                                 $parts_count++;
@@ -102,16 +98,9 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                         
                         $has_motorcycles = $motorcycle_count > 0;
                         $has_parts = $parts_count > 0;
-                        $has_oils = $oils_count > 0;
-                        $has_parts_oils = !$has_motorcycles && ($has_parts || $has_oils);
-                        $transaction_type = 'motorcycle_purchase';
-                        if($has_motorcycles){
-                            $transaction_type = 'motorcycle_purchase';
-                        } elseif($has_oils && !$has_parts){
-                            $transaction_type = 'oils_purchase';
-                        } elseif($has_parts){
-                            $transaction_type = 'motorcycle_parts_purchase';
-                        }
+                        $has_genuine_oils = $genuine_oil_count > 0;
+                        $has_parts_oils = !$has_motorcycles && ($has_parts || $has_genuine_oils);
+                        $transaction_type = resolve_transaction_type($has_motorcycles, $has_parts, $has_genuine_oils);
                         
                         // Motorcycle down payment and monthly payment data
                         $motorcycle_payment_data = [
@@ -263,7 +252,7 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                         if($has_motorcycles){
                             $non_motorcycle_total_amount += $addons_total;
                         }
-                        $mixed_cart_upfront_total = ($has_motorcycles && ($has_parts || $has_oils)) ? $non_motorcycle_total_amount : 0;
+                        $mixed_cart_upfront_total = ($has_motorcycles && ($has_parts || $has_genuine_oils)) ? $non_motorcycle_total_amount : 0;
                         $installment_principal_amount = $has_motorcycles ? $motorcycle_total_amount : $grand_total;
                         $minimum_down_payment = $installment_principal_amount * 0.2;
                         ?>

@@ -1,5 +1,6 @@
 <?php
 require_once(__DIR__.'/../config.php');
+require_once(__DIR__.'/../inc/transaction_type_helper.php');
 Class Master extends DBConnection {
 	private $settings;
 	public function __construct(){
@@ -467,28 +468,23 @@ Class Master extends DBConnection {
 												INNER JOIN product_list p ON c.product_id = p.id 
 											  LEFT JOIN categories cat ON p.category_id = cat.id 
 											  WHERE c.client_id = '{$client_id}' {$cart_filter}");
-		$motorcycle_count = 0;
-		$parts_count = 0;
-		$oils_count = 0;
+        $motorcycle_count = 0;
+        $parts_count = 0;
+        $genuine_oil_count = 0;
         $motorcycle_subtotal_amount = 0;
         $non_motorcycle_subtotal_amount = 0;
         if($item_type_query){
 			while($row = $item_type_query->fetch_assoc()){
-				$category = strtolower($row['category'] ?? '');
-				$product_name = strtolower($row['name'] ?? '');
+                $category = $row['category'] ?? '';
+                $product_name = $row['name'] ?? '';
                 $line_total = (isset($row['price']) ? floatval($row['price']) : 0) * (isset($row['quantity']) ? floatval($row['quantity']) : 0);
-				$is_oil = (strpos($category, 'oil') !== false) || (strpos($category, 'lubricant') !== false) || (strpos($product_name, 'oil') !== false);
-				$is_part = (strpos($category, 'part') !== false) || (strpos($category, 'accessor') !== false) || (strpos($category, 'gear') !== false) || (strpos($product_name, 'part') !== false);
-				$is_motorcycle = (
-					(strpos($category, 'motorcycle') !== false || strpos($category, 'bike') !== false || strpos($product_name, 'motorcycle') !== false || strpos($product_name, 'bike') !== false)
-					&& !$is_part && !$is_oil
-				);
+                $classification = classify_transaction_item($category, $product_name);
 				
-                if($is_motorcycle){
+                if($classification['is_motorcycle']){
 					$motorcycle_count++;
                     $motorcycle_subtotal_amount += $line_total;
-				}elseif($is_oil){
-					$oils_count++;
+                }elseif($classification['is_genuine_oil']){
+                    $genuine_oil_count++;
                     $non_motorcycle_subtotal_amount += $line_total;
 				}else{
 					$parts_count++;
@@ -496,23 +492,16 @@ Class Master extends DBConnection {
 				}
 			}
 		}
-		$has_motorcycle = $motorcycle_count > 0;
-		$has_parts = $parts_count > 0;
-		$has_oils = $oils_count > 0;
+        $has_motorcycle = $motorcycle_count > 0;
+        $has_parts = $parts_count > 0;
+        $has_genuine_oil = $genuine_oil_count > 0;
 		
 		if($has_motorcycle && $payment_method === 'installment'){
 		// Note: Credit application validation is now handled on the frontend
 		// The frontend will redirect users to the credit application form if needed
 		}
 		
-		$transaction_type = 'motorcycle_purchase';
-		if($has_motorcycle){
-			$transaction_type = 'motorcycle_purchase';
-		}elseif($has_oils && !$has_parts){
-			$transaction_type = 'oils_purchase';
-		}elseif($has_parts){
-			$transaction_type = 'motorcycle_parts_purchase';
-		}
+        $transaction_type = resolve_transaction_type($has_motorcycle, $has_parts, $has_genuine_oil);
 		
 		// Start transaction
 		$this->conn->begin_transaction();

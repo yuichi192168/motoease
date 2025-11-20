@@ -162,9 +162,10 @@ function formatTransactionType(type){
         case 'motorcycle_parts_purchase':
         case 'motorcycle_parts':
             return 'Motorcycle Parts Purchase';
+        case 'genuine_oil_purchase':
         case 'oils_purchase':
         case 'oil_purchase':
-            return 'Oils Purchase';
+            return 'Genuine Oil Purchase';
         default:
             var cleaned = type.toString().replace(/_/g,' ').trim();
             return cleaned.replace(/\b\w/g, function(letter){ return letter.toUpperCase(); });
