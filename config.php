@@ -46,6 +46,51 @@ function isMobileDevice(){
     //Otherwise return false..  
     return false;
 }
+
+if(!function_exists('get_product_stock_levels')){
+	function get_product_stock_levels($conn, $product_id){
+		$snapshot = [
+			'stock_in' => 0,
+			'stock_out' => 0,
+			'current_stock' => 0,
+			'reserved_orders' => 0,
+			'available_stock' => 0
+		];
+		if(!isset($conn) || !$conn) return $snapshot;
+		$product_id = (int)$product_id;
+		if($product_id <= 0) return $snapshot;
+
+		$stock_sql = "
+			SELECT 
+				COALESCE(SUM(CASE WHEN type = 1 THEN quantity ELSE 0 END), 0) as total_in,
+				COALESCE(SUM(CASE WHEN type = 2 THEN quantity ELSE 0 END), 0) as total_out
+			FROM stock_list
+			WHERE product_id = {$product_id}
+			  AND COALESCE(delete_flag, 0) = 0
+		";
+		if($stock_row = $conn->query($stock_sql)){
+			$data = $stock_row->fetch_assoc();
+			$snapshot['stock_in'] = (float)($data['total_in'] ?? 0);
+			$snapshot['stock_out'] = (float)($data['total_out'] ?? 0);
+		}
+		$snapshot['current_stock'] = max(0.0, $snapshot['stock_in'] - $snapshot['stock_out']);
+
+		$reserved_sql = "
+			SELECT COALESCE(SUM(oi.quantity), 0) as reserved
+			FROM order_items oi
+			INNER JOIN order_list ol ON oi.order_id = ol.id
+			WHERE oi.product_id = {$product_id}
+			  AND (ol.status IS NULL OR ol.status != 5)
+			  AND COALESCE(ol.delete_flag, 0) = 0
+		";
+		if($reserved_row = $conn->query($reserved_sql)){
+			$snapshot['reserved_orders'] = (float)($reserved_row->fetch_assoc()['reserved'] ?? 0);
+		}
+
+		$snapshot['available_stock'] = max(0.0, $snapshot['current_stock'] - $snapshot['reserved_orders']);
+		return $snapshot;
+	}
+}
 ob_end_flush();
 ?>
 <?php

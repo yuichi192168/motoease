@@ -98,11 +98,8 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                         $products = $conn->query("SELECT p.id as pid, p.*, b.name as brand, c.category FROM `product_list` p inner join brand_list b on p.brand_id = b.id inner join `categories` c on p.category_id = c.id where p.delete_flag = 0 and p.status = 1 {$where} order by RAND()");
                         while($row= $products->fetch_assoc()):
                             // Calculate stock availability
-                            $stocks = $conn->query("SELECT SUM(quantity) FROM stock_list where product_id = '{$row['id']}'")->fetch_array()[0];
-                            $out = $conn->query("SELECT SUM(quantity) FROM order_items where product_id = '{$row['id']}' and order_id in (SELECT id FROM order_list where `status` != 5) ")->fetch_array()[0];
-                            $stocks = $stocks > 0 ? $stocks : 0;
-                            $out = $out > 0 ? $out : 0;
-                            $available = $stocks - $out;
+                            $stock_levels = get_product_stock_levels($conn, $row['id']);
+                            $available = (int)($stock_levels['available_stock'] ?? 0);
                     ?>
                         <div class="col px-1 py-2 d-flex justify-content-center">
                             <div class="card rounded-0 shadow h-100 w-100" style="max-width:340px;">

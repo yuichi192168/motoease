@@ -17,14 +17,8 @@ if(!$product){
 }
 
 // Get available stock
-$stocks = $conn->query("SELECT SUM(quantity) as total_stock FROM stock_list WHERE product_id = '{$product_id}' AND type = 1")->fetch_assoc()['total_stock'];
-$out = $conn->query("SELECT SUM(oi.quantity) as total_out FROM order_items oi 
-                    INNER JOIN order_list ol ON oi.order_id = ol.id 
-                    WHERE oi.product_id = '{$product_id}' AND ol.status != 5")->fetch_assoc()['total_out'];
-
-$stocks = $stocks > 0 ? $stocks : 0;
-$out = $out > 0 ? $out : 0;
-$available = $stocks - $out;
+$stock_levels = get_product_stock_levels($conn, $product_id);
+$available = (int)($stock_levels['available_stock'] ?? 0);
 ?>
 
 <style>

@@ -9,17 +9,8 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         foreach($qry->fetch_assoc() as $k => $v){
             $$k=stripslashes($v);
         }
-        // Calculate stock the same way as stock management: IN entries - OUT entries - ordered stock
-        $stock_in = $conn->query("SELECT COALESCE(SUM(quantity), 0) FROM stock_list WHERE product_id = '$id' AND type = 1")->fetch_array()[0];
-        $stock_out = $conn->query("SELECT COALESCE(SUM(quantity), 0) FROM stock_list WHERE product_id = '$id' AND type = 2")->fetch_array()[0];
-        $ordered = $conn->query("SELECT COALESCE(SUM(quantity), 0) FROM order_items WHERE product_id = '{$id}' AND order_id IN (SELECT id FROM order_list WHERE `status` != 5)")->fetch_array()[0];
-        
-        $stock_in = $stock_in > 0 ? $stock_in : 0;
-        $stock_out = $stock_out > 0 ? $stock_out : 0;
-        $ordered = $ordered > 0 ? $ordered : 0;
-        
-        $stocks = $stock_in - $stock_out; // Current stock (IN - OUT)
-        $available = $stocks - $ordered; // Available stock (Current - Ordered)
+        $stock_snapshot = get_product_stock_levels($conn, $id);
+        $available = isset($stock_snapshot['available_stock']) ? $stock_snapshot['available_stock'] : 0;
     }
 }
 ?>
@@ -96,7 +87,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                             </thead>
                             <tbody>
                                 <?php 
-                                $stocks = $conn->query("SELECT * FROM `stock_list` where `product_id` = '{$id}' ORDER BY date_created DESC");
+                                $stocks = $conn->query("SELECT * FROM `stock_list` where `product_id` = '{$id}' AND type = 1 AND COALESCE(delete_flag,0) = 0 ORDER BY date_created DESC");
                                 while($row=$stocks->fetch_assoc()):
                                 ?>
                                     <tr>

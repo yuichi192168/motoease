@@ -5,11 +5,8 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         foreach($qry->fetch_assoc() as $k => $v){
             $$k=stripslashes($v);
         }
-        $stocks = $conn->query("SELECT SUM(quantity) FROM stock_list where product_id = '$id'")->fetch_array()[0];
-        $out = $conn->query("SELECT SUM(quantity) FROM order_items where product_id = '{$id}' and order_id in (SELECT id FROM order_list where `status` != 5) ")->fetch_array()[0];
-        $stocks = $stocks > 0 ? $stocks : 0;
-        $out = $out > 0 ? $out : 0;
-        $available = $stocks - $out;
+        $stock_levels = get_product_stock_levels($conn, $id);
+        $available = (int)($stock_levels['available_stock'] ?? 0);
         // Load multi-compatibility models if available
         $compat_models = [];
         if($id){

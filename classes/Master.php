@@ -165,15 +165,9 @@ Class Master extends DBConnection {
 			return json_encode($resp);
 		}
 		
-		// Check stock availability
-		$stocks = $this->conn->query("SELECT SUM(quantity) as total_stock FROM stock_list WHERE product_id = '{$product_id}' AND type = 1")->fetch_assoc()['total_stock'];
-		$out = $this->conn->query("SELECT SUM(oi.quantity) as total_out FROM order_items oi 
-								  INNER JOIN order_list ol ON oi.order_id = ol.id 
-								  WHERE oi.product_id = '{$product_id}' AND ol.status != 5")->fetch_assoc()['total_out'];
-		
-		$stocks = $stocks > 0 ? $stocks : 0;
-		$out = $out > 0 ? $out : 0;
-		$available = $stocks - $out;
+		// Check stock availability using unified helper
+		$stock_levels = get_product_stock_levels($this->conn, $product_id);
+		$available = isset($stock_levels['available_stock']) ? (float)$stock_levels['available_stock'] : 0;
 		
 		// Check if product is already in cart
         $cart_check = $this->conn->query("SELECT id, quantity FROM `cart_list` WHERE client_id = '{$client_id}' AND product_id = '{$product_id}' AND ((color IS NULL AND {$color_sql} IS NULL) OR color = {$color_sql})");
@@ -2465,15 +2459,11 @@ Class Master extends DBConnection {
 		
 		// Validate inputs
         if(empty($product_id) || $product_id <= 0){
-			$resp['status'] = 'failed';
-			$resp['msg'] = "Please select a valid product.";
-			return json_encode($resp);
+			return json_encode(['status'=>'failed','msg'=>"Please select a valid product."]);
 		}
 		
 		if(!isset($quantity) || $quantity <= 0){
-			$resp['status'] = 'failed';
-			$resp['msg'] = "Please enter a valid quantity greater than 0.";
-			return json_encode($resp);
+			return json_encode(['status'=>'failed','msg'=>"Please enter a valid quantity greater than 0."]);
 		}
 		
 		// Sanitize inputs
@@ -2481,11 +2471,9 @@ Class Master extends DBConnection {
 		$quantity = (float)$quantity;
         $reason = isset($reason) ? $this->conn->real_escape_string($reason) : (empty($id) ? 'Stock addition' : 'Stock edit');
         $stock_id = isset($id) && !empty($id) ? (int)$id : 0;
-		
-        // Get current total stock
-		$current_stock_query = $this->conn->query("SELECT SUM(quantity) as total_stock FROM stock_list WHERE product_id = '{$product_id}' AND type = 1");
-		$current_stock = $current_stock_query->fetch_assoc()['total_stock'];
-		$current_stock = $current_stock ? $current_stock : 0;
+
+        $stock_levels = get_product_stock_levels($this->conn, $product_id);
+		$current_stock = (float)$stock_levels['current_stock'];
 		
 		// Start transaction
 		$this->conn->begin_transaction();
@@ -2493,13 +2481,18 @@ Class Master extends DBConnection {
 		try {
             if($stock_id > 0){
                 // Editing an existing stock entry
-                $existing = $this->conn->query("SELECT * FROM stock_list WHERE id = '{$stock_id}' AND product_id = '{$product_id}'");
-                if($existing->num_rows == 0){
-                    throw new Exception('Stock entry not found.');
+                $existing = $this->conn->query("SELECT * FROM stock_list WHERE id = '{$stock_id}' AND product_id = '{$product_id}' AND COALESCE(delete_flag,0) = 0");
+                if(!$existing || $existing->num_rows == 0){
+                    throw new Exception('Stock entry not found or already archived.');
                 }
                 $row = $existing->fetch_assoc();
                 $old_qty = (float)$row['quantity'];
                 $delta = $quantity - $old_qty;
+                $delta_effect = $row['type'] == 2 ? -$delta : $delta;
+                $new_stock_value = $current_stock + $delta_effect;
+                if($new_stock_value < 0){
+                    throw new Exception('Adjustment would result in negative stock.');
+                }
                 
                 // Update the stock_list row
                 $update = $this->conn->query("UPDATE stock_list SET quantity = '{$quantity}' WHERE id = '{$stock_id}'");
@@ -2507,71 +2500,60 @@ Class Master extends DBConnection {
                     throw new Exception('Failed to update stock row: ' . $this->conn->error);
                 }
                 
-                // Compute new total stock after edit
-                $total_after = $current_stock + $delta;
-                
                 // Record adjustment movement
-                $movement_data = "('{$product_id}', 'ADJUSTMENT', '".($delta)."', '{$current_stock}', '{$total_after}', '{$reason}', 'STOCK_EDIT', 'ADJUSTMENT', NOW(), NULL)";
+                $movement_data = "('{$product_id}', 'ADJUSTMENT', '{$delta_effect}', '{$current_stock}', '{$new_stock_value}', '{$reason}', 'STOCK_EDIT', 'ADJUSTMENT', NOW(), NULL)";
                 $this->conn->query("INSERT INTO stock_movements (product_id, movement_type, quantity, previous_stock, new_stock, reason, reference_id, reference_type, date_created, created_by) VALUES {$movement_data}");
-                
-                // Alerts
-                $this->check_stock_alerts($product_id, $total_after);
-                
-                $this->conn->commit();
-                
-                // Log admin action
-                require_once 'ActivityLogger.php';
-                $logger = new ActivityLogger();
-                $logger->logStockUpdate($product_id, "Updated from {$old_qty} to {$quantity}. New total: {$total_after}");
-                
-                $resp['status'] = 'success';
-                $resp['msg'] = 'Stock updated successfully.';
-                $resp['new_stock'] = $total_after;
+				$log_message = "Updated entry #{$stock_id} from {$old_qty} to {$quantity}. New total: {$new_stock_value}";
+                $success_msg = 'Stock updated successfully.';
             } else {
                 // Adding a new stock entry (IN)
                 if($quantity <= 0){
                     throw new Exception('Quantity must be greater than zero for new stock.');
                 }
-                $new_stock = $current_stock + $quantity;
+                $new_stock_value = $current_stock + $quantity;
                 
-			$stock_data = "('{$product_id}', '{$quantity}', 1, NOW())";
-			$insert_stock = $this->conn->query("INSERT INTO stock_list (product_id, quantity, type, date_created) VALUES {$stock_data}");
-			if(!$insert_stock){
-				throw new Exception("Failed to add stock: " . $this->conn->error);
-			}
-			
-			$movement_data = "('{$product_id}', 'IN', '{$quantity}', '{$current_stock}', '{$new_stock}', '{$reason}', 'STOCK_ADD', 'PURCHASE', NOW(), NULL)";
-                $this->conn->query("INSERT INTO stock_movements (product_id, movement_type, quantity, previous_stock, new_stock, reason, reference_id, reference_type, date_created, created_by) VALUES {$movement_data}");
-			
-				$this->check_stock_alerts($product_id, $new_stock);
+				$stock_data = "('{$product_id}', '{$quantity}', 1, NOW())";
+				$insert_stock = $this->conn->query("INSERT INTO stock_list (product_id, quantity, type, date_created) VALUES {$stock_data}");
+				if(!$insert_stock){
+					throw new Exception("Failed to add stock: " . $this->conn->error);
+				}
 				
-				// Log admin action
-				require_once 'ActivityLogger.php';
-				$logger = new ActivityLogger();
-				$logger->logStockUpdate($product_id, "Added {$quantity} units. New total: {$new_stock}");
+				$movement_data = "('{$product_id}', 'IN', '{$quantity}', '{$current_stock}', '{$new_stock_value}', '{$reason}', 'STOCK_ADD', 'PURCHASE', NOW(), NULL)";
+                $this->conn->query("INSERT INTO stock_movements (product_id, movement_type, quantity, previous_stock, new_stock, reason, reference_id, reference_type, date_created, created_by) VALUES {$movement_data}");
+
+				$log_message = "Added {$quantity} units. New total: {$new_stock_value}";
+                $success_msg = 'Stock added successfully.';
 
 				// If previously out of stock and now available, trigger back-in-stock notifications
 				try {
 					$was_zero = ($current_stock <= 0);
-					$now_positive = ($new_stock > 0);
-					if($was_zero && $now_positive){
-						// Fire product availability notifications via Notification class if present
-						if(file_exists(base_app.'classes/Notification.php')){
-							require_once(base_app.'classes/Notification.php');
-							$notif = new Notification();
-							if(method_exists($notif, 'sendProductAvailabilityNotification')){
-								$notif->sendProductAvailabilityNotification($product_id);
-							}
+					$now_positive = ($new_stock_value > 0);
+					if($was_zero && $now_positive && file_exists(base_app.'classes/Notification.php')){
+						require_once(base_app.'classes/Notification.php');
+						$notif = new Notification();
+						if(method_exists($notif, 'sendProductAvailabilityNotification')){
+							$notif->sendProductAvailabilityNotification($product_id);
 						}
 					}
 				} catch (Exception $e) { /* non-fatal */ }
-			
-			$this->conn->commit();
-			$resp['status'] = 'success';
-			$resp['msg'] = "Stock added successfully.";
-			$resp['new_stock'] = $new_stock;
             }
-		} catch (Exception $e) {
+
+			$this->conn->commit();
+
+			require_once 'ActivityLogger.php';
+			$logger = new ActivityLogger();
+			$logger->logStockUpdate($product_id, $log_message);
+
+			$updated_levels = get_product_stock_levels($this->conn, $product_id);
+			$this->check_stock_alerts($product_id, $updated_levels['current_stock']);
+
+			$resp = [
+				'status' => 'success',
+				'msg' => $success_msg,
+				'new_stock' => $updated_levels['current_stock'],
+				'available_stock' => $updated_levels['available_stock']
+			];
+        } catch (Exception $e) {
 			$this->conn->rollback();
 			$resp['status'] = 'failed';
             $resp['msg'] = "Failed to save stock: " . $e->getMessage();
@@ -2632,10 +2614,9 @@ Class Master extends DBConnection {
 		$reference_id = isset($reference_id) ? $this->conn->real_escape_string($reference_id) : 'STOCK_ADJ';
 		$reference_type = isset($reference_type) ? $this->conn->real_escape_string($reference_type) : 'ADJUSTMENT';
 		
-		// Get current stock
-		$current_stock_query = $this->conn->query("SELECT SUM(quantity) as total_stock FROM stock_list WHERE product_id = '{$product_id}' AND type = 1");
-		$current_stock = $current_stock_query->fetch_assoc()['total_stock'];
-		$current_stock = $current_stock ? $current_stock : 0;
+		// Get current stock snapshot
+		$stock_levels = get_product_stock_levels($this->conn, $product_id);
+		$current_stock = (float)$stock_levels['current_stock'];
 		
 		// Calculate new stock based on movement type
 		$stock_type = 1; // IN
@@ -2680,7 +2661,8 @@ Class Master extends DBConnection {
 			$insert_movement = $this->conn->query("INSERT INTO stock_movements (product_id, movement_type, quantity, previous_stock, new_stock, reason, reference_id, reference_type, date_created, created_by) VALUES {$movement_data}");
 			
 			// Check for stock alerts
-			$this->check_stock_alerts($product_id, $new_stock);
+			$updated_levels = get_product_stock_levels($this->conn, $product_id);
+			$this->check_stock_alerts($product_id, $updated_levels['current_stock']);
 			
 			// Commit transaction
 			$this->conn->commit();
@@ -2692,7 +2674,8 @@ Class Master extends DBConnection {
 			
 			$resp['status'] = 'success';
 			$resp['msg'] = "Stock updated successfully.";
-			$resp['new_stock'] = $new_stock;
+			$resp['new_stock'] = $updated_levels['current_stock'];
+			$resp['available_stock'] = $updated_levels['available_stock'];
 			
 		} catch (Exception $e) {
 			// Rollback transaction
@@ -2727,20 +2710,20 @@ Class Master extends DBConnection {
 			LEFT JOIN (
 				SELECT product_id, SUM(quantity) as total_stock_in 
 				FROM stock_list 
-				WHERE type = 1 
+				WHERE type = 1 AND COALESCE(delete_flag,0) = 0
 				GROUP BY product_id
 			) stock_in ON p.id = stock_in.product_id
 			LEFT JOIN (
 				SELECT product_id, SUM(quantity) as total_stock_out 
 				FROM stock_list 
-				WHERE type = 2 
+				WHERE type = 2 AND COALESCE(delete_flag,0) = 0
 				GROUP BY product_id
 			) stock_out ON p.id = stock_out.product_id
 			LEFT JOIN (
 				SELECT oi.product_id, SUM(oi.quantity) as total_ordered
 				FROM order_items oi
 				JOIN order_list ol ON oi.order_id = ol.id
-				WHERE ol.status != 5
+				WHERE ol.status != 5 AND COALESCE(ol.delete_flag,0) = 0
 				GROUP BY oi.product_id
 			) o ON p.id = o.product_id
 			WHERE p.delete_flag = 0
@@ -2803,16 +2786,18 @@ Class Master extends DBConnection {
 			FROM product_recommendations pr
 			JOIN product_list p ON pr.recommended_product_id = p.id
 			LEFT JOIN (
-				SELECT product_id, SUM(quantity) as total_stock 
+				SELECT product_id, 
+					   SUM(CASE WHEN type = 1 THEN quantity ELSE 0 END) - 
+					   SUM(CASE WHEN type = 2 THEN quantity ELSE 0 END) as total_stock 
 				FROM stock_list 
-				WHERE type = 1 
+				WHERE COALESCE(delete_flag,0) = 0
 				GROUP BY product_id
 			) s ON p.id = s.product_id
 			LEFT JOIN (
 				SELECT oi.product_id, SUM(oi.quantity) as total_ordered
 				FROM order_items oi
 				JOIN order_list ol ON oi.order_id = ol.id
-				WHERE ol.status != 5
+				WHERE ol.status != 5 AND COALESCE(ol.delete_flag,0) = 0
 				GROUP BY oi.product_id
 			) o ON p.id = o.product_id
 			WHERE pr.product_id = '{$product_id}' 
@@ -2832,42 +2817,35 @@ Class Master extends DBConnection {
 		return json_encode($resp);
 	}
 	
-    function check_stock_alerts($product_id, $current_stock){
-        // Always recalculate AVAILABLE stock from authoritative sources
-        // available = (IN - OUT) - ordered
+    function check_stock_alerts($product_id, $current_stock = null){
+        $product_id = (int)$product_id;
+        if($product_id <= 0) return;
+
         $product_query = $this->conn->query("SELECT * FROM product_list WHERE id = '{$product_id}'");
         if($product_query->num_rows == 0) return;
         $product = $product_query->fetch_assoc();
 
-        // Stock IN
-        $stock_in_q = $this->conn->query("SELECT COALESCE(SUM(quantity),0) as s FROM stock_list WHERE product_id = '{$product_id}' AND type = 1");
-        $stock_in = $stock_in_q ? (float)$stock_in_q->fetch_assoc()['s'] : 0;
-        // Stock OUT
-        $stock_out_q = $this->conn->query("SELECT COALESCE(SUM(quantity),0) as s FROM stock_list WHERE product_id = '{$product_id}' AND type = 2");
-        $stock_out = $stock_out_q ? (float)$stock_out_q->fetch_assoc()['s'] : 0;
-        // Ordered (active orders only)
-        $ordered_q = $this->conn->query("SELECT COALESCE(SUM(quantity),0) as s FROM order_items WHERE product_id = '{$product_id}' AND order_id IN (SELECT id FROM order_list WHERE `status` != 5)");
-        $ordered = $ordered_q ? (float)$ordered_q->fetch_assoc()['s'] : 0;
-
-        $current = max(0.0, $stock_in - $stock_out);
-        $available = max(0.0, $current - $ordered);
+        $levels = get_product_stock_levels($this->conn, $product_id);
+        $current = isset($levels['current_stock']) ? (float)$levels['current_stock'] : max(0.0, (float)$current_stock);
+        $available = isset($levels['available_stock']) ? (float)$levels['available_stock'] : $current;
 
         $reorder_point = isset($product['reorder_point']) ? (float)$product['reorder_point'] : 0.0;
         $max_stock = isset($product['max_stock']) ? (float)$product['max_stock'] : 0.0;
 
         // Resolve existing alerts helper
-        $resolve_if_exists = function($type) {
-            $this->conn->query("UPDATE inventory_alerts SET is_resolved = 1, resolved_date = NOW() WHERE product_id = '{$GLOBALS['product_id']}' AND alert_type = '{$type}' AND is_resolved = 0");
+        $pid = $product_id;
+        $resolve_if_exists = function($type) use ($pid) {
+            $this->conn->query("UPDATE inventory_alerts SET is_resolved = 1, resolved_date = NOW() WHERE product_id = '{$pid}' AND alert_type = '{$type}' AND is_resolved = 0");
         };
 
         // Create or update alert helper
-        $create_or_update = function($type, $cur, $threshold, $message){
-            $exists = $this->conn->query("SELECT id FROM inventory_alerts WHERE product_id = '{$GLOBALS['product_id']}' AND alert_type = '{$type}' AND is_resolved = 0");
+        $create_or_update = function($type, $cur, $threshold, $message) use ($pid){
+            $exists = $this->conn->query("SELECT id FROM inventory_alerts WHERE product_id = '{$pid}' AND alert_type = '{$type}' AND is_resolved = 0");
             if($exists && $exists->num_rows > 0){
                 $row = $exists->fetch_assoc();
                 $this->conn->query("UPDATE inventory_alerts SET current_stock = '{$cur}', threshold_value = '{$threshold}', message = '{$this->conn->real_escape_string($message)}' WHERE id = '{$row['id']}'");
             } else {
-                $this->create_stock_alert($GLOBALS['product_id'], $type, $cur, $threshold, $message);
+                $this->create_stock_alert($pid, $type, $cur, $threshold, $message);
             }
         };
 
@@ -3106,16 +3084,18 @@ Class Master extends DBConnection {
 				INNER JOIN brand_list b ON p.brand_id = b.id
 				INNER JOIN categories c ON p.category_id = c.id
 				LEFT JOIN (
-					SELECT product_id, SUM(quantity) as total_stock 
+					SELECT product_id, 
+						   SUM(CASE WHEN type = 1 THEN quantity ELSE 0 END) - 
+						   SUM(CASE WHEN type = 2 THEN quantity ELSE 0 END) as total_stock 
 					FROM stock_list 
-					WHERE type = 1 
+					WHERE COALESCE(delete_flag,0) = 0
 					GROUP BY product_id
 				) s ON p.id = s.product_id
 				LEFT JOIN (
 					SELECT oi.product_id, SUM(oi.quantity) as total_ordered
 					FROM order_items oi
 					JOIN order_list ol ON oi.order_id = ol.id
-					WHERE ol.status != 5
+					WHERE ol.status != 5 AND COALESCE(ol.delete_flag,0) = 0
 					GROUP BY oi.product_id
 				) o ON p.id = o.product_id
 				WHERE p.delete_flag = 0 
@@ -3258,19 +3238,19 @@ Class Master extends DBConnection {
 				FROM order_items oi
 				JOIN order_list ol ON oi.order_id = ol.id
 				JOIN product_list p ON oi.product_id = p.id
-				WHERE ol.status != 5
+				WHERE ol.status != 5 AND COALESCE(ol.delete_flag,0) = 0
 				GROUP BY oi.product_id
 			) sales ON p.id = sales.product_id
 			LEFT JOIN (
 				SELECT product_id, SUM(quantity) as total_stock_in 
 				FROM stock_list 
-				WHERE type = 1 
+				WHERE type = 1 AND COALESCE(delete_flag,0) = 0
 				GROUP BY product_id
 			) stock_in ON p.id = stock_in.product_id
 			LEFT JOIN (
 				SELECT product_id, SUM(quantity) as total_stock_out 
 				FROM stock_list 
-				WHERE type = 2 
+				WHERE type = 2 AND COALESCE(delete_flag,0) = 0
 				GROUP BY product_id
 			) stock_out ON p.id = stock_out.product_id
 			WHERE p.delete_flag = 0
@@ -4046,16 +4026,18 @@ Class Master extends DBConnection {
             LEFT JOIN brand_list b ON p.brand_id = b.id
             LEFT JOIN categories c ON p.category_id = c.id
             LEFT JOIN (
-                SELECT product_id, SUM(quantity) as total_stock 
+                SELECT product_id, 
+                       SUM(CASE WHEN type = 1 THEN quantity ELSE 0 END) - 
+                       SUM(CASE WHEN type = 2 THEN quantity ELSE 0 END) as total_stock 
                 FROM stock_list 
-                WHERE type = 1 
+                WHERE COALESCE(delete_flag,0) = 0
                 GROUP BY product_id
             ) s ON p.id = s.product_id
             LEFT JOIN (
                 SELECT oi.product_id, SUM(oi.quantity) as total_ordered
                 FROM order_items oi
                 INNER JOIN order_list ol ON oi.order_id = ol.id
-                WHERE ol.status != 5
+                WHERE ol.status != 5 AND COALESCE(ol.delete_flag,0) = 0
                 GROUP BY oi.product_id
             ) o ON p.id = o.product_id
             WHERE {$where_clause}
@@ -4138,16 +4120,18 @@ Class Master extends DBConnection {
             LEFT JOIN brand_list b ON p.brand_id = b.id
             LEFT JOIN categories c ON p.category_id = c.id
             LEFT JOIN (
-                SELECT product_id, SUM(quantity) as total_stock 
+                SELECT product_id, 
+                       SUM(CASE WHEN type = 1 THEN quantity ELSE 0 END) - 
+                       SUM(CASE WHEN type = 2 THEN quantity ELSE 0 END) as total_stock 
                 FROM stock_list 
-                WHERE type = 1 
+                WHERE COALESCE(delete_flag,0) = 0
                 GROUP BY product_id
             ) s ON p.id = s.product_id
             LEFT JOIN (
                 SELECT oi.product_id, SUM(oi.quantity) as total_ordered
                 FROM order_items oi
                 INNER JOIN order_list ol ON oi.order_id = ol.id
-                WHERE ol.status != 5
+                WHERE ol.status != 5 AND COALESCE(ol.delete_flag,0) = 0
                 GROUP BY oi.product_id
             ) o ON p.id = o.product_id
             WHERE {$where_clause}

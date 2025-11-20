@@ -72,18 +72,10 @@
 						}
 						$qry = $conn->query("SELECT p.*, c.category FROM `product_list` p INNER JOIN categories c ON p.category_id = c.id {$where} ORDER BY (p.`name`) ASC ");
 						while($row = $qry->fetch_assoc()):
-							// Calculate stock the same way as ABC Analysis: IN entries - OUT entries - ordered stock
-							$stock_in = $conn->query("SELECT COALESCE(SUM(quantity), 0) FROM stock_list WHERE product_id = '{$row['id']}' AND type = 1")->fetch_array()[0];
-							$stock_out = $conn->query("SELECT COALESCE(SUM(quantity), 0) FROM stock_list WHERE product_id = '{$row['id']}' AND type = 2")->fetch_array()[0];
-							$ordered = $conn->query("SELECT COALESCE(SUM(quantity), 0) FROM order_items WHERE product_id = '{$row['id']}' AND order_id IN (SELECT id FROM order_list WHERE `status` != 5)")->fetch_array()[0];
-							
-							$stock_in = $stock_in > 0 ? $stock_in : 0;
-							$stock_out = $stock_out > 0 ? $stock_out : 0;
-							$ordered = $ordered > 0 ? $ordered : 0;
-							
-							$row['stocks'] = $stock_in - $stock_out; // Current stock (IN - OUT)
-							$row['out'] = $ordered; // Ordered stock
-							$row['available'] = $row['stocks'] - $row['out']; // Available stock (Current - Ordered)
+							$stock_levels = get_product_stock_levels($conn, $row['id']);
+							$row['stocks'] = isset($stock_levels['current_stock']) ? $stock_levels['current_stock'] : 0;
+							$row['out'] = isset($stock_levels['reserved_orders']) ? $stock_levels['reserved_orders'] : 0;
+							$row['available'] = isset($stock_levels['available_stock']) ? $stock_levels['available_stock'] : 0;
 							
 							// Determine stock status and color
 							$stock_status = '';

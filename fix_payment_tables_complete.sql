@@ -227,3 +227,4 @@ SELECT COUNT(*) AS table_count FROM information_schema.tables
 WHERE table_schema = DATABASE() 
 AND table_name IN ('customer_account_balances', 'customer_account_schedule', 'customer_account_transactions', 'customer_account_notifications', 'admin_activity_log');
 
+

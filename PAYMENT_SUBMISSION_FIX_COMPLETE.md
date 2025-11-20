@@ -153,3 +153,4 @@ The PHP files have been updated:
 - Activity logging is optional and won't fail the payment
 - All errors are logged to PHP error log for debugging
 
+

@@ -57,7 +57,7 @@
         <span class="info-box-text">Services</span>
         <span class="info-box-number">
           <?php 
-            $services = $conn->query("SELECT COUNT(id) as total FROM service_list WHERE status = 1")->fetch_assoc()['total'];
+            $services = $conn->query("SELECT COUNT(id) as total FROM service_list WHERE status = 1 AND delete_flag = 0")->fetch_assoc()['total'];
             echo number_format($services);
           ?>
         </span>
@@ -89,7 +89,7 @@
         <span class="info-box-text">Pending Orders</span>
         <span class="info-box-number">
           <?php 
-            $pending_orders = $conn->query("SELECT COUNT(id) as total FROM order_list WHERE status = 0")->fetch_assoc()['total'];
+            $pending_orders = $conn->query("SELECT COUNT(id) as total FROM order_list WHERE status = 0 AND delete_flag = 0")->fetch_assoc()['total'];
             echo number_format($pending_orders);
           ?>
         </span>
@@ -108,7 +108,7 @@
         <span class="info-box-text">Confirmed Orders</span>
         <span class="info-box-number">
           <?php 
-            $confirmed_orders = $conn->query("SELECT COUNT(id) as total FROM order_list WHERE status = 1")->fetch_assoc()['total'];
+            $confirmed_orders = $conn->query("SELECT COUNT(id) as total FROM order_list WHERE status = 1 AND delete_flag = 0")->fetch_assoc()['total'];
             echo number_format($confirmed_orders);
           ?>
         </span>
@@ -124,7 +124,7 @@
         <span class="info-box-text">Cancelled Orders</span>
         <span class="info-box-number">
           <?php 
-            $cancelled_orders = $conn->query("SELECT COUNT(id) as total FROM order_list WHERE status = 5")->fetch_assoc()['total'];
+            $cancelled_orders = $conn->query("SELECT COUNT(id) as total FROM order_list WHERE status = 5 AND delete_flag = 0")->fetch_assoc()['total'];
             echo number_format($cancelled_orders);
           ?>
         </span>
@@ -140,7 +140,7 @@
         <span class="info-box-text">New Service Requests</span>
         <span class="info-box-number">
           <?php 
-            $new_requests = $conn->query("SELECT COUNT(id) as total FROM service_requests WHERE status = 0")->fetch_assoc()['total'];
+            $new_requests = $conn->query("SELECT COUNT(id) as total FROM service_requests WHERE status = 0 AND delete_flag = 0")->fetch_assoc()['total'];
             echo number_format($new_requests);
           ?>
         </span>
@@ -159,7 +159,7 @@
         <span class="info-box-text">Finished Requests</span>
         <span class="info-box-number">
           <?php 
-            $finished_requests = $conn->query("SELECT COUNT(id) as total FROM service_requests WHERE status = 3")->fetch_assoc()['total'];
+            $finished_requests = $conn->query("SELECT COUNT(id) as total FROM service_requests WHERE status = 3 AND delete_flag = 0")->fetch_assoc()['total'];
             echo number_format($finished_requests);
           ?>
         </span>
@@ -175,7 +175,7 @@
         <span class="info-box-text">New Appointments</span>
         <span class="info-box-number">
           <?php 
-            $new_appointments = $conn->query("SELECT COUNT(id) as total FROM appointments WHERE status = 'pending'")->fetch_assoc()['total'];
+            $new_appointments = $conn->query("SELECT COUNT(id) as total FROM appointments WHERE status = 'pending' AND delete_flag = 0")->fetch_assoc()['total'];
             echo number_format($new_appointments);
           ?>
         </span>
@@ -194,7 +194,7 @@
         <span class="info-box-text">Confirmed Appointments</span>
         <span class="info-box-number">
           <?php 
-            $confirmed_appointments = $conn->query("SELECT COUNT(id) as total FROM appointments WHERE status = 'confirmed'")->fetch_assoc()['total'];
+            $confirmed_appointments = $conn->query("SELECT COUNT(id) as total FROM appointments WHERE status = 'confirmed' AND delete_flag = 0")->fetch_assoc()['total'];
             echo number_format($confirmed_appointments);
           ?>
         </span>
@@ -229,7 +229,7 @@
             </a>
           </div>
           <div class="col-md-4 col-sm-6 mb-3">
-            <a href="?page=service_management" class="btn btn-success btn-block btn-lg">
+            <a href="?page=service_requests" class="btn btn-success btn-block btn-lg">
               <i class="fas fa-cogs"></i><br>
               <strong>Service Management</strong><br>
               <small>Manage requests & appointments</small>

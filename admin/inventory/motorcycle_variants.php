@@ -132,16 +132,18 @@
 					INNER JOIN brand_list b ON p.brand_id = b.id
 					INNER JOIN categories c ON p.category_id = c.id
 					LEFT JOIN (
-						SELECT product_id, SUM(quantity) as total_stock 
+						SELECT product_id, 
+							   SUM(CASE WHEN type = 1 THEN quantity ELSE 0 END) - 
+							   SUM(CASE WHEN type = 2 THEN quantity ELSE 0 END) as total_stock 
 						FROM stock_list 
-						WHERE type = 1 
+						WHERE COALESCE(delete_flag,0) = 0 
 						GROUP BY product_id
 					) stock_summary ON p.id = stock_summary.product_id
 					LEFT JOIN (
 						SELECT oi.product_id, SUM(oi.quantity) as total_ordered
 						FROM order_items oi
 						INNER JOIN order_list ol ON oi.order_id = ol.id
-						WHERE ol.status != 5
+						WHERE ol.status != 5 AND COALESCE(ol.delete_flag,0) = 0
 						GROUP BY oi.product_id
 					) order_summary ON p.id = order_summary.product_id
 					WHERE p.delete_flag = 0 AND p.status = 1

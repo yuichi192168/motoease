@@ -6,7 +6,7 @@ if(isset($_GET['pid']) && !empty($_GET['pid']))
 if(isset($_GET['product_id']) && !empty($_GET['product_id']))
 	$product_id = $_GET['product_id'];
 if(isset($_GET['id']) && $_GET['id'] > 0){
-    $qry = $conn->query("SELECT * from `stock_list` where id = '{$_GET['id']}' ");
+    $qry = $conn->query("SELECT * from `stock_list` where id = '{$_GET['id']}' AND COALESCE(delete_flag,0) = 0 ");
     if($qry->num_rows > 0){
         foreach($qry->fetch_assoc() as $k => $v){
             $$k=stripslashes($v);
