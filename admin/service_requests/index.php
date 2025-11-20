@@ -31,7 +31,7 @@
 				<tbody>
 					<?php 
 						$i = 1;
-						$qry = $conn->query("SELECT s.*,concat(c.lastname,', ', c.firstname,' ',c.middlename) as fullname from service_requests s inner join client_list c on s.client_id = c.id order by unix_timestamp(s.date_created) desc");
+						$qry = $conn->query("SELECT s.*,concat(c.lastname,', ', c.firstname,' ',c.middlename) as fullname from service_requests s inner join client_list c on s.client_id = c.id WHERE s.delete_flag = 0 order by unix_timestamp(s.date_created) desc");
 						while($row = $qry->fetch_assoc()):
 							// Get service IDs safely
 							$sids_result = $conn->query("SELECT meta_value FROM request_meta where request_id = '{$row['id']}' and meta_field = 'service_id'");
@@ -100,7 +100,7 @@
 							   </a>
 				                    <div class="dropdown-divider"></div>
 							   <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>">
-								 <span class="fa fa-trash text-danger"></span> Delete
+								 <span class="fa fa-archive text-warning"></span> Archive
 							   </a>
 				                  </div>
 							</td>
@@ -115,7 +115,7 @@
 <script>
 	$(document).ready(function(){
 		$('.delete_data').click(function(){
-			_conf("Are you sure to delete this service request permanently?","delete_service_request",[$(this).attr('data-id')])
+			_conf("Are you sure to archive this service request? It will be hidden from active lists but can be restored later.","delete_service_request",[$(this).attr('data-id')])
 		})
 		$('.view_data').click(function(){
 			uni_modal("Service Request Details","service_requests/view_request.php?id="+$(this).attr('data-id'),'large')

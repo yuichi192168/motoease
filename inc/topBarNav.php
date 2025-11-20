@@ -37,7 +37,7 @@
                 
                 <!-- Notifications -->
                 <div class="nav-item dropdown">
-                    <a class="nav-link position-relative" data-toggle="dropdown" href="#" id="notifications-dropdown">
+                    <a class="nav-link position-relative client-notification-toggle" data-toggle="dropdown" href="#" id="notifications-dropdown">
                         <i class="far fa-bell"></i>
                         <span class="badge badge-warning navbar-badge" id="notifications-count" style="display:none;">0</span>
                     </a>
@@ -150,9 +150,11 @@
                         <?php endif; ?>
                     </a>
                     <a href="#" class="quick-action-btn" onclick="loadNotifications()">
-                        <i class="far fa-bell"></i>
-                        <span>Notifications</span>
-                        <span class="badge badge-warning" id="mobile-notifications-count">0</span>
+                        <span class="quick-action-icon">
+                            <i class="far fa-bell"></i>
+                            <span class="badge badge-warning navbar-badge" id="mobile-notifications-count" style="display:none;">0</span>
+                        </span>
+                        <span class="ms-2">Notifications</span>
                     </a>
                 </div>
             <?php endif; ?>

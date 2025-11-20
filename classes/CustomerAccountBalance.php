@@ -31,12 +31,28 @@ class CustomerAccountBalance {
      * @return int|false Account ID or false on failure
      */
     public function createAccount($client_id, $order_id, $item_purchased, $total_price, $downpayment_amount, $installment_plan_months = null, $monthly_payment_amount = null, $invoice_id = null, $contract_id = null) {
-        // Calculate remaining balance after downpayment
-        $remaining_balance = $total_price - $downpayment_amount;
-        
-        // If installment plan, calculate monthly payment if not provided
-        if ($installment_plan_months && !$monthly_payment_amount) {
-            $monthly_payment_amount = $remaining_balance / $installment_plan_months;
+        // For installment plans with predefined monthly payments, calculate the actual financed total
+        // The financed total = down payment + (monthly payment × months)
+        // This may exceed the product price due to financing charges/interest
+        if ($installment_plan_months && $monthly_payment_amount && $monthly_payment_amount > 0) {
+            // Calculate total financed amount from payment schedule
+            $total_financed = $downpayment_amount + ($monthly_payment_amount * $installment_plan_months);
+            
+            // Use the financed total as the account total_price (this includes financing charges)
+            // This ensures the account balance matches the actual payment schedule
+            $account_total_price = $total_financed;
+            
+            // Remaining balance after downpayment
+            $remaining_balance = $monthly_payment_amount * $installment_plan_months;
+        } else {
+            // For full payment or if monthly payment not provided, use original logic
+            $account_total_price = $total_price;
+            $remaining_balance = $total_price - $downpayment_amount;
+            
+            // If installment plan, calculate monthly payment if not provided
+            if ($installment_plan_months && !$monthly_payment_amount && $remaining_balance > 0) {
+                $monthly_payment_amount = $remaining_balance / $installment_plan_months;
+            }
         }
         
         // Insert account record
@@ -56,7 +72,7 @@ class CustomerAccountBalance {
             $invoice_id, 
             $contract_id, 
             $item_purchased, 
-            $total_price, 
+            $account_total_price, 
             $downpayment_amount, 
             $initial_paid, 
             $remaining_balance, 
@@ -97,12 +113,28 @@ class CustomerAccountBalance {
         $start_date = date('Y-m-d');
         $schedule_inserted = 0;
         
+        // Calculate total expected from all monthly payments
+        $total_monthly_payments = $monthly_amount * $months;
+        
+        // Calculate rounding difference (if any)
+        $rounding_diff = $total_balance - $total_monthly_payments;
+        
         for ($i = 1; $i <= $months; $i++) {
             // Calculate due date (first payment due 1 month after order)
             $due_date = date('Y-m-d', strtotime("+$i month", strtotime($start_date)));
             
-            // Calculate remaining balance for this month
-            $month_balance = ($i == $months) ? $total_balance - (($months - 1) * $monthly_amount) : $monthly_amount;
+            // Amount due for this installment
+            $amount_due = $monthly_amount;
+            
+            // For the last payment, adjust if there's a rounding difference
+            // This ensures the sum of all payments equals the total_balance
+            if ($i == $months && abs($rounding_diff) > 0.01) {
+                $amount_due = $monthly_amount + $rounding_diff;
+            }
+            
+            // Initially, remaining_balance equals amount_due (nothing paid yet)
+            // This represents how much is still owed for this specific installment
+            $remaining_balance = $amount_due;
             
             $stmt = $this->conn->prepare("
                 INSERT INTO customer_account_schedule 
@@ -110,7 +142,7 @@ class CustomerAccountBalance {
                 VALUES (?, ?, ?, ?, ?, 'Unpaid')
             ");
             
-            $stmt->bind_param("iisdd", $account_id, $i, $due_date, $monthly_amount, $month_balance);
+            $stmt->bind_param("iisdd", $account_id, $i, $due_date, $amount_due, $remaining_balance);
             
             if ($stmt->execute()) {
                 $schedule_inserted++;
@@ -134,16 +166,40 @@ class CustomerAccountBalance {
      * @return int|false Transaction ID or false
      */
     public function recordTransaction($account_id, $schedule_id, $transaction_type, $amount, $payment_method = 'cash', $receipt_number = null, $notes = null, $processed_by = null) {
+        // Validate inputs
+        if ($account_id <= 0) {
+            error_log("Invalid account_id: {$account_id}");
+            return false;
+        }
+        
+        if ($amount <= 0) {
+            error_log("Invalid amount: {$amount}");
+            return false;
+        }
+        
+        // Check if account exists
+        $account = $this->getAccountInfo($account_id);
+        if (!$account) {
+            error_log("Account not found: {$account_id}");
+            return false;
+        }
+        
         $stmt = $this->conn->prepare("
             INSERT INTO customer_account_transactions 
             (account_id, schedule_id, transaction_type, amount, payment_method, receipt_number, notes, processed_by) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
         
+        if (!$stmt) {
+            error_log("Error preparing transaction statement: " . $this->conn->error);
+            return false;
+        }
+        
         $stmt->bind_param("iisdsssi", $account_id, $schedule_id, $transaction_type, $amount, $payment_method, $receipt_number, $notes, $processed_by);
         
         if (!$stmt->execute()) {
-            error_log("Error recording transaction: " . $stmt->error);
+            error_log("Error recording transaction: " . $stmt->error . " | Account ID: {$account_id} | Amount: {$amount}");
+            $stmt->close();
             return false;
         }
         
@@ -151,11 +207,18 @@ class CustomerAccountBalance {
         $stmt->close();
         
         // Update account balance
-        $this->updateAccountBalance($account_id, $amount);
+        if (!$this->updateAccountBalance($account_id, $amount)) {
+            error_log("Failed to update account balance for account: {$account_id}");
+            // Transaction was recorded but balance update failed - this is a critical error
+            return false;
+        }
         
         // If schedule_id provided, update schedule payment
         if ($schedule_id) {
-            $this->updateSchedulePayment($schedule_id, $amount);
+            if (!$this->updateSchedulePayment($schedule_id, $amount)) {
+                error_log("Failed to update schedule payment for schedule: {$schedule_id}");
+                // Non-critical - transaction is recorded and balance is updated
+            }
         }
         
         // Create notification for payment received
@@ -197,9 +260,11 @@ class CustomerAccountBalance {
      * @param int|null $processed_by
      * @return bool
      */
-    public function addPayment($account_id, $schedule_id, $amount, $payment_method = 'cash', $receipt_number = null, $notes = null, $processed_by = null) {
-        // Check and apply late fees before processing payment
-        $this->checkAndApplyLateFees($account_id);
+    public function addPayment($account_id, $schedule_id, $amount, $payment_method = 'cash', $receipt_number = null, $notes = null, $processed_by = null, $skip_late_fee_check = false) {
+        // Check and apply late fees before processing payment (unless already checked)
+        if(!$skip_late_fee_check) {
+            $this->checkAndApplyLateFees($account_id);
+        }
         
         $transaction_type = $schedule_id ? 'monthly_payment' : 'monthly_payment';
         

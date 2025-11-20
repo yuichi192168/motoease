@@ -43,7 +43,7 @@
 							</thead>
 							<tbody>
 								<?php 
-								$promo_qry = $conn->query("SELECT * FROM promo_images ORDER BY date_created DESC");
+								$promo_qry = $conn->query("SELECT * FROM promo_images WHERE delete_flag = 0 ORDER BY date_created DESC");
 								while($row = $promo_qry->fetch_assoc()):
 								?>
 								<tr>
@@ -66,8 +66,8 @@
 											<button class="btn btn-sm btn-<?php echo $row['is_active'] ? 'warning' : 'success' ?>" onclick="togglePromoStatus(<?php echo $row['id'] ?>, <?php echo $row['is_active'] ?>)" title="<?php echo $row['is_active'] ? 'Deactivate' : 'Activate' ?>">
 												<i class="fa fa-<?php echo $row['is_active'] ? 'eye-slash' : 'eye' ?>"></i>
 											</button>
-											<button class="btn btn-sm btn-danger" onclick="deletePromo(<?php echo $row['id'] ?>)" title="Delete">
-												<i class="fa fa-trash"></i>
+											<button class="btn btn-sm btn-warning" onclick="deletePromo(<?php echo $row['id'] ?>)" title="Archive">
+												<i class="fa fa-archive"></i>
 											</button>
 										</div>
 									</td>
@@ -98,7 +98,7 @@
 							</thead>
 							<tbody>
 								<?php 
-								$customer_qry = $conn->query("SELECT * FROM customer_purchase_images ORDER BY date_created DESC");
+								$customer_qry = $conn->query("SELECT * FROM customer_purchase_images WHERE delete_flag = 0 ORDER BY date_created DESC");
 								while($row = $customer_qry->fetch_assoc()):
 								?>
 								<tr>
@@ -122,8 +122,8 @@
 											<button class="btn btn-sm btn-<?php echo $row['is_active'] ? 'warning' : 'success' ?>" onclick="toggleCustomerStatus(<?php echo $row['id'] ?>, <?php echo $row['is_active'] ?>)" title="<?php echo $row['is_active'] ? 'Deactivate' : 'Activate' ?>">
 												<i class="fa fa-<?php echo $row['is_active'] ? 'eye-slash' : 'eye' ?>"></i>
 											</button>
-											<button class="btn btn-sm btn-danger" onclick="deleteCustomer(<?php echo $row['id'] ?>)" title="Delete">
-												<i class="fa fa-trash"></i>
+											<button class="btn btn-sm btn-warning" onclick="deleteCustomer(<?php echo $row['id'] ?>)" title="Archive">
+												<i class="fa fa-archive"></i>
 											</button>
 										</div>
 									</td>
@@ -234,7 +234,7 @@ function togglePromoStatus(id, current_status) {
 }
 
 function deletePromo(id) {
-	_conf("Are you sure to delete this promo image?", "delete_promo", [id]);
+	_conf("Are you sure to archive this promo image? It will be hidden from active lists but can be restored later.", "delete_promo", [id]);
 }
 
 function delete_promo(id) {
@@ -285,7 +285,7 @@ function toggleCustomerStatus(id, current_status) {
 }
 
 function deleteCustomer(id) {
-	_conf("Are you sure to delete this customer image?", "delete_customer", [id]);
+	_conf("Are you sure to archive this customer image? It will be hidden from active lists but can be restored later.", "delete_customer", [id]);
 }
 
 function delete_customer(id) {

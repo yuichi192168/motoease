@@ -1,5 +1,18 @@
 <?php
-require_once('../config.php');
+// Ensure config and DB connection are loaded when needed
+// Use absolute path based on this file's directory to avoid include_path issues
+if (!class_exists('DBConnection')) {
+    $config_path = __DIR__ . '/../config.php';
+    if (file_exists($config_path)) {
+        require_once $config_path;
+    } else {
+        // Fail gracefully if config is missing when Notification is included indirectly
+        // (e.g., from AJAX handlers that already loaded config)
+        // In that case, we expect DBConnection to already exist.
+        // If it doesn't, we avoid a fatal error and simply skip notification features.
+        return;
+    }
+}
 
 class Notification extends DBConnection {
     private $settings;

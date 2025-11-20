@@ -425,10 +425,10 @@ $(document).ready(function(){
 		viewInvoice(invoice_id);
 	});
 
-	// Delete invoice
+	// Archive invoice
 	$(document).on('click', '.delete_invoice', function(){
 		var invoice_id = $(this).data('id');
-		_conf("Are you sure to delete this invoice permanently?","delete_invoice",[invoice_id]);
+		_conf("Are you sure to archive this invoice? It will be hidden from active lists but can be restored later.","delete_invoice",[invoice_id]);
 	});
 
 	// Upload OR/CR form submission
@@ -725,7 +725,7 @@ $('#edit_invoice_form').submit(function(e){
 								html += '<a class="dropdown-item create_receipt" href="#" data-id="' + invoice.id + '" data-amount="' + balance + '"><span class="fa fa-receipt text-success"></span> Create Receipt</a>';
 							}
 							html += '<div class="dropdown-divider"></div>';
-							html += '<a class="dropdown-item delete_invoice" href="#" data-id="' + invoice.id + '"><span class="fa fa-trash text-danger"></span> Delete</a>';
+							html += '<a class="dropdown-item delete_invoice" href="#" data-id="' + invoice.id + '"><span class="fa fa-archive text-warning"></span> Archive</a>';
 							html += '</div>';
 							html += '</td>';
 							html += '</tr>';
@@ -873,38 +873,12 @@ $('#edit_invoice_form').submit(function(e){
 			success: function(resp){
 				console.log('Delete response:', resp);
 				if(typeof resp == 'object' && resp.status == 'success'){
-					alert_toast("Invoice deleted successfully.", 'success');
+					alert_toast("Invoice archived successfully.", 'success');
 					loadInvoices();
 					loadStats();
 				} else {
-					// If server indicates receipts/payments or paid invoice, offer admin force-delete
-					var msg = resp.msg || "An error occurred while deleting invoice.";
-					if(msg.toLowerCase().includes('payments/receipts') || msg.toLowerCase().includes('already paid')){
-						if(confirm(msg + "\n\nDo you want to force delete this invoice? (Admin only)")){
-							// call delete with force=1
-							$.ajax({
-								url: _base_url_ + "classes/Master.php?f=delete_invoice",
-								method: "POST",
-								data: {id: invoice_id, force:1},
-								dataType: 'json',
-								success: function(resp2){
-									if(resp2.status == 'success'){
-										alert_toast('Invoice force-deleted successfully.', 'success');
-										loadInvoices();
-										loadStats();
-									} else {
-										alert_toast(resp2.msg || 'Failed to force delete invoice.', 'error');
-									}
-									end_loader();
-								},
-								error: err => { console.error(err); alert_toast('An error occurred while attempting force delete.', 'error'); end_loader(); }
-							});
-						} else {
-							alert_toast(msg, 'error');
-						}
-					} else {
-						alert_toast(msg, 'error');
-					}
+					var msg = resp.msg || "An error occurred while archiving invoice.";
+					alert_toast(msg, 'error');
 				}
 				end_loader();
 			}

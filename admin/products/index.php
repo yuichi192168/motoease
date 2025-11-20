@@ -100,7 +100,7 @@
 				                    <div class="dropdown-divider"></div>
 				                    <a class="dropdown-item" href="?page=products/manage_product&id=<?php echo $row['id'] ?>"><span class="fa fa-edit text-primary"></span> Edit</a>
 				                    <div class="dropdown-divider"></div>
-				                    <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-trash text-danger"></span> Delete</a>
+				                    <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-archive text-warning"></span> Archive</a>
 				                  </div>
 							</td>
 						</tr>
@@ -128,7 +128,7 @@
 			window.location.search = params.toString();
 		});
 		$('.delete_data').click(function(){
-			_conf("Are you sure to delete this product permanently?","delete_product",[$(this).attr('data-id')])
+			_conf("Are you sure to archive this product? It will be hidden from active lists but can be restored later.","delete_product",[$(this).attr('data-id')])
 		})
         $('.table th, .table td').addClass("align-middle px-2 py-1")
 		$('.table').dataTable();

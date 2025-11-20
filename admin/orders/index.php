@@ -9,7 +9,7 @@
             $pending_qry = $conn->query("SELECT o.id,o.ref_code,o.total_amount,o.date_created, concat(c.lastname,', ', c.firstname,' ',c.middlename) as fullname
                                     FROM `order_list` o
                                     inner join client_list c on o.client_id = c.id
-                                    WHERE o.status = 0
+                                    WHERE o.status = 0 AND o.delete_flag = 0
                                     ORDER BY unix_timestamp(o.date_created) DESC LIMIT 5");
             if($pending_qry && $pending_qry->num_rows > 0):
             ?>
@@ -62,6 +62,7 @@
                                            inner join client_list c on o.client_id = c.id 
                                            left join order_items oi on o.id = oi.order_id
                                            left join product_list p on oi.product_id = p.id
+                                           WHERE o.delete_flag = 0
                                            group by o.id
                                            order by o.status asc, unix_timestamp(o.date_created) desc ");
                     while($row = $orders->fetch_assoc()):
@@ -104,7 +105,7 @@
                                                                     <div class="dropdown-divider"></div>
                                                                     <a class="dropdown-item edit_data" href="javascript:void(0)" data-id="<?= $row['id'] ?>"><span class="fa fa-edit text-primary"></span> Update Status</a>
                                                                     <div class="dropdown-divider"></div>
-                                                                    <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?= $row['id'] ?>"><span class="fa fa-trash text-danger"></span> Delete</a>
+                                                                    <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?= $row['id'] ?>"><span class="fa fa-archive text-warning"></span> Archive</a>
                                                                 </div>
                                                         </td>
                         </tr>
@@ -136,7 +137,7 @@
             uni_modal("Update Order Status","orders/update_status.php?id="+id,'medium')
         })
         $('.delete_data').click(function(){
-            _conf("Are you sure to delete this order permanently?","delete_order",[$(this).attr('data-id')])
+            _conf("Are you sure to archive this order? It will be hidden from active lists but can be restored later.","delete_order",[$(this).attr('data-id')])
         })
     })
     function delete_order(id){

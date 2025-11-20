@@ -282,6 +282,13 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                             <dl>
                                 <dt><?php echo $row['service'] ?></dt>
                                 <dd class="truncate-3 text-muted lh-1"><small><?php echo $row['description'] ?></small></dd>
+                                <?php if(isset($row['service_amount']) && $row['service_amount'] > 0): ?>
+                                <dd class="mt-2">
+                                    <span class="badge badge-success" style="font-size: 0.9rem;">
+                                        <i class="fa fa-peso-sign"></i> ₱<?php echo number_format($row['service_amount'], 2) ?>
+                                    </span>
+                                </dd>
+                                <?php endif; ?>
                                 <?php if(!empty($estimated_time)): ?>
                                 <dd class="mt-2">
                                     <span class="badge badge-info">

@@ -150,7 +150,7 @@ if(isset($_GET['id'])){
             _conf("Are you sure to cancel this order?","cancel_order",[])
         })
         $('#delete_order').click(function(){
-            _conf("Are you sure to delete this order permanently?","delete_order",[])
+            _conf("Are you sure to archive this order? It will be hidden from active lists but can be restored later.","delete_order",[])
         })
     })
     function delete_order(){

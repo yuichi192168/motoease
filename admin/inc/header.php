@@ -383,9 +383,11 @@
     
     /* Admin Notification Styles */
     .notification-item {
-        padding: 12px 16px;
+        padding: 14px 18px;
         border-bottom: 1px solid #f0f0f0;
         transition: background-color 0.2s ease;
+        white-space: normal;
+        display: block;
     }
     
     .notification-item:hover {
@@ -397,26 +399,89 @@
         border-left: 4px solid #ffc107;
     }
     
+    .notification-item .d-flex {
+        align-items: flex-start;
+    }
+
     .notification-title {
         font-weight: 600;
         color: #333;
         margin-bottom: 4px;
+        word-break: break-word;
+        overflow-wrap: anywhere;
     }
     
     .notification-text {
         color: #666;
         font-size: 0.9rem;
         margin-bottom: 4px;
+        word-break: break-word;
+        overflow-wrap: anywhere;
     }
     
     .notification-time {
         color: #999;
         font-size: 0.8rem;
+        margin-top: 2px;
+        display: block;
     }
     
     .notification-icon {
-        width: 20px;
+        width: 28px;
         text-align: center;
+        flex-shrink: 0;
+        margin-right: 12px;
+        margin-top: 2px;
+    }
+
+    .notification-content {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    /* Admin notification dropdown layout */
+    #admin-notifications-list {
+        width: min(420px, calc(100vw - 1rem));
+        padding: 0;
+        border-radius: 0.5rem;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        border: 1px solid #dee2e6;
+        overflow: hidden;
+    }
+
+    #admin-notifications-content {
+        max-height: 360px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    #admin-notifications-content::-webkit-scrollbar {
+        width: 6px;
+    }
+    #admin-notifications-content::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    #admin-notifications-content::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+    #admin-notifications-content::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+
+    @media (max-width: 768px) {
+        #admin-notifications-list {
+            left: 0.75rem !important;
+            right: 0.75rem !important;
+            width: calc(100vw - 1.5rem);
+            max-width: none;
+        }
+        .notification-item {
+            padding: 12px 14px;
+        }
+        .notification-icon {
+            margin-right: 10px;
+        }
     }
     
     /* Mobile Admin Navigation Enhancements */

@@ -696,11 +696,46 @@
         }
     }
 
+    /* Customer notification badge / icon */
+    .client-notification-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        padding: 0.5rem;
+    }
+    
+    .client-notification-toggle .navbar-badge,
+    .quick-action-icon .navbar-badge {
+        position: absolute;
+        top: 0;
+        right: 0;
+        transform: translate(60%, -40%);
+        font-size: 0.65rem;
+        padding: 0.15rem 0.35rem;
+        border-radius: 999px;
+        min-width: 1.2rem;
+        text-align: center;
+    }
+    
+    .quick-action-icon {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .quick-action-icon i {
+        font-size: 1.15rem;
+    }
+    
     /* Enhanced Notification Styles */
     .notification-item {
-        padding: 12px 16px;
+        padding: 14px 18px;
         border-bottom: 1px solid #f0f0f0;
         transition: background-color 0.2s ease;
+        white-space: normal;
+        display: block;
     }
     
     .notification-item:hover {
@@ -712,31 +747,45 @@
         border-left: 4px solid #ffc107;
     }
     
+    .notification-item .d-flex {
+        align-items: flex-start;
+    }
+    
     .notification-icon {
-        width: 32px;
-        height: 32px;
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         background-color: #f8f9fa;
         flex-shrink: 0;
+        margin-top: 2px;
+        margin-right: 12px;
     }
     
     .notification-title {
         font-weight: 600;
         font-size: 0.9rem;
         margin-bottom: 2px;
+        word-break: break-word;
+        overflow-wrap: anywhere;
     }
     
-    .notification-message {
+    /* Support both .notification-message and .notification-text for body copy */
+    .notification-message,
+    .notification-text {
         font-size: 0.8rem;
         line-height: 1.3;
         margin-bottom: 4px;
+        word-break: break-word;
+        overflow-wrap: anywhere;
     }
     
     .notification-time {
         font-size: 0.75rem;
+        margin-top: 2px;
+        display: block;
     }
     
     .notification-dot {
@@ -747,6 +796,58 @@
         flex-shrink: 0;
         margin-left: 8px;
         margin-top: 4px;
+    }
+
+    .notification-content {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    /* Customer notification dropdown layout */
+    #notifications-list {
+        width: min(420px, calc(100vw - 1rem));
+        padding: 0;
+        border-radius: 0.5rem;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        border: 1px solid #dee2e6;
+        overflow: hidden;
+    }
+
+    #notifications-content {
+        max-height: 360px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    #notifications-content::-webkit-scrollbar {
+        width: 6px;
+    }
+    #notifications-content::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    #notifications-content::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+    #notifications-content::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+
+    @media (max-width: 768px) {
+        #notifications-list {
+            left: 0.75rem !important;
+            right: 0.75rem !important;
+            width: calc(100vw - 1.5rem);
+            max-width: none;
+        }
+        .notification-item {
+            padding: 12px 14px;
+        }
+        .notification-icon {
+            width: 32px;
+            height: 32px;
+            margin-right: 10px;
+        }
     }
     
     .dropdown-header {

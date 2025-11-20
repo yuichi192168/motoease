@@ -72,7 +72,7 @@
 							<span class="info-box-number">
 								<?php 
 									try {
-										$total_docs = $conn->query("SELECT COUNT(*) as total FROM or_cr_documents WHERE status != 'expired'")->fetch_assoc()['total'];
+										$total_docs = $conn->query("SELECT COUNT(*) as total FROM or_cr_documents WHERE status != 'expired' AND delete_flag = 0")->fetch_assoc()['total'];
 										echo number_format($total_docs);
 									} catch (Exception $e) {
 										echo "0";
@@ -90,7 +90,7 @@
 							<span class="info-box-number">
 								<?php 
 									try {
-										$released_docs = $conn->query("SELECT COUNT(*) as total FROM or_cr_documents WHERE status = 'released' AND status != 'expired'")->fetch_assoc()['total'];
+										$released_docs = $conn->query("SELECT COUNT(*) as total FROM or_cr_documents WHERE status = 'released' AND status != 'expired' AND delete_flag = 0")->fetch_assoc()['total'];
 										echo number_format($released_docs);
 									} catch (Exception $e) {
 										echo "0";
@@ -108,7 +108,7 @@
 							<span class="info-box-number">
 								<?php 
 									try {
-										$pending_docs = $conn->query("SELECT COUNT(*) as total FROM or_cr_documents WHERE status = 'pending' AND status != 'expired'")->fetch_assoc()['total'];
+										$pending_docs = $conn->query("SELECT COUNT(*) as total FROM or_cr_documents WHERE status = 'pending' AND status != 'expired' AND delete_flag = 0")->fetch_assoc()['total'];
 										echo number_format($pending_docs);
 									} catch (Exception $e) {
 										echo "0";
@@ -206,8 +206,8 @@
 												CONCAT(c.lastname, ', ', c.firstname, ' ', c.middlename) as customer_name
 												FROM `or_cr_documents` d 
 												INNER JOIN client_list c ON d.client_id = c.id 
-												WHERE d.status != 'expired' 
-												ORDER BY d.date_created DESC");
+											WHERE d.status != 'expired' AND d.delete_flag = 0
+											ORDER BY d.date_created DESC");
 							while($row = $qry->fetch_assoc()):
 								foreach($row as $k=> $v){
 									$row[$k] = trim(stripslashes($v));
@@ -298,8 +298,8 @@
 												CONCAT(c.lastname, ', ', c.firstname, ' ', c.middlename) as customer_name
 												FROM `or_cr_documents` d 
 												INNER JOIN client_list c ON d.client_id = c.id 
-												WHERE d.status != 'expired' 
-												ORDER BY d.date_created DESC");
+											WHERE d.status != 'expired' AND d.delete_flag = 0
+											ORDER BY d.date_created DESC");
 							while($row = $qry->fetch_assoc()):
 								foreach($row as $k=> $v){
 									$row[$k] = trim(stripslashes($v));
@@ -350,7 +350,7 @@
 										</a>
 										<div class="dropdown-divider"></div>
 										<a class="dropdown-item delete_document" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>">
-											<span class="fa fa-trash text-danger"></span> Delete
+											<span class="fa fa-archive text-warning"></span> Archive
 										</a>
 									</div>
 								</td>
@@ -546,7 +546,7 @@
 		
 		$('.delete_document').click(function(){
 			var id = $(this).attr('data-id');
-			_conf("Are you sure to delete this document?","delete_document",[id]);
+			_conf("Are you sure to archive this document? It will be hidden from active lists but can be restored later.","delete_document",[id]);
 		});
 		
 		$('#addDocumentForm').submit(function(e){

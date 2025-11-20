@@ -2,10 +2,17 @@
 require_once('../../config.php');
 require_once('../../classes/CustomerAccountBalance.php');
 
-if(!defined('base_app'))
-	die('File not found');
+if(!defined('base_app')){
+	header('Content-Type: application/json');
+	echo json_encode(['status' => 'failed', 'schedule' => [], 'msg' => 'File not found']);
+	exit;
+}
 
-$_settings->userdata('id') < 1 ? die('Unauthorized Access') : '';
+if($_settings->userdata('id') < 1){
+	header('Content-Type: application/json');
+	echo json_encode(['status' => 'failed', 'schedule' => [], 'msg' => 'Unauthorized Access']);
+	exit;
+}
 
 $response = ['status' => 'failed', 'schedule' => []];
 
@@ -34,6 +41,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
 	}
 }
 
+header('Content-Type: application/json');
 echo json_encode($response);
+exit;
 
 

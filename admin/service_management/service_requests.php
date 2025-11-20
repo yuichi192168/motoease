@@ -92,7 +92,7 @@
 		                    <div class="dropdown-divider"></div>
 		                    <a class="dropdown-item edit_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-edit text-primary"></span> Edit</a>
 		                    <div class="dropdown-divider"></div>
-		                    <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-trash text-danger"></span> Delete</a>
+		                    <a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-archive text-warning"></span> Archive</a>
 		                  </div>
 					</td>
 				</tr>
@@ -104,7 +104,7 @@
 <script>
 $(document).ready(function(){
 	$('.delete_data').click(function(){
-		_conf("Are you sure to delete this service request permanently?","delete_service_request",[$(this).attr('data-id')])
+		_conf("Are you sure to archive this service request? It will be hidden from active lists but can be restored later.","delete_service_request",[$(this).attr('data-id')])
 	})
 	$('.view_data').click(function(){
 		uni_modal("Service Request Details","../service_requests/view_request.php?id="+$(this).attr('data-id'),'large')

@@ -82,29 +82,21 @@ Class Master extends DBConnection {
 			$resp['msg'] = 'Invalid order id.';
 			return json_encode($resp);
 		}
-		$check = $this->conn->query("SELECT id FROM `order_list` WHERE id = '{$id}'");
+		$check = $this->conn->query("SELECT id FROM `order_list` WHERE id = '{$id}' AND delete_flag = 0");
 		if(!$check || $check->num_rows == 0){
 			$resp['status'] = 'failed';
 			$resp['msg'] = 'Order not found.';
 			return json_encode($resp);
 		}
-		// Start transaction
-		$this->conn->begin_transaction();
-		try{
-			// Delete order items first
-			$del_items = $this->conn->query("DELETE FROM `order_items` WHERE order_id = '{$id}'");
-			if($del_items === false) throw new Exception('Failed to delete order items: '.$this->conn->error);
-			// Delete the order
-			$del = $this->conn->query("DELETE FROM `order_list` WHERE id = '{$id}'");
-			if($del === false) throw new Exception('Failed to delete order: '.$this->conn->error);
-			$this->conn->commit();
+		// Archive the order instead of deleting
+		$del = $this->conn->query("UPDATE `order_list` SET delete_flag = 1 WHERE id = '{$id}'");
+		if($del){
 			$resp['status'] = 'success';
-			$resp['msg'] = 'Order successfully deleted.';
+			$resp['msg'] = 'Order successfully archived.';
 			$this->settings->set_flashdata('success',$resp['msg']);
-		}catch(Exception $e){
-			$this->conn->rollback();
+		}else{
 			$resp['status'] = 'failed';
-			$resp['msg'] = $e->getMessage();
+			$resp['msg'] = $this->conn->error;
 		}
 		return json_encode($resp);
 	}
@@ -1594,10 +1586,10 @@ Class Master extends DBConnection {
 	function delete_request(){
 		extract($_POST);
 		$resp = array();
-		$del = $this->conn->query("DELETE FROM `service_requests` where id = '{$id}'");
+		$del = $this->conn->query("UPDATE `service_requests` SET delete_flag = 1 WHERE id = '{$id}'");
 		if($del){
 			$resp['status'] = 'success';
-			$this->settings->set_flashdata('success',"Request successfully deleted.");
+			$this->settings->set_flashdata('success',"Service request successfully archived.");
 		}else{
 			$resp['status'] = 'failed';
 			$resp['msg'] = $this->conn->error;
@@ -1628,84 +1620,30 @@ Class Master extends DBConnection {
 		// Debug logging
 		error_log("Delete invoice called with ID: " . $id);
 		
-		// Check if invoice exists and is not paid
-		$check = $this->conn->query("SELECT id, payment_status FROM `invoices` WHERE id = '{$id}'");
+		// Check if invoice exists and is not already archived
+		$check = $this->conn->query("SELECT id, payment_status FROM `invoices` WHERE id = '{$id}' AND delete_flag = 0");
 		if($check->num_rows == 0){
 			$resp['status'] = 'failed';
-			$resp['msg'] = "Invoice not found.";
-			error_log("Invoice not found: " . $id);
+			$resp['msg'] = "Invoice not found or already archived.";
+			error_log("Invoice not found or archived: " . $id);
 			return json_encode($resp);
 		}
 		
 		$invoice = $check->fetch_assoc();
-		// If invoice is marked paid, do not allow deletion unless forced by admin
-		$force = isset($_POST['force']) && intval($_POST['force']) === 1;
-		if(isset($invoice['payment_status']) && strtolower($invoice['payment_status']) == 'paid'){
-			if(!$force || $this->settings->userdata('login_type') != 1){
-				$resp['status'] = 'failed';
-				$resp['msg'] = "Cannot delete invoice: invoice is already paid.";
-				error_log("Attempt to delete paid invoice without force/admin: {$id}");
-				return json_encode($resp);
-			}
-			// admin is forcing deletion, proceed but log it
-			error_log("Admin force-deleting paid invoice: {$id} by user {$this->settings->userdata('id')}");
-		}
-
-		// If there are any receipts/payments recorded for this invoice, prevent deletion
-		$rec_check = $this->conn->query("SELECT COUNT(*) as cnt, COALESCE(SUM(amount_paid),0) as total_paid FROM `receipts` WHERE invoice_id = '{$id}'");
-		if($rec_check){
-			$rec_data = $rec_check->fetch_assoc();
-			if($rec_data['cnt'] > 0){
-				// If not forced by admin, prevent deletion
-				if(!$force || $this->settings->userdata('login_type') != 1){
-					$resp['status'] = 'failed';
-					$resp['msg'] = 'Cannot delete invoice: payments/receipts have been recorded ('.$rec_data['cnt'].' receipt(s)). Please reverse the payments first.';
-					error_log("Attempt to delete invoice with receipts: {$id}, receipts_count: {$rec_data['cnt']}, total_paid: {$rec_data['total_paid']}");
-					return json_encode($resp);
-				}
-				// admin is forcing deletion, log it
-				error_log("Admin force-deleting invoice with receipts: {$id}, receipts_count: {$rec_data['cnt']}, total_paid: {$rec_data['total_paid']} by user {$this->settings->userdata('id')}");
-			}
-		}
-		
-		// Start transaction
-		$this->conn->query("START TRANSACTION");
-		
-		try {
-			// Delete invoice items first
-			$del_items = $this->conn->query("DELETE FROM `invoice_items` WHERE invoice_id = '{$id}'");
-			if(!$del_items){
-				throw new Exception("Failed to delete invoice items: " . $this->conn->error);
-			}
-			
-			// Delete any receipts for this invoice
-			$del_receipts = $this->conn->query("DELETE FROM `receipts` WHERE invoice_id = '{$id}'");
-			if(!$del_receipts){
-				throw new Exception("Failed to delete receipts: " . $this->conn->error);
-			}
-			
-			// Delete the invoice
-			$del_invoice = $this->conn->query("DELETE FROM `invoices` WHERE id = '{$id}'");
-			if(!$del_invoice){
-				throw new Exception("Failed to delete invoice: " . $this->conn->error);
-			}
-			
-			// Commit transaction
-			$this->conn->query("COMMIT");
-			
+		// Archive the invoice instead of deleting (preserves related records)
+		$del_invoice = $this->conn->query("UPDATE `invoices` SET delete_flag = 1 WHERE id = '{$id}'");
+		if($del_invoice){
 			$resp['status'] = 'success';
-			$resp['msg'] = "Invoice successfully deleted.";
+			$resp['msg'] = "Invoice successfully archived.";
 			$this->settings->set_flashdata('success', $resp['msg']);
-			
-		} catch (Exception $e) {
-			// Rollback transaction
-			$this->conn->query("ROLLBACK");
+			error_log("Invoice archived: {$id} by user {$this->settings->userdata('id')}");
+		} else {
 			$resp['status'] = 'failed';
-			$resp['msg'] = $e->getMessage();
-			error_log("Delete invoice error: " . $e->getMessage());
+			$resp['msg'] = "Failed to archive invoice: " . $this->conn->error;
+			error_log("Archive invoice error: " . $this->conn->error);
 		}
 		
-		error_log("Delete invoice response: " . json_encode($resp));
+		error_log("Archive invoice response: " . json_encode($resp));
 		return json_encode($resp);
 	}
 	
@@ -1997,27 +1935,13 @@ Class Master extends DBConnection {
 	
 	function delete_document(){
 		extract($_POST);
-    // Fetch file path to delete from storage
-    $fp = $this->conn->query("SELECT file_path FROM `or_cr_documents` WHERE id = '{$document_id}'");
-    $filePath = '';
-    if($fp && $fp->num_rows > 0){
-        $row = $fp->fetch_assoc();
-        $filePath = $row['file_path'];
-    }
-    $del = $this->conn->query("DELETE FROM `or_cr_documents` where id = '{$document_id}'");
+		$del = $this->conn->query("UPDATE `or_cr_documents` SET delete_flag = 1 WHERE id = '{$document_id}'");
 		if($del){
-        // Attempt to delete the physical file if present
-        if(!empty($filePath)){
-            $parsed = parse_url($filePath);
-            $pathOnly = isset($parsed['path']) ? $parsed['path'] : $filePath;
-            $absPath = base_app . ltrim($pathOnly, '/');
-            if(is_file($absPath)) @unlink($absPath);
-        }
 			$resp['status'] = 'success';
-			$resp['msg'] = "Document successfully deleted.";
+			$resp['msg'] = "Document successfully archived.";
 		}else{
 			$resp['status'] = 'failed';
-			$resp['msg'] = "Document deletion failed.";
+			$resp['msg'] = "Document archiving failed.";
 			$resp['error'] = $this->conn->error;
 		}
 		return json_encode($resp);
@@ -2669,52 +2593,22 @@ Class Master extends DBConnection {
 		
 		$stock_id = (int)$id;
 		
-		// Check if stock entry exists
-		$check = $this->conn->query("SELECT * FROM stock_list WHERE id = '{$stock_id}'");
+		// Check if stock entry exists and is not archived
+		$check = $this->conn->query("SELECT * FROM stock_list WHERE id = '{$stock_id}' AND delete_flag = 0");
 		if($check->num_rows == 0){
 			$resp['status'] = 'failed';
-			$resp['msg'] = "Stock entry not found.";
+			$resp['msg'] = "Stock entry not found or already archived.";
 			return json_encode($resp);
 		}
 		
-		$stock_data = $check->fetch_assoc();
-		$product_id = $stock_data['product_id'];
-		$quantity = $stock_data['quantity'];
-		
-		// Start transaction
-		$this->conn->begin_transaction();
-		
-		try {
-			// Get current total stock
-			$current_stock_query = $this->conn->query("SELECT SUM(quantity) as total_stock FROM stock_list WHERE product_id = '{$product_id}' AND type = 1");
-			$current_stock = $current_stock_query->fetch_assoc()['total_stock'];
-			$current_stock = $current_stock ? $current_stock : 0;
-			
-			// Calculate new stock after deletion
-			$new_stock = $current_stock - $quantity;
-			
-			// Delete the stock entry
-			$delete = $this->conn->query("DELETE FROM stock_list WHERE id = '{$stock_id}'");
-			if(!$delete){
-				throw new Exception("Failed to delete stock entry: " . $this->conn->error);
-			}
-			
-			// Record stock movement
-			$movement_data = "('{$product_id}', 'OUT', '{$quantity}', '{$current_stock}', '{$new_stock}', 'Stock entry deleted', 'STOCK_DELETE', 'DELETION', NOW(), NULL)";
-			$this->conn->query("INSERT INTO stock_movements (product_id, movement_type, quantity, previous_stock, new_stock, reason, reference_id, reference_type, date_created, created_by) VALUES {$movement_data}");
-			
-			// Check for stock alerts
-			$this->check_stock_alerts($product_id, $new_stock);
-			
-			$this->conn->commit();
+		// Archive the stock entry instead of deleting
+		$delete = $this->conn->query("UPDATE stock_list SET delete_flag = 1 WHERE id = '{$stock_id}'");
+		if($delete){
 			$resp['status'] = 'success';
-			$resp['msg'] = "Stock entry deleted successfully.";
-			$resp['new_stock'] = $new_stock;
-			
-		} catch (Exception $e) {
-			$this->conn->rollback();
+			$resp['msg'] = "Stock entry successfully archived.";
+		} else {
 			$resp['status'] = 'failed';
-			$resp['msg'] = "Failed to delete stock entry: " . $e->getMessage();
+			$resp['msg'] = "Failed to archive stock entry: " . $this->conn->error;
 		}
 		
 		return json_encode($resp);
@@ -3573,18 +3467,13 @@ Class Master extends DBConnection {
 
     function delete_promo(){
         extract($_POST);
-        $qry = $this->conn->query("SELECT image_path FROM `promo_images` WHERE id = '{$id}'");
-        if($qry->num_rows > 0){
-            $row = $qry->fetch_assoc();
-            if(is_file('../'.$row['image_path'])) unlink('../'.$row['image_path']);
-        }
-        $delete = $this->conn->query("DELETE FROM `promo_images` WHERE id = '{$id}'");
+        $delete = $this->conn->query("UPDATE `promo_images` SET delete_flag = 1 WHERE id = '{$id}'");
         if($delete){
             $resp['status'] = 'success';
-            $resp['msg'] = "Promo image deleted successfully.";
+            $resp['msg'] = "Promo image successfully archived.";
         }else{
             $resp['status'] = 'failed';
-            $resp['msg'] = "Failed to delete promo image.";
+            $resp['msg'] = "Failed to archive promo image.";
             $resp['error'] = $this->conn->error;
         }
         return json_encode($resp);
@@ -3606,18 +3495,13 @@ Class Master extends DBConnection {
 
     function delete_customer(){
         extract($_POST);
-        $qry = $this->conn->query("SELECT image_path FROM `customer_purchase_images` WHERE id = '{$id}'");
-        if($qry->num_rows > 0){
-            $row = $qry->fetch_assoc();
-            if(is_file('../'.$row['image_path'])) unlink('../'.$row['image_path']);
-        }
-        $delete = $this->conn->query("DELETE FROM `customer_purchase_images` WHERE id = '{$id}'");
+        $delete = $this->conn->query("UPDATE `customer_purchase_images` SET delete_flag = 1 WHERE id = '{$id}'");
         if($delete){
             $resp['status'] = 'success';
-            $resp['msg'] = "Customer image deleted successfully.";
+            $resp['msg'] = "Customer image successfully archived.";
         }else{
             $resp['status'] = 'failed';
-            $resp['msg'] = "Failed to delete customer image.";
+            $resp['msg'] = "Failed to archive customer image.";
             $resp['error'] = $this->conn->error;
         }
         return json_encode($resp);
@@ -3848,14 +3732,175 @@ Class Master extends DBConnection {
             return json_encode($resp);
         }
         $id = $this->conn->real_escape_string($id);
-        $del = $this->conn->query("DELETE FROM appointments WHERE id='{$id}'");
+        $del = $this->conn->query("UPDATE appointments SET delete_flag = 1 WHERE id='{$id}'");
         if($del){
             $resp['status'] = 'success';
-            $resp['msg'] = 'Appointment deleted successfully.';
+            $resp['msg'] = 'Appointment successfully archived.';
         }else{
             $resp['status'] = 'failed';
-            $resp['msg'] = 'Failed to delete appointment.';
+            $resp['msg'] = 'Failed to archive appointment.';
             $resp['error'] = $this->conn->error;
+        }
+        return json_encode($resp);
+    }
+    
+    // Restore functions for archived records
+    function restore_order(){
+        extract($_POST);
+        $resp = array();
+        $id = isset($id) ? intval($id) : 0;
+        if($id <= 0){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Invalid order id.';
+            return json_encode($resp);
+        }
+        $restore = $this->conn->query("UPDATE `order_list` SET delete_flag = 0 WHERE id = '{$id}'");
+        if($restore){
+            $resp['status'] = 'success';
+            $resp['msg'] = 'Order successfully restored.';
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = $this->conn->error;
+        }
+        return json_encode($resp);
+    }
+    
+    function restore_invoice(){
+        extract($_POST);
+        $resp = array();
+        $id = isset($id) ? intval($id) : 0;
+        if($id <= 0){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Invalid invoice id.';
+            return json_encode($resp);
+        }
+        $restore = $this->conn->query("UPDATE `invoices` SET delete_flag = 0 WHERE id = '{$id}'");
+        if($restore){
+            $resp['status'] = 'success';
+            $resp['msg'] = 'Invoice successfully restored.';
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = $this->conn->error;
+        }
+        return json_encode($resp);
+    }
+    
+    function restore_request(){
+        extract($_POST);
+        $resp = array();
+        $id = isset($id) ? intval($id) : 0;
+        if($id <= 0){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Invalid request id.';
+            return json_encode($resp);
+        }
+        $restore = $this->conn->query("UPDATE `service_requests` SET delete_flag = 0 WHERE id = '{$id}'");
+        if($restore){
+            $resp['status'] = 'success';
+            $resp['msg'] = 'Service request successfully restored.';
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = $this->conn->error;
+        }
+        return json_encode($resp);
+    }
+    
+    function restore_appointment(){
+        extract($_POST);
+        $resp = array();
+        $id = isset($id) ? intval($id) : 0;
+        if($id <= 0){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Invalid appointment id.';
+            return json_encode($resp);
+        }
+        $restore = $this->conn->query("UPDATE `appointments` SET delete_flag = 0 WHERE id = '{$id}'");
+        if($restore){
+            $resp['status'] = 'success';
+            $resp['msg'] = 'Appointment successfully restored.';
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = $this->conn->error;
+        }
+        return json_encode($resp);
+    }
+    
+    function restore_document(){
+        extract($_POST);
+        $resp = array();
+        $id = isset($document_id) ? intval($document_id) : (isset($id) ? intval($id) : 0);
+        if($id <= 0){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Invalid document id.';
+            return json_encode($resp);
+        }
+        $restore = $this->conn->query("UPDATE `or_cr_documents` SET delete_flag = 0 WHERE id = '{$id}'");
+        if($restore){
+            $resp['status'] = 'success';
+            $resp['msg'] = 'Document successfully restored.';
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = $this->conn->error;
+        }
+        return json_encode($resp);
+    }
+    
+    function restore_stock(){
+        extract($_POST);
+        $resp = array();
+        $id = isset($id) ? intval($id) : 0;
+        if($id <= 0){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Invalid stock entry id.';
+            return json_encode($resp);
+        }
+        $restore = $this->conn->query("UPDATE `stock_list` SET delete_flag = 0 WHERE id = '{$id}'");
+        if($restore){
+            $resp['status'] = 'success';
+            $resp['msg'] = 'Stock entry successfully restored.';
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = $this->conn->error;
+        }
+        return json_encode($resp);
+    }
+    
+    function restore_promo(){
+        extract($_POST);
+        $resp = array();
+        $id = isset($id) ? intval($id) : 0;
+        if($id <= 0){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Invalid promo id.';
+            return json_encode($resp);
+        }
+        $restore = $this->conn->query("UPDATE `promo_images` SET delete_flag = 0 WHERE id = '{$id}'");
+        if($restore){
+            $resp['status'] = 'success';
+            $resp['msg'] = 'Promo image successfully restored.';
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = $this->conn->error;
+        }
+        return json_encode($resp);
+    }
+    
+    function restore_customer(){
+        extract($_POST);
+        $resp = array();
+        $id = isset($id) ? intval($id) : 0;
+        if($id <= 0){
+            $resp['status'] = 'failed';
+            $resp['msg'] = 'Invalid customer image id.';
+            return json_encode($resp);
+        }
+        $restore = $this->conn->query("UPDATE `customer_purchase_images` SET delete_flag = 0 WHERE id = '{$id}'");
+        if($restore){
+            $resp['status'] = 'success';
+            $resp['msg'] = 'Customer image successfully restored.';
+        }else{
+            $resp['status'] = 'failed';
+            $resp['msg'] = $this->conn->error;
         }
         return json_encode($resp);
     }
@@ -4757,6 +4802,30 @@ $sysset = new SystemSettings();
 	break;
 	case 'get_installment_stats':
 		echo $Master->get_installment_stats();
+	break;
+	case 'restore_order':
+		echo $Master->restore_order();
+	break;
+	case 'restore_invoice':
+		echo $Master->restore_invoice();
+	break;
+	case 'restore_request':
+		echo $Master->restore_request();
+	break;
+	case 'restore_appointment':
+		echo $Master->restore_appointment();
+	break;
+	case 'restore_document':
+		echo $Master->restore_document();
+	break;
+	case 'restore_stock':
+		echo $Master->restore_stock();
+	break;
+	case 'restore_promo':
+		echo $Master->restore_promo();
+	break;
+	case 'restore_customer':
+		echo $Master->restore_customer();
 	break;
 	default:
 		break;

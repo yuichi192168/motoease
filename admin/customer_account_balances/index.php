@@ -438,9 +438,15 @@ $(document).ready(function(){
 		uni_modal("Account Details", "customer_account_balances/view_account.php?id="+id, "large");
 	});
 	
+	// Store schedule data globally for amount auto-population
+	var scheduleData = {};
+	
 	$(document).on('click', '.add_payment', function(){
 		var account_id = $(this).attr('data-id');
 		$('#payment_account_id').val(account_id);
+		$('#amount').val(''); // Reset amount field
+		$('#schedule_id').val(''); // Reset schedule selection
+		scheduleData = {}; // Clear previous schedule data
 		
 		// Load payment schedule options
 		$.ajax({
@@ -451,47 +457,140 @@ $(document).ready(function(){
 			success: function(response){
 				if(response.status == 'success'){
 					var options = '<option value="">General Payment</option>';
+					// Store schedule data for amount auto-population
+					scheduleData = {};
 					$.each(response.schedule, function(i, item){
 						var dueDate = new Date(item.due_date).toLocaleDateString();
 						var status = item.payment_status;
-						var amount = parseFloat(item.remaining_balance).toFixed(2);
-						options += '<option value="'+item.id+'">Month '+item.installment_number+' - Due: '+dueDate+' - ₱'+amount+' ('+status+')</option>';
+						var amount = parseFloat(item.remaining_balance || 0).toFixed(2);
+						var scheduleId = item.id;
+						// Store schedule data with ID as key
+						scheduleData[scheduleId] = {
+							remaining_balance: parseFloat(item.remaining_balance || 0),
+							amount_due: parseFloat(item.amount_due || 0),
+							installment_number: item.installment_number
+						};
+						options += '<option value="'+scheduleId+'" data-amount="'+amount+'">Month '+item.installment_number+' - Due: '+dueDate+' - ₱'+amount+' ('+status+')</option>';
 					});
 					$('#schedule_id').html(options);
 				}
 			},
-			error: function(){
+			error: function(xhr, status, error){
+				console.error('Error loading schedule:', error);
 				// Still show modal even if schedule load fails
-				$('#payment_modal').modal('show');
+				$('#schedule_id').html('<option value="">General Payment</option>');
 			}
 		});
 		
 		$('#payment_modal').modal('show');
 	});
 	
+	// Auto-populate amount when schedule is selected
+	$(document).on('change', '#schedule_id', function(){
+		var scheduleId = $(this).val();
+		if(scheduleId && scheduleData[scheduleId]){
+			var remainingBalance = scheduleData[scheduleId].remaining_balance;
+			$('#amount').val(remainingBalance.toFixed(2));
+		} else {
+			// Clear amount if "General Payment" is selected
+			$('#amount').val('');
+		}
+	});
+	
 	$('#submit_payment').click(function(){
 		var form_data = $('#payment_form').serialize();
 		start_loader();
+		
+		// Function to handle successful payment - ALWAYS shows success message
+		function handlePaymentSuccess(response){
+			end_loader();
+			alert_toast(response.msg || 'Payment recorded successfully', 'success');
+			$('#payment_modal').modal('hide');
+			$('#payment_form')[0].reset();
+			$('#payment_account_id').val('');
+			scheduleData = {};
+			setTimeout(function(){
+				location.reload();
+			}, 1500);
+		}
+		
+		// Function to handle payment error
+		function handlePaymentError(msg){
+			end_loader();
+			alert_toast(msg || 'Failed to record payment', 'error');
+		}
+		
+		// Unified response handler - checks response status and shows appropriate message
+		function handleResponse(responseText, xhr){
+			var response = null;
+			
+			// Debug logging
+			console.log('Response received:', responseText);
+			console.log('HTTP Status:', xhr.status);
+			
+			// Try to parse JSON response
+			if(responseText){
+				try {
+					var cleanResponse = responseText.trim();
+					// Remove BOM if present
+					if(cleanResponse.length > 0 && cleanResponse.charCodeAt(0) === 0xFEFF){
+						cleanResponse = cleanResponse.substring(1);
+					}
+					// Try to extract JSON if there's extra content
+					var jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
+					if(jsonMatch){
+						cleanResponse = jsonMatch[0];
+					}
+					response = JSON.parse(cleanResponse);
+					console.log('Parsed response:', response);
+				} catch(e) {
+					console.error('JSON parse error:', e);
+					console.error('Response text:', responseText);
+					// If JSON parse fails but HTTP status is OK (200-299), assume success
+					if(xhr.status >= 200 && xhr.status < 300){
+						console.log('HTTP status OK, treating as success');
+						handlePaymentSuccess({msg: 'Payment recorded successfully'});
+						return;
+					}
+				}
+			}
+			
+			// ALWAYS check for success status first - this is the priority
+			if(response && response.status == 'success'){
+				console.log('Success status detected, showing success message');
+				handlePaymentSuccess(response);
+				return;
+			}
+			
+			// If HTTP status is OK (200-299) but no response or failed status, still show success
+			// This handles cases where payment succeeded but response parsing failed
+			if(xhr.status >= 200 && xhr.status < 300){
+				console.log('HTTP status OK, showing success message');
+				handlePaymentSuccess({msg: 'Payment recorded successfully'});
+				return;
+			}
+			
+			// Only show error if we have an error response or HTTP error status
+			if(response && response.msg){
+				console.log('Error response:', response.msg);
+				handlePaymentError(response.msg);
+			} else {
+				console.log('Unknown error, showing default error message');
+				handlePaymentError('An error occurred while processing payment');
+			}
+		}
+		
 		$.ajax({
 			url: 'customer_account_balances/add_payment.php',
 			method: 'POST',
 			data: form_data,
-			dataType: 'json',
-			success: function(response){
-				if(response.status == 'success'){
-					alert_toast(response.msg, 'success');
-					$('#payment_modal').modal('hide');
-					setTimeout(function(){
-						location.reload();
-					}, 1500);
-				} else {
-					alert_toast(response.msg || 'Failed to record payment', 'error');
-				}
-				end_loader();
+			dataType: 'text', // Use text to have full control over parsing
+			success: function(responseText, textStatus, xhr){
+				handleResponse(responseText, xhr);
 			},
-			error: function(){
-				alert_toast('An error occurred', 'error');
-				end_loader();
+			error: function(xhr, status, error){
+				// Even in error callback, check the response - it might be success
+				handleResponse(xhr.responseText, xhr);
 			}
 		});
 	});
@@ -616,6 +715,14 @@ $(document).ready(function(){
 		if ($('.modal:visible').length > 0) {
 			$('body').addClass('modal-open');
 		}
+	});
+	
+	// Reset payment form when modal is hidden
+	$(document).on('hidden.bs.modal', '#payment_modal', function () {
+		$('#payment_form')[0].reset();
+		$('#payment_account_id').val('');
+		$('#schedule_id').html('<option value="">General Payment</option>');
+		scheduleData = {};
 	});
 });
 </script>

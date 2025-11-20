@@ -22,7 +22,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
             <h4 class="card-title">Product Details</h4>
             <div class="card-tools">
                 <a class="btn btn-primary btn-sm btn-flat" href="./?page=products/manage_product&id=<?= isset($id) ? $id : "" ?>"><i class="fa fa-edit"></i> Edit</a>
-                <a class="btn btn-danger btn-sm btn-flat" href="javascript:void(0)>" id="delete_data"><i class="fa fa-trash"></i> Delete</a>
+                <a class="btn btn-warning btn-sm btn-flat" href="javascript:void(0)>" id="delete_data"><i class="fa fa-archive"></i> Archive</a>
                 <a class="btn btn-default border btn-sm btn-flat" href="./?page=products"><i class="fa fa-angle-left"></i> Back</a>
             </div>
         </div>
@@ -87,7 +87,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 <script>
     $(document).ready(function(){
 		$('#delete_data').click(function(){
-			_conf("Are you sure to delete this product permanently?","delete_product",[])
+			_conf("Are you sure to archive this product? It will be hidden from active lists but can be restored later.","delete_product",[])
 		})
     })
     function delete_product($id = '<?= isset($id) ? $id : "" ?>'){

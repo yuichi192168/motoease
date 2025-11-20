@@ -92,12 +92,36 @@ $date_end = isset($_GET['date_end']) ? $_GET['date_end'] :  date("Y-m-d");
                     $qry = $conn->query("SELECT s.*,CONCAT(c.lastname,', ',c.firstname,' ',c.middlename) as fullname from service_requests s inner join client_list c on s.client_id = c.id {$where} order by unix_timestamp(s.date_created) desc");
 
                     while($row = $qry->fetch_assoc()):
+                        // Get all meta fields
                         $meta = $conn->query("SELECT * FROM request_meta where request_id = '{$row['id']}'");
                         while($mrow = $meta->fetch_assoc()){
-                            $row[$mrow['meta_field']] =$mrow['meta_value'];
+                            $row[$mrow['meta_field']] = $mrow['meta_value'];
                         }
-                        $services  = $conn->query("SELECT * FROM service_list where id in ({$row['service_id']}) ");
-                        while($srow = $services->fetch_assoc()):
+                        
+                        // Get service IDs safely
+                        $sids_result = $conn->query("SELECT meta_value FROM request_meta where request_id = '{$row['id']}' and meta_field = 'service_id'");
+                        $sids = '';
+                        if($sids_result && $sids_result->num_rows > 0) {
+                            $sids_row = $sids_result->fetch_assoc();
+                            $sids = $sids_row['meta_value'] ?? '';
+                        }
+                        
+                        // Only query services if we have valid service IDs
+                        $services = null;
+                        if(!empty($sids) && $sids !== '' && $sids !== '0') {
+                            // Validate and sanitize service IDs
+                            $service_ids = array_filter(array_map('intval', explode(',', $sids)));
+                            if(!empty($service_ids)) {
+                                $service_ids_str = implode(',', $service_ids);
+                                $services = $conn->query("SELECT * FROM service_list where id in ({$service_ids_str}) ");
+                            }
+                        }
+                        
+                        // Display row(s) - one row per service, or one row if no services
+                        if($services && $services->num_rows > 0) {
+                            $service_count = 0;
+                            while($srow = $services->fetch_assoc()):
+                                $service_count++;
                     ?>
                     <tr>
                         <td class="text-center"><?php echo $i++ ?></td>
@@ -120,7 +144,35 @@ $date_end = isset($_GET['date_end']) ? $_GET['date_end'] :  date("Y-m-d");
                             <?php endif; ?>
                         </td>
                     </tr>
-                    <?php endwhile; endwhile; ?>
+                    <?php 
+                            endwhile;
+                        } else {
+                            // Show row even if no services found
+                    ?>
+                    <tr>
+                        <td class="text-center"><?php echo $i++ ?></td>
+                        <td><?php echo $row['date_created'] ?></td>
+                        <td><?php echo $row['fullname'] ?></td>
+                        <td><?php echo $row['vehicle_registration_number'] ?></td>
+                        <td><?php echo !empty($row['mechanic_id']) && isset($mech_arr[$row['mechanic_id']]) ? $mech_arr[$row['mechanic_id']] : "N/A" ?></td>
+                        <td>No services found</td>
+                        <td class='text-center'>
+                            <?php if($row['status'] == 1): ?>
+                                <span class="badge badge-primary rounded-pill px-3">Confirmed</span>
+                            <?php elseif($row['status'] == 2): ?>
+                                <span class="badge badge-warning rounded-pill px-3">On-progress</span>
+                            <?php elseif($row['status'] == 3): ?>
+                                <span class="badge badge-success rounded-pill px-3">Done</span>
+                            <?php elseif($row['status'] == 4): ?>
+                                <span class="badge badge-danger rounded-pill px-3">Cancelled</span>
+                            <?php else: ?>
+                                <span class="badge badge-secondary rounded-pill px-3">Pending</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php 
+                        }
+                    endwhile; ?>
                     <?php if($qry->num_rows <= 0): ?>
                     <tr>
                         <td class="text-center" colspan="7">No Data...</td>

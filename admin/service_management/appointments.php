@@ -31,7 +31,7 @@
 		<tbody>
 			<?php 
 				$i = 1;
-				$appt_qry = $conn->query("SELECT a.*, CONCAT(c.lastname, ', ', c.firstname, ' ', c.middlename) AS fullname FROM appointments a INNER JOIN client_list c ON a.client_id = c.id ORDER BY a.date_created DESC");
+				$appt_qry = $conn->query("SELECT a.*, CONCAT(c.lastname, ', ', c.firstname, ' ', c.middlename) AS fullname FROM appointments a INNER JOIN client_list c ON a.client_id = c.id WHERE a.delete_flag = 0 ORDER BY a.date_created DESC");
 				// Preload services and mechanics maps
 				$services_map = [];
 				$svc_rs = $conn->query("SELECT id, service FROM service_list");
@@ -66,7 +66,7 @@
 						<div class="dropdown-divider"></div>
 						<a class="dropdown-item edit_appt" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-edit text-primary"></span> Edit</a>
 						<div class="dropdown-divider"></div>
-						<a class="dropdown-item delete_appt" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-trash text-danger"></span> Delete</a>
+						<a class="dropdown-item delete_appt" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-archive text-warning"></span> Archive</a>
 					</div>
 				</td>
 			</tr>
@@ -79,7 +79,7 @@
 $(document).ready(function(){
 	$('#appointments_table').dataTable();
 	$('.delete_appt').click(function(){
-		_conf("Are you sure to delete this appointment permanently?","delete_appointment",[$(this).attr('data-id')])
+		_conf("Are you sure to archive this appointment? It will be hidden from active lists but can be restored later.","delete_appointment",[$(this).attr('data-id')])
 	})
 	$('.view_appt').click(function(){
 		uni_modal("Appointment Details","../service_requests/view_appointment.php?id="+$(this).attr('data-id'),'large')

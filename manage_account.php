@@ -196,7 +196,7 @@ if($has_customer_payment_schedule){
                                 }
                             ?>
                             <div class="border rounded p-3 mt-3 account-payment-schedule">
-                                <div class="d-flex flex-wrap justify-content-between align-items-start">
+                                <!-- <div class="d-flex flex-wrap justify-content-between align-items-start">
                                     <div class="mb-2">
                                         <h5 class="mb-1 text-dark"><?= htmlspecialchars($client_account['item_purchased'] ?? 'Account #'.$client_account['id']) ?></h5>
                                         <p class="text-muted mb-0">Order #<?= htmlspecialchars($client_account['order_id'] ?? 'N/A') ?></p>
@@ -228,7 +228,7 @@ if($has_customer_payment_schedule){
                                             <div class="text-muted small">Monthly: ₱<?= number_format($client_account['monthly_payment_amount'], 2) ?></div>
                                         <?php endif; ?>
                                     </div>
-                                </div>
+                                </div> -->
                                 <?php if(!empty($schedule_items)): ?>
                                 <div class="table-responsive mt-3">
                                     <table class="table table-bordered table-striped table-sm mb-0">

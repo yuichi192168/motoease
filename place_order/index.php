@@ -112,6 +112,83 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                         } elseif($has_parts){
                             $transaction_type = 'motorcycle_parts_purchase';
                         }
+                        
+                        // Motorcycle down payment and monthly payment data
+                        $motorcycle_payment_data = [
+                            'DIO' => [
+                                ['dp' => 3200, '12' => 7868, '18' => 5911, '24' => 4907, '30' => 4319, '36' => 3906, '48' => null],
+                                ['dp' => 4800, '12' => 7373, '18' => 5523, '24' => 4570, '30' => 4026, '36' => 3657, '48' => null],
+                                ['dp' => 6400, '12' => 7127, '18' => 5270, '24' => 4319, '30' => 3783, '36' => 3418, '48' => 2996],
+                                ['dp' => 9500, '12' => 6742, '18' => 4976, '24' => 4038, '30' => 3526, '36' => 3176, '48' => 2770],
+                                ['dp' => 12700, '12' => 6374, '18' => 4688, '24' => 3784, '30' => 3298, '36' => 2965, '48' => 2578]
+                            ],
+                            'RS 125' => [
+                                ['dp' => 3800, '12' => 9144, '18' => 6862, '24' => 5690, '30' => 5004, '36' => 4523, '48' => null],
+                                ['dp' => 5700, '12' => 8563, '18' => 6406, '24' => 5295, '30' => 4661, '36' => 4230, '48' => null],
+                                ['dp' => 7500, '12' => 8284, '18' => 6117, '24' => 5007, '30' => 4382, '36' => 3955, '48' => 3463],
+                                ['dp' => 11300, '12' => 7815, '18' => 5759, '24' => 4667, '30' => 4071, '36' => 3664, '48' => 3191],
+                                ['dp' => 15000, '12' => 7388, '18' => 5425, '24' => 4373, '30' => 3807, '36' => 3420, '48' => 2969]
+                            ],
+                            'PCX160 (CBS)' => [
+                                ['dp' => 10000, '12' => 14594, '18' => 10881, '24' => 8969, '30' => 7877, '36' => 7136, '48' => null],
+                                ['dp' => 13300, '12' => 14091, '18' => 10367, '24' => 8460, '30' => 7385, '36' => 6653, '48' => 5807],
+                                ['dp' => 20000, '12' => 13265, '18' => 9738, '24' => 7865, '30' => 6842, '36' => 6143, '48' => 5333],
+                                ['dp' => 26600, '12' => 12506, '18' => 9146, '24' => 7344, '30' => 6375, '36' => 5712, '48' => 4940],
+                                ['dp' => 39900, '12' => 11039, '18' => 8079, '24' => 6492, '30' => 5639, '36' => 5055, '48' => 4375]
+                            ],
+                            'PCX160 (ABS)' => [
+                                ['dp' => 11400, '12' => 16458, '18' => 12265, '24' => 10105, '30' => 8871, '36' => 8034, '48' => null],
+                                ['dp' => 15100, '12' => 15893, '18' => 11686, '24' => 9532, '30' => 8317, '36' => 7490, '48' => 6535],
+                                ['dp' => 22700, '12' => 14957, '18' => 10973, '24' => 8857, '30' => 7702, '36' => 6913, '48' => 5997],
+                                ['dp' => 30200, '12' => 14094, '18' => 10300, '24' => 8266, '30' => 7172, '36' => 6423, '48' => 5552],
+                                ['dp' => 45300, '12' => 12429, '18' => 9089, '24' => 7299, '30' => 6336, '36' => 5677, '48' => 4911]
+                            ],
+                            'AIRBLADE 150' => [
+                                ['dp' => 8400, '12' => 12303, '18' => 9181, '24' => 7573, '30' => 6655, '36' => 6032, '48' => null],
+                                ['dp' => 11100, '12' => 11889, '18' => 8755, '24' => 7150, '30' => 6246, '36' => 5630, '48' => 4918],
+                                ['dp' => 16700, '12' => 11198, '18' => 8229, '24' => 6652, '30' => 5791, '36' => 5203, '48' => 4521],
+                                ['dp' => 22200, '12' => 10565, '18' => 7734, '24' => 6217, '30' => 5401, '36' => 4843, '48' => 4193],
+                                ['dp' => 33300, '12' => 9341, '18' => 6844, '24' => 5506, '30' => 4786, '36' => 4294, '48' => 3721]
+                            ],
+                            'CRF 150L' => [
+                                ['dp' => 10300, '12' => 15009, '18' => 11190, '24' => 9222, '30' => 8099, '36' => 7336, '48' => null],
+                                ['dp' => 13700, '12' => 14492, '18' => 10660, '24' => 8698, '30' => 7592, '36' => 6839, '48' => 5969],
+                                ['dp' => 20600, '12' => 13641, '18' => 10013, '24' => 8086, '30' => 7033, '36' => 6314, '48' => 5480],
+                                ['dp' => 27400, '12' => 12859, '18' => 9402, '24' => 7549, '30' => 6552, '36' => 5870, '48' => 5076],
+                                ['dp' => 41100, '12' => 11348, '18' => 8304, '24' => 6672, '30' => 5794, '36' => 5193, '48' => 4494]
+                            ],
+                            'SUPRA GTR150' => [
+                                ['dp' => 8100, '12' => 11999, '18' => 8956, '24' => 7389, '30' => 6494, '36' => 5886, '48' => null],
+                                ['dp' => 10800, '12' => 11588, '18' => 8535, '24' => 6972, '30' => 6090, '36' => 5490, '48' => 4797],
+                                ['dp' => 16200, '12' => 10921, '18' => 8027, '24' => 6490, '30' => 5650, '36' => 5077, '48' => 4412],
+                                ['dp' => 21600, '12' => 10300, '18' => 7542, '24' => 6063, '30' => 5268, '36' => 4724, '48' => 4091],
+                                ['dp' => 32400, '12' => 9109, '18' => 6676, '24' => 5372, '30' => 4670, '36' => 4190, '48' => 3632]
+                            ]
+                        ];
+                        
+                        // Identify motorcycle model from cart items
+                        $motorcycle_model = null;
+                        $motorcycle_model_key = null;
+                        if($has_motorcycles) {
+                            foreach($cart_items as $item) {
+                                $product_name = strtoupper($item['name'] ?? '');
+                                // Check for each motorcycle model
+                                foreach(array_keys($motorcycle_payment_data) as $model_key) {
+                                    $model_search = strtoupper($model_key);
+                                    // Remove parentheses and spaces for matching
+                                    $model_search_clean = str_replace(['(', ')', ' '], '', $model_search);
+                                    $product_name_clean = str_replace(['(', ')', ' '], '', $product_name);
+                                    
+                                    if(strpos($product_name, $model_search) !== false || 
+                                       strpos($product_name_clean, $model_search_clean) !== false ||
+                                       strpos($product_name, str_replace(['(', ')'], '', $model_search)) !== false) {
+                                        $motorcycle_model = $model_key;
+                                        $motorcycle_model_key = $model_key;
+                                        break 2;
+                                    }
+                                }
+                            }
+                        }
                         ?>
                         <?php if($has_motorcycles): ?>
                         <div class="alert <?= $application_completed ? 'alert-success' : 'alert-warning' ?> mb-3">
@@ -299,25 +376,35 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                                 <label for="installment_months" class="form-label"><strong>Installment Period *</strong></label>
                                 <select class="form-control" name="installment_months" id="installment_months">
                                     <option value="">-- Select Installment Period --</option>
-                                    <option value="6">6 Months</option>
                                     <option value="12">12 Months</option>
                                     <option value="18">18 Months</option>
                                     <option value="24">24 Months</option>
                                     <option value="30">30 Months</option>
                                     <option value="36">36 Months</option>
+                                    <option value="48">48 Months</option>
                                 </select>
                                 <div class="invalid-feedback" id="installment_months_error"></div>
                                 
                                 <div class="mt-2">
                                     <label for="down_payment" class="form-label"><strong>Down Payment Amount *</strong></label>
-                                    <input type="number" class="form-control" name="down_payment" id="down_payment" 
-                                           min="<?= max($minimum_down_payment, 0) ?>" step="0.01" placeholder="Enter down payment amount">
-                                    <small class="form-text text-muted">
-                                        Minimum down payment (20% of motorcycle total): ₱<?= number_format($minimum_down_payment, 2) ?>
-                                        <?php if($mixed_cart_upfront_total > 0): ?>
-                                            <br><strong>Note:</strong> Spare parts/accessories (₱<?= number_format($mixed_cart_upfront_total, 2) ?>) are due upfront and excluded from installments.
+                                    <select class="form-control" name="down_payment" id="down_payment">
+                                        <option value="">-- Select Down Payment --</option>
+                                        <?php if($motorcycle_model && isset($motorcycle_payment_data[$motorcycle_model])): ?>
+                                            <?php foreach($motorcycle_payment_data[$motorcycle_model] as $option): ?>
+                                                <option value="<?= $option['dp'] ?>" data-dp="<?= $option['dp'] ?>">₱<?= number_format($option['dp'], 2) ?></option>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <option value="" disabled>Motorcycle model not recognized</option>
                                         <?php endif; ?>
-                                    </small>
+                                    </select>
+                                    <?php if($motorcycle_model): ?>
+                                        <small class="form-text text-muted">
+                                            Available down payment options for <?= htmlspecialchars($motorcycle_model) ?>
+                                            <?php if($mixed_cart_upfront_total > 0): ?>
+                                                <br><strong>Note:</strong> Spare parts/accessories (₱<?= number_format($mixed_cart_upfront_total, 2) ?>) are due upfront and excluded from installments.
+                                            <?php endif; ?>
+                                        </small>
+                                    <?php endif; ?>
                                     <div class="invalid-feedback" id="down_payment_error"></div>
                                 </div>
                                 
@@ -549,6 +636,8 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
 
 <script>
     var cartInstallmentPrincipal = <?= json_encode($installment_principal_amount) ?>;
+    var motorcyclePaymentData = <?= json_encode($motorcycle_payment_data) ?>;
+    var motorcycleModel = <?= json_encode($motorcycle_model) ?>;
     $(function(){
         // Payment method change handler
         $('#payment_method').change(function(){
@@ -561,6 +650,11 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
             // Clear validation states
             $('#payment_type, #installment_months, #down_payment').removeClass('is-invalid is-valid');
             $('#payment_type_error, #installment_months_error, #down_payment_error').text('');
+            
+            // Reset installment fields
+            $('#installment_months').val('');
+            $('#down_payment').val('');
+            $('#monthly_payment').val('');
             
             // Show relevant section
             if(paymentMethod === 'full_payment') {
@@ -581,23 +675,37 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
             updateButtonText();
         });
         
-        // Installment calculation
-        $('#installment_months, #down_payment').on('input change', function(){
+        // Installment calculation using predefined values
+        $('#installment_months, #down_payment').on('change', function(){
             calculateInstallment();
         });
         
         function calculateInstallment() {
-            var months = parseInt($('#installment_months').val());
-            var downPayment = parseFloat($('#down_payment').val()) || 0;
-            var principalAmount = cartInstallmentPrincipal && cartInstallmentPrincipal > 0 ? cartInstallmentPrincipal : <?= $grand_total ?>;
-            var minimumDown = principalAmount * 0.2;
+            var months = $('#installment_months').val();
+            var downPayment = $('#down_payment').val();
             
-            if(months > 0 && downPayment >= minimumDown) {
-                var remainingAmount = principalAmount - downPayment;
-                var monthlyPayment = remainingAmount / months;
-                $('#monthly_payment').val('₱' + monthlyPayment.toFixed(2));
+            if(!months || !downPayment || !motorcycleModel || !motorcyclePaymentData[motorcycleModel]) {
+                $('#monthly_payment').val('');
+                return;
+            }
+            
+            // Find the matching down payment option
+            var selectedOption = null;
+            var downPaymentNum = parseFloat(downPayment);
+            for(var i = 0; i < motorcyclePaymentData[motorcycleModel].length; i++) {
+                if(parseFloat(motorcyclePaymentData[motorcycleModel][i].dp) === downPaymentNum) {
+                    selectedOption = motorcyclePaymentData[motorcycleModel][i];
+                    break;
+                }
+            }
+            
+            if(selectedOption && selectedOption[months] !== null && selectedOption[months] !== undefined) {
+                $('#monthly_payment').val('₱' + parseFloat(selectedOption[months]).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
             } else {
                 $('#monthly_payment').val('');
+                if(months == '48' && selectedOption && selectedOption[months] === null) {
+                    alert_toast('48 months installment is not available for this down payment option.', 'warning');
+                }
             }
         }
         
@@ -636,9 +744,8 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
             // Validate installment section (only when motorcycles are present)
             if(paymentMethod === 'installment' && hasMotorcycles) {
                 var months = $('#installment_months').val();
-                var downPayment = parseFloat($('#down_payment').val()) || 0;
-                var principalAmount = cartInstallmentPrincipal && cartInstallmentPrincipal > 0 ? cartInstallmentPrincipal : <?= $grand_total ?>;
-                var minimumDown = principalAmount * 0.2;
+                var downPayment = $('#down_payment').val();
+                var monthlyPayment = $('#monthly_payment').val();
                 
                 if(!months) {
                     $('#installment_months').addClass('is-invalid');
@@ -649,13 +756,20 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                     $('#installment_months_error').hide();
                 }
                 
-                if(!downPayment || downPayment < minimumDown) {
+                if(!downPayment) {
                     $('#down_payment').addClass('is-invalid');
-                    $('#down_payment_error').text('Down payment must be at least ₱' + minimumDown.toFixed(2) + ' (20% of financed motorcycle total)').show();
+                    $('#down_payment_error').text('Please select a down payment amount.').show();
                     isValid = false;
                 } else {
                     $('#down_payment').addClass('is-valid');
                     $('#down_payment_error').hide();
+                }
+                
+                // Validate that monthly payment is calculated
+                if(months && downPayment && !monthlyPayment) {
+                    $('#down_payment').addClass('is-invalid');
+                    $('#down_payment_error').text('Selected down payment and installment period combination is not available.').show();
+                    isValid = false;
                 }
             }
             
@@ -754,7 +868,7 @@ require_once(__DIR__ . '/../inc/sess_auth.php');
                 // Ensure monthly payment has a value
                 var monthlyPayment = $('#monthly_payment').val();
                 if(!monthlyPayment || monthlyPayment.trim() === '') {
-                    alert_toast('Please ensure monthly payment is calculated.', 'warning');
+                    alert_toast('Please select both installment period and down payment to calculate monthly payment.', 'warning');
                     return false;
                 }
             }
