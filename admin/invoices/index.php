@@ -8,6 +8,9 @@
 	<div class="card-header">
 		<h3 class="card-title">Invoice Management</h3>
 		<div class="card-tools">
+			<button class="btn btn-info btn-sm" type="button" id="verify_all_calculations" style="margin-right: 5px;">
+				<i class="fas fa-calculator"></i> Verify All Calculations
+			</button>
 			<button class="btn btn-primary btn-sm" type="button" id="print_reports">
 				<span class="fa fa-print"></span> Print Report
 			</button>
@@ -106,7 +109,30 @@
 			</div>
 			<div class="modal-footer">
 				<button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+				<button type="button" class="btn btn-info btn-sm" id="verify_calculations">
+					<i class="fas fa-calculator"></i> Verify Calculations
+				</button>
 				<button type="button" class="btn btn-primary btn-sm" id="print_invoice">Print Invoice</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Verification Results Modal -->
+<div class="modal fade" id="verificationModal" tabindex="-1" role="dialog">
+	<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-content">
+			<div class="modal-header bg-info text-white">
+				<h4 class="modal-title"><i class="fas fa-calculator"></i> Calculation Verification Results</h4>
+				<button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+				<!-- Results will be loaded here -->
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
 			</div>
 		</div>
 	</div>
@@ -428,6 +454,36 @@ $(document).ready(function(){
 	});
 
 	// View invoice
+	// Verify calculations from dropdown
+	$(document).on('click', '.verify_calculations', function(e){
+		e.preventDefault();
+		var invoice_id = $(this).data('id');
+		if(!invoice_id){
+			alert_toast('Invoice ID not found', 'error');
+			return;
+		}
+		
+		start_loader();
+		$.ajax({
+			url: _base_url_ + 'verify_invoice_calculations.php?ajax=1&invoice_id=' + invoice_id,
+			method: 'GET',
+			dataType: 'json',
+			success: function(resp){
+				end_loader();
+				if(resp.status){
+					displayVerificationResults(resp, invoice_id);
+				} else {
+					alert_toast('Error verifying calculations', 'error');
+				}
+			},
+			error: function(xhr, status, error) {
+				end_loader();
+				console.error('AJAX error verifying calculations:', error);
+				alert_toast('Error verifying calculations: ' + error, 'error');
+			}
+		});
+	});
+
 	$(document).on('click', '.view_invoice', function(){
 		var invoice_id = $(this).data('id');
 		viewInvoice(invoice_id);
@@ -463,6 +519,121 @@ $(document).ready(function(){
 		});
 	});
 
+	// Verify calculations
+	$('#verify_calculations').click(function(){
+		var invoice_id = $('#viewInvoiceModal').data('invoice-id');
+		if(!invoice_id || invoice_id === 'undefined'){
+			alert_toast('Invoice ID not found', 'error');
+			return;
+		}
+		
+		start_loader();
+		$.ajax({
+			url: _base_url_ + 'verify_invoice_calculations.php?ajax=1&invoice_id=' + invoice_id,
+			method: 'GET',
+			dataType: 'json',
+			success: function(resp){
+				end_loader();
+				if(resp.status){
+					displayVerificationResults(resp, invoice_id);
+				} else {
+					alert_toast('Error verifying calculations', 'error');
+				}
+			},
+			error: function(xhr, status, error) {
+				end_loader();
+				console.error('AJAX error verifying calculations:', error);
+				alert_toast('Error verifying calculations: ' + error, 'error');
+			}
+		});
+	});
+
+	// Display verification results in modal
+	function displayVerificationResults(resp, invoice_id){
+		var html = '<div class="verification-results">';
+		var title = invoice_id ? 'Invoice Calculation Verification' : 'All Invoices Calculation Verification';
+		html += '<h5 class="mb-3"><i class="fas fa-calculator"></i> ' + title + '</h5>';
+		
+		// Status summary
+		var statusClass = resp.status === 'success' ? 'success' : (resp.status === 'warning' ? 'warning' : 'danger');
+		html += '<div class="alert alert-' + statusClass + ' mb-3">';
+		html += '<strong>Status:</strong> ' + resp.status.toUpperCase();
+		html += '</div>';
+		
+		// Structure check
+		if(resp.data && resp.data.structure){
+			html += '<div class="card mb-3">';
+			html += '<div class="card-header"><strong>1. Database Structure</strong></div>';
+			html += '<div class="card-body">';
+			$.each(resp.data.structure, function(i, item){
+				var icon = item.type === 'success' ? '✓' : (item.type === 'error' ? '✗' : '⚠');
+				var badgeClass = item.type === 'success' ? 'success' : (item.type === 'error' ? 'danger' : 'warning');
+				html += '<div class="mb-2">';
+				html += '<span class="badge badge-' + badgeClass + '">' + icon + '</span> ';
+				html += item.message;
+				html += '</div>';
+			});
+			html += '</div></div>';
+		}
+		
+		// Invoice details
+		if(resp.data && resp.data.invoice_details && resp.data.invoice_details.length > 0){
+			html += '<div class="card mb-3">';
+			html += '<div class="card-header"><strong>2. Invoice Calculations</strong></div>';
+			html += '<div class="card-body">';
+			$.each(resp.data.invoice_details, function(i, inv){
+				html += '<div class="mb-3 p-3 border rounded">';
+				html += '<h6>Invoice #' + inv.invoice_number + '</h6>';
+				html += '<table class="table table-sm table-bordered mb-2">';
+				html += '<tr><td><strong>Total Amount:</strong></td><td class="text-right">₱' + parseFloat(inv.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td></tr>';
+				html += '<tr><td><strong>Total Paid:</strong></td><td class="text-right">₱' + parseFloat(inv.total_paid).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td></tr>';
+				html += '<tr><td><strong>Balance Remaining:</strong></td><td class="text-right">₱' + parseFloat(inv.balance_remaining).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td></tr>';
+				html += '<tr><td><strong>Interest:</strong></td><td class="text-right">₱' + parseFloat(inv.interest_amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td></tr>';
+				html += '<tr><td><strong>Late Fee:</strong></td><td class="text-right">₱' + parseFloat(inv.late_fee_amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td></tr>';
+				html += '<tr><td><strong>Arrears:</strong></td><td class="text-right">₱' + parseFloat(inv.arrears_amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td></tr>';
+				html += '<tr class="table-info"><td><strong>Total Balance Due:</strong></td><td class="text-right"><strong>₱' + parseFloat(inv.total_balance_due).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</strong></td></tr>';
+				html += '</table>';
+				
+				if(inv.calculation_verified){
+					html += '<div class="alert alert-success mb-0">';
+					html += '<i class="fas fa-check-circle"></i> <strong>Calculation Verified</strong> (Difference: ₱' + parseFloat(inv.calculation_diff).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ')';
+					html += '</div>';
+				} else {
+					html += '<div class="alert alert-danger mb-0">';
+					html += '<i class="fas fa-exclamation-triangle"></i> <strong>Calculation Mismatch!</strong><br>';
+					html += 'Calculated: ₱' + parseFloat(inv.calculated_total).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '<br>';
+					html += 'Stored: ₱' + parseFloat(inv.total_balance_due).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '<br>';
+					html += 'Difference: ₱' + parseFloat(inv.calculation_diff).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+					html += '</div>';
+				}
+				html += '</div>';
+			});
+			html += '</div></div>';
+		}
+		
+		// Settings
+		if(resp.data && resp.data.settings && resp.data.settings.length > 0){
+			html += '<div class="card mb-3">';
+			html += '<div class="card-header"><strong>3. Invoice Settings</strong></div>';
+			html += '<div class="card-body">';
+			$.each(resp.data.settings, function(i, setting){
+				html += '<div class="mb-2">';
+				html += '<strong>' + setting.key + ':</strong> ' + setting.value;
+				if(setting.description){
+					html += ' <small class="text-muted">(' + setting.description + ')</small>';
+				}
+				html += '</div>';
+			});
+			html += '</div></div>';
+		}
+		
+		html += '</div>';
+		
+		// Show in modal
+		$('#verificationModal .modal-body').html(html);
+		$('#verificationModal').modal('show');
+	}
+
 	// Print invoice
 	$('#print_invoice').click(function(){
 		var invoice_id = $('#viewInvoiceModal').data('invoice-id');
@@ -488,6 +659,29 @@ $(document).ready(function(){
 		} else {
 			alert_toast('Invoice ID not found', 'error');
 		}
+	});
+
+	// Verify all invoices calculations
+	$('#verify_all_calculations').click(function(){
+		start_loader();
+		$.ajax({
+			url: _base_url_ + 'verify_invoice_calculations.php?ajax=1',
+			method: 'GET',
+			dataType: 'json',
+			success: function(resp){
+				end_loader();
+				if(resp.status){
+					displayVerificationResults(resp, null);
+				} else {
+					alert_toast('Error verifying calculations', 'error');
+				}
+			},
+			error: function(xhr, status, error) {
+				end_loader();
+				console.error('AJAX error verifying calculations:', error);
+				alert_toast('Error verifying calculations: ' + error, 'error');
+			}
+		});
 	});
 
 	// Print reports
@@ -723,6 +917,7 @@ $('#edit_invoice_form').submit(function(e){
 							html += '<button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">Action <span class="sr-only">Toggle Dropdown</span></button>';
 							html += '<div class="dropdown-menu" role="menu">';
 							html += '<a class="dropdown-item view_invoice" href="#" data-id="' + invoice.id + '"><span class="fa fa-eye text-primary"></span> View</a>';
+							html += '<div class="dropdown-divider"></div>';
 							html += '<div class="dropdown-divider"></div>';
 							html += '<a class="dropdown-item edit_invoice" href="#" data-id="' + invoice.id + '"><span class="fa fa-edit text-primary"></span> Edit</a>';
 							if(invoice.payment_status !== 'paid'){
