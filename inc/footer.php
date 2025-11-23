@@ -90,60 +90,38 @@
                 </div>
             </div>
 
-            <!-- Motorcycle Purchase Requirements -->
+            <!-- Quick Links -->
             <div class="col-lg-4 col-md-6 mb-4">
-                <h5 class="text-white mb-3">
-                    <i class="fas fa-clipboard-list text-primary"></i> Purchase Requirements
-                </h5>
-                
-                <div class="mb-3">
-                    <h6 class="text-white mb-2">
-                        <i class="fas fa-money-bill-wave text-success"></i> For Cash Purchase:
-                    </h6>
-                    <ul class="list-unstyled text-white-50">
-                        <li><i class="fas fa-check text-success"></i> Valid government ID</li>
-                        <li><i class="fas fa-check text-success"></i> Proof of address</li>
-                        <li><i class="fas fa-check text-success"></i> Filled-out buyer's information form</li>
-                    </ul>
-                </div>
-
-                <div class="mb-3">
-                    <h6 class="text-white mb-2">
-                        <i class="fas fa-credit-card text-warning"></i> For Installment:
-                    </h6>
-                    <ul class="list-unstyled text-white-50">
-                        <li><i class="fas fa-check text-success"></i> 2 valid government IDs</li>
-                        <li><i class="fas fa-check text-success"></i> Proof of income (Payslip / COE / Bank Statement)</li>
-                        <li><i class="fas fa-check text-success"></i> Proof of billing</li>
-                        <li><i class="fas fa-check text-success"></i> Application form</li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- Quick Links & Application -->
-            <div class="col-lg-4 col-md-12 mb-4">
                 <h5 class="text-white mb-3">
                     <i class="fas fa-link text-primary"></i> Quick Links
                 </h5>
                 
                 <div class="mb-3">
-                    <button onclick="if('<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>' != 1){ Swal.fire({ title: 'Login Required', text: 'Please login first to apply for installment.', icon: 'warning', confirmButtonText: 'Login Now', showCancelButton: true, cancelButtonText: 'Cancel' }).then((result) => { if (result.isConfirmed) { location.href = './login.php'; } }); return false; } window.open('https://form.jotform.com/242488642552463', '_blank');" class="btn btn-primary btn-block mb-2">
-                        <i class="fas fa-file-alt"></i> Apply for Installment
-                    </button>
-                    <a href="./?p=products" class="btn btn-outline-light btn-block mb-2">
-                        <i class="fas fa-motorcycle"></i> Browse Motorcycles
+                    <a href="./?p=products" class="btn btn-outline-light btn-sm btn-block mb-2">
+                        <i class="fas fa-motorcycle"></i> Browse Products
                     </a>
-                    <a href="./?p=services" class="btn btn-outline-light btn-block mb-2">
+                    <a href="./?p=services" class="btn btn-outline-light btn-sm btn-block mb-2">
                         <i class="fas fa-tools"></i> Our Services
                     </a>
-                    <button onclick="if('<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>' != 1){ Swal.fire({ title: 'Login Required', text: 'Please login first to book an appointment.', icon: 'warning', confirmButtonText: 'Login Now', showCancelButton: true, cancelButtonText: 'Cancel' }).then((result) => { if (result.isConfirmed) { location.href = './login.php'; } }); return false; } window.location.href='./?p=appointments';" class="btn btn-outline-light btn-block mb-2">
+                    <?php if($_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2): ?>
+                    <button onclick="window.open('https://form.jotform.com/242488642552463', '_blank');" class="btn btn-primary btn-sm btn-block mb-2">
+                        <i class="fas fa-file-alt"></i> Apply for Installment
+                    </button>
+                    <button onclick="window.location.href='./?p=appointments';" class="btn btn-outline-light btn-sm btn-block mb-2">
                         <i class="fas fa-calendar"></i> Book Appointment
                     </button>
+                    <?php endif; ?>
                 </div>
+            </div>
 
-                <div class="text-center">
-                    <h6 class="text-white mb-2">Follow Us</h6>
-                    <a href="https://www.facebook.com/starhondacalambabranch" target="_blank" class="btn btn-outline-primary btn-sm">
+            <!-- Social Media -->
+            <div class="col-lg-4 col-md-12 mb-4">
+                <h5 class="text-white mb-3">
+                    <i class="fas fa-share-alt text-primary"></i> Connect With Us
+                </h5>
+                
+                <div class="mb-3">
+                    <a href="https://www.facebook.com/starhondacalambabranch" target="_blank" class="btn btn-outline-primary btn-sm btn-block mb-2">
                         <i class="fab fa-facebook-f"></i> Facebook
                     </a>
                 </div>

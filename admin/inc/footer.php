@@ -56,6 +56,61 @@
   })
   
   // Admin Notification functions
+  function resolveAdminNotificationData(notification){
+    var data = notification && notification.data ? notification.data : {};
+    if(typeof data === 'string'){
+        try{
+            data = JSON.parse(data);
+        }catch(err){
+            data = {};
+        }
+    }
+    return data || {};
+  }
+
+  function getAdminNotificationTarget(notification){
+    var data = resolveAdminNotificationData(notification);
+    if(notification.url) return notification.url;
+    if(data.url) return data.url;
+    if(data.href) return data.href;
+    if(data.link) return data.link;
+    var type = (notification.type || '').toLowerCase();
+    var defaultHistory = './?page=notifications';
+    var orderView = data.order_id ? './?page=orders/view_order&id=' + data.order_id : './?page=orders';
+    var serviceView = data.service_id ? './?page=service_requests/view_request&id=' + data.service_id : './?page=service_requests';
+    var appointmentView = data.appointment_id ? './?page=appointments/view_appointment&id=' + data.appointment_id : './?page=appointments';
+    var accountView = data.account_id ? './?page=customer_account_balances/view_account&id=' + data.account_id : './?page=customer_account_balances';
+    var productView = data.product_id ? './?page=products/view_product&id=' + data.product_id : './?page=products';
+
+    switch(type){
+      case 'order':
+      case 'order_status':
+        return orderView;
+      case 'service':
+      case 'service_status':
+        return serviceView;
+      case 'appointment':
+      case 'appointment_status':
+      case 'appointment_reminder':
+        return appointmentView;
+      case 'product_availability':
+        return productView;
+      case 'payment':
+      case 'payment_upcoming':
+      case 'payment_missed':
+      case 'payment_received':
+      case 'late_payment':
+      case 'account_status':
+        return accountView;
+      default:
+        if(data.order_id) return orderView;
+        if(data.service_id) return serviceView;
+        if(data.appointment_id) return appointmentView;
+        if(data.account_id) return accountView;
+        if(data.product_id) return productView;
+        return defaultHistory;
+    }
+  }
   function loadAdminNotificationsCount(){
     $.ajax({
         url: _base_url_ + "classes/Master.php?f=get_admin_notifications_count",
@@ -63,8 +118,9 @@
         dataType: "json",
         success: function(resp){
             if(resp.status == 'success'){
-                $('#admin-notifications-count').text(resp.count);
-                if(resp.count > 0){
+                var count = parseInt(resp.count, 10) || 0;
+                $('#admin-notifications-count').text(count);
+                if(count > 0){
                     $('#admin-notifications-count').show();
                 } else {
                     $('#admin-notifications-count').hide();
@@ -85,7 +141,8 @@
                 var html = '';
                 if(resp.data.length > 0){
                     resp.data.forEach(function(notification){
-                        html += '<a href="#" class="dropdown-item notification-item ' + (notification.is_read == 0 ? 'unread' : '') + '" onclick="markAdminNotificationRead(' + notification.id + ')">';
+                        var targetUrl = getAdminNotificationTarget(notification);
+                        html += '<a href="' + targetUrl + '" class="dropdown-item notification-item ' + (notification.is_read == 0 ? 'unread' : '') + '" data-id="' + notification.id + '" data-url="' + targetUrl + '">';
                         html += '<div class="d-flex align-items-start">';
                         html += '<div class="notification-icon me-2">';
                         html += '<i class="fas fa-bell text-warning"></i>';
@@ -107,7 +164,8 @@
     });
   }
   
-  function markAdminNotificationRead(id){
+  function markAdminNotificationRead(id, options){
+    options = options || {};
     $.ajax({
         url: _base_url_ + "classes/Master.php?f=mark_admin_notification_read",
         method: "POST",
@@ -117,6 +175,21 @@
             if(resp.status == 'success'){
                 loadAdminNotificationsCount();
                 loadAdminNotifications();
+                if(typeof options.onSuccess === 'function'){
+                    options.onSuccess(resp);
+                }
+            }else if(typeof options.onError === 'function'){
+                options.onError(resp);
+            }
+        },
+        error: function(err){
+            if(typeof options.onError === 'function'){
+                options.onError(err);
+            }
+        },
+        complete: function(){
+            if(options.redirectTo){
+                window.location.href = options.redirectTo;
             }
         }
     });
@@ -145,6 +218,20 @@
   $(document).ready(function(){
     loadAdminNotificationsCount();
     loadAdminNotifications();
+    if(!window.__adminNotifClickBound){
+        $(document).on('click', '#admin-notifications-content .notification-item', function(e){
+            e.preventDefault();
+            var $item = $(this);
+            var id = $item.data('id');
+            var targetUrl = $item.data('url') || $item.attr('href') || './?page=notifications';
+            if(!id){
+                window.location.href = targetUrl;
+                return;
+            }
+            markAdminNotificationRead(id, { redirectTo: targetUrl });
+        });
+        window.__adminNotifClickBound = true;
+    }
     
     // Refresh notifications every 30 seconds
     setInterval(function(){

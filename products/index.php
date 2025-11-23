@@ -1,47 +1,71 @@
 <?php
 $search = isset($_GET['search']) ? $_GET['search'] : '';
-$brand_filter = isset($_GET['brand_filter']) ? explode(",",$_GET['brand_filter']) : 'all';
-$category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category_filter']) : 'all';
+$brand_filter = isset($_GET['brand_filter']) ? (is_numeric($_GET['brand_filter']) ? $_GET['brand_filter'] : (strpos($_GET['brand_filter'], ',') !== false ? explode(",",$_GET['brand_filter']) : 'all')) : 'all';
+$category_filter = isset($_GET['category_filter']) ? (is_numeric($_GET['category_filter']) ? $_GET['category_filter'] : (strpos($_GET['category_filter'], ',') !== false ? explode(",",$_GET['category_filter']) : 'all')) : 'all';
+$sort = isset($_GET['sort']) ? $_GET['sort'] : 'popular';
 ?>
 <div class="content py-5 mt-3">
     <div class="container">
         
         <div class="row">
             <div class="col-12">
-                <!-- Categories Filter and Search Bar in Same Row -->
+                <!-- Filters and Search Bar in Same Row -->
                 <div class="row mb-3">
-                    <!-- Categories Filter -->
-                    <div class="col-lg-8 col-md-12 mb-3 mb-lg-0">
-                        <div class="categories-filter-container">
-                            <h6 class="filter-title mb-2 text-muted">Filter by Category</h6>
-                            <div class="horizontal-categories">
-                                <div class="category-filter-item">
-                                    <div class="custom-control custom-checkbox">
-                                        <input class="custom-control-input" type="checkbox" id="category_all" value="all" <?= !is_array($category_filter) && $category_filter =='all' ? 'checked' : '' ?>>
-                                        <label for="category_all" class="custom-control-label">All</label>
-                                    </div>
-                                </div>
+                    <!-- Category Filter Dropdown -->
+                    <div class="col-lg-3 col-md-6 mb-2 mb-lg-0">
+                        <div class="form-group mb-0">
+                            <label for="category_dropdown" class="small text-muted mb-1">Category</label>
+                            <select class="form-control form-control-sm" id="category_dropdown" name="category_filter">
+                                <option value="all" <?= (!is_array($category_filter) && $category_filter =='all') || (is_array($category_filter) && empty($category_filter)) ? 'selected' : '' ?>>All Categories</option>
                             <?php 
                                 $categories = $conn->query("SELECT * FROM `categories` where `delete_flag` =0 and `status` = 1 order by `category` asc");
                                 while($row = $categories->fetch_assoc()):
                             ?>
-                                    <div class="category-filter-item">
-                                    <div class="custom-control custom-checkbox">
-                                        <input class="custom-control-input category_filter" type="checkbox" id="category_<?= $row['id'] ?>" value="<?= $row['id'] ?>" <?= ((is_array($category_filter) && in_array($row['id'],$category_filter)) || (!is_array($category_filter) && $category_filter =='all')) ? 'checked' : '' ?>>
-                                            <label for="category_<?= $row['id'] ?>" class="custom-control-label"><?= $row['category'] ?></label>
-                                        </div>
-                                    </div>
+                                <option value="<?= $row['id'] ?>" <?= (is_array($category_filter) && in_array($row['id'],$category_filter)) ? 'selected' : '' ?>><?= $row['category'] ?></option>
                             <?php endwhile; ?>
+                            </select>
+                        </div>
                     </div>
-                </div>
-            </div>
+                    
+                    <!-- Brand Filter Dropdown  -->
+                    <!-- <div class="col-lg-3 col-md-6 mb-2 mb-lg-0">
+                        <div class="form-group mb-0">
+                            <label for="brand_dropdown" class="small text-muted mb-1">Brand</label>
+                            <select class="form-control form-control-sm" id="brand_dropdown" name="brand_filter">
+                                <option value="all" <?= (!is_array($brand_filter) && $brand_filter =='all') || (is_array($brand_filter) && empty($brand_filter)) ? 'selected' : '' ?>>All Brands</option>
+                            <?php 
+                                $brands = $conn->query("SELECT * FROM `brand_list` where `delete_flag` =0 and `status` = 1 order by `name` asc");
+                                while($row = $brands->fetch_assoc()):
+                            ?>
+                                <option value="<?= $row['id'] ?>" <?= (is_array($brand_filter) && in_array($row['id'],$brand_filter)) ? 'selected' : '' ?>><?= $row['name'] ?></option>
+                            <?php endwhile; ?>
+                            </select>
+                        </div>
+                    </div> -->
+                    
+                    <!-- Sort Dropdown -->
+                    <div class="col-lg-3 col-md-6 mb-2 mb-lg-0">
+                        <div class="form-group mb-0">
+                            <label for="sort_dropdown" class="small text-muted mb-1">Sort By</label>
+                            <select class="form-control form-control-sm" id="sort_dropdown" name="sort">
+                                <option value="popular" <?= $sort == 'popular' ? 'selected' : '' ?>>Most Popular</option>
+                                <option value="top_selling" <?= $sort == 'top_selling' ? 'selected' : '' ?>>Top Selling</option>
+                                <option value="in_demand" <?= $sort == 'in_demand' ? 'selected' : '' ?>>In Demand</option>
+                                <option value="price_low" <?= $sort == 'price_low' ? 'selected' : '' ?>>Price: Low to High</option>
+                                <option value="price_high" <?= $sort == 'price_high' ? 'selected' : '' ?>>Price: High to Low</option>
+                                <option value="name_asc" <?= $sort == 'name_asc' ? 'selected' : '' ?>>Name: A to Z</option>
+                                <option value="name_desc" <?= $sort == 'name_desc' ? 'selected' : '' ?>>Name: Z to A</option>
+                            </select>
+                        </div>
+                    </div>
                     
                     <!-- Search Bar -->
-                    <div class="col-lg-4 col-md-12">
+                    <div class="col-lg-3 col-md-6">
                         <div class="search-container">
                             <form action="" id="search_prod">
+                                <label for="search_input" class="small text-muted mb-1 d-block">Search</label>
                                 <div class="input-group input-group-sm">
-                                    <input type="search" name="search" value="<?= $search ?>" class="form-control" placeholder="Search Product...">
+                                    <input type="search" id="search_input" name="search" value="<?= $search ?>" class="form-control" placeholder="Search Product...">
                                     <div class="input-group-append">
                                         <button class="btn btn-outline-secondary" type="submit"><i class="fa fa-search"></i></button>
                                     </div>
@@ -88,14 +112,56 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                     $where="";
                     if(is_array($brand_filter)){
                         $where.=" and p.brand_id in (".(implode(',',$brand_filter)).") ";
+                    } elseif($brand_filter != 'all' && !empty($brand_filter)){
+                        $where.=" and p.brand_id = '{$brand_filter}' ";
                     }
                     if(is_array($category_filter)){
                         $where.=" and p.category_id in (".(implode(',',$category_filter)).") ";
+                    } elseif($category_filter != 'all' && !empty($category_filter)){
+                        $where.=" and p.category_id = '{$category_filter}' ";
                     }
                     if(!empty($search)){
                         $where.=" and (p.name LIKE '%{$search}%' or p.description LIKE '%{$search}%' or b.name LIKE '%{$search}%' or c.category LIKE '%{$search}%') ";
                     }
-                        $products = $conn->query("SELECT p.id as pid, p.*, b.name as brand, c.category FROM `product_list` p inner join brand_list b on p.brand_id = b.id inner join `categories` c on p.category_id = c.id where p.delete_flag = 0 and p.status = 1 {$where} order by RAND()");
+                    
+                    // Determine sort order based on priority: in-demand > top-selling > popular
+                    $sort_order = "ORDER BY ";
+                    $sort_type = isset($_GET['sort']) ? $_GET['sort'] : 'popular';
+                    switch($sort_type){
+                        case 'top_selling':
+                            $sort_order .= "(SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.product_id = p.id) DESC, p.id DESC";
+                            break;
+                        case 'in_demand':
+                            $sort_order .= "(SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.product_id = p.id) DESC, 
+                                           (SELECT COUNT(*) FROM cart_list cl WHERE cl.product_id = p.id) DESC, p.id DESC";
+                            break;
+                        case 'price_low':
+                            $sort_order .= "p.price ASC, p.name ASC";
+                            break;
+                        case 'price_high':
+                            $sort_order .= "p.price DESC, p.name ASC";
+                            break;
+                        case 'name_asc':
+                            $sort_order .= "p.name ASC";
+                            break;
+                        case 'name_desc':
+                            $sort_order .= "p.name DESC";
+                            break;
+                        case 'popular':
+                        default:
+                            $sort_order .= "(SELECT COUNT(*) FROM cart_list cl WHERE cl.product_id = p.id) DESC,
+                                           (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.product_id = p.id) DESC,
+                                           p.id DESC";
+                            break;
+                    }
+                    
+                    $products = $conn->query("SELECT p.id as pid, p.*, b.name as brand, c.category,
+                                             (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.product_id = p.id) as total_sold,
+                                             (SELECT COUNT(*) FROM cart_list cl WHERE cl.product_id = p.id) as in_cart_count
+                                             FROM `product_list` p 
+                                             inner join brand_list b on p.brand_id = b.id 
+                                             inner join `categories` c on p.category_id = c.id 
+                                             where p.delete_flag = 0 and p.status = 1 {$where} {$sort_order}");
                         while($row= $products->fetch_assoc()):
                             // Calculate stock availability
                             $stock_levels = get_product_stock_levels($conn, $row['id']);
@@ -178,8 +244,8 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                                             </button>
                                         <?php endif; ?>
                                         
-                                        <a href="./?p=products/view_product&id=<?= (int)$row['pid'] ?>" class="btn btn-outline-primary btn-sm w-100 mt-1">
-                                            <i class="fa fa-eye"></i> View Details
+                                        <a href="./?p=products/view_product&id=<?= (int)$row['pid'] ?>" class="btn btn-outline-primary btn-sm w-100 mt-1" title="View Details">
+                                            <i class="fa fa-eye"></i>
                                         </a>
                                     </div>
                                 </div>
@@ -396,6 +462,27 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
                 location.href="./?p=products"+(brand_ids.length > 0 ? "&brand_filter="+brand_ids : "")+"<?= isset($_GET['category_filter']) ? "&category_filter=".$_GET['category_filter'] : "" ?><?= isset($_GET['search']) ? "&search=".$_GET['search'] : "" ?>";
             }, 300);
         })
+        // Dropdown filter handlers
+        $('#category_dropdown, #brand_dropdown, #sort_dropdown').change(function(){
+            showSkeleton();
+            var category = $('#category_dropdown').val();
+            var brand = $('#brand_dropdown').val();
+            var sort = $('#sort_dropdown').val();
+            var search = $('#search_input').val();
+            
+            var params = [];
+            if(category && category != 'all') params.push('category_filter=' + category);
+            if(brand && brand != 'all') params.push('brand_filter=' + brand);
+            if(sort && sort != 'popular') params.push('sort=' + sort);
+            if(search) params.push('search=' + encodeURIComponent(search));
+            
+            setTimeout(function() {
+                var url = './?p=products' + (params.length > 0 ? '&' + params.join('&') : '');
+                location.href = url;
+            }, 100);
+        });
+        
+        // Legacy checkbox handlers (if they still exist)
         $('.category_filter').change(function(){
             showSkeleton();
             var category_ids = [];

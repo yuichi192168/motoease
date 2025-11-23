@@ -37,9 +37,9 @@
                 
                 <!-- Notifications -->
                 <div class="nav-item dropdown">
-                    <a class="nav-link position-relative client-notification-toggle" data-toggle="dropdown" href="#" id="notifications-dropdown">
+                    <a class="nav-link position-relative client-notification-toggle" data-toggle="dropdown" href="#" id="notifications-dropdown" style="padding-right: 10px;">
                         <i class="far fa-bell"></i>
-                        <span class="badge badge-warning navbar-badge" id="notifications-count" style="display:none;">0</span>
+                        <span class="badge badge-danger rounded-circle position-absolute" id="notifications-count" style="display:none; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 2px 5px; font-size: 10px; line-height: 14px;">0</span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" id="notifications-list">
                         <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
@@ -60,8 +60,10 @@
                 
                 <!-- Profile Settings -->
                 <div class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <img src="<?php echo validate_image($_settings->userdata('avatar')) ?>" class="rounded-circle me-2" style="width: 25px; height: 25px; object-fit: cover;" alt="Avatar">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="padding-left: 10px;">
+                        <div class="position-relative" style="margin-right: 8px;">
+                            <img src="<?php echo validate_image($_settings->userdata('avatar')) ?>" class="rounded-circle" style="width: 25px; height: 25px; object-fit: cover;" alt="Avatar">
+                        </div>
                         <span><?= $_settings->userdata('firstname') ? ucwords($_settings->userdata('firstname')) : $_settings->userdata('email') ?></span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="profileDropdownMenuLink">
@@ -150,9 +152,9 @@
                         <?php endif; ?>
                     </a>
                     <a href="#" class="quick-action-btn" onclick="loadNotifications()">
-                        <span class="quick-action-icon">
+                        <span class="quick-action-icon position-relative d-inline-flex align-items-center justify-content-center" style="width: 24px; height: 24px;">
                             <i class="far fa-bell"></i>
-                            <span class="badge badge-warning navbar-badge" id="mobile-notifications-count" style="display:none;">0</span>
+                            <span class="badge badge-danger rounded-circle position-absolute" id="mobile-notifications-count" style="display:none; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 2px 5px; font-size: 10px; line-height: 14px;">0</span>
                         </span>
                         <span class="ms-2">Notifications</span>
                     </a>
@@ -297,6 +299,69 @@
     });
   }
   
+  function resolveNotificationData(notification){
+    var data = notification && notification.data ? notification.data : {};
+    if(typeof data === 'string'){
+        try{
+            data = JSON.parse(data);
+        }catch(err){
+            data = {};
+        }
+    }
+    return data || {};
+  }
+
+  function getNotificationTarget(notification){
+    var data = resolveNotificationData(notification);
+    if(notification.url) return notification.url;
+    if(data.url) return data.url;
+    if(data.href) return data.href;
+    if(data.link) return data.link;
+    var type = (notification.type || '').toLowerCase();
+    var defaultHistory = './?p=notifications';
+    var orderView = './?p=my_orders' + (data.order_id ? '&id=' + data.order_id : '');
+    var serviceView = data.service_id ? './view_service.php?id=' + data.service_id : './?p=my_services';
+    var appointmentView = data.appointment_id ? './view_appointment.php?id=' + data.appointment_id : './?p=appointments';
+    var accountView = './?p=my_invoices' + (data.account_id ? '&account_id=' + data.account_id : '');
+    var invoiceView = data.invoice_id ? './view_invoice.php?id=' + data.invoice_id : './?p=my_invoices';
+
+    switch(type){
+        case 'order':
+        case 'order_status':
+            return orderView;
+        case 'service':
+        case 'service_status':
+            return serviceView;
+        case 'appointment':
+        case 'appointment_status':
+        case 'appointment_reminder':
+            return appointmentView;
+        case 'product_availability':
+            return data.product_id ? './?p=products&product_id=' + data.product_id : './?p=products';
+        case 'payment':
+        case 'payment_upcoming':
+        case 'payment_missed':
+        case 'payment_received':
+        case 'late_payment':
+        case 'account_status':
+            return './?p=my_invoices' + (data.account_id ? '&account_id=' + data.account_id : '');
+        case 'invoice':
+        case 'invoice_status':
+        case 'invoice_paid':
+        case 'invoice_due':
+            return invoiceView;
+        case 'account':
+            return './?p=manage_account';
+        default:
+            if(data.order_id) return orderView;
+            if(data.service_id) return serviceView;
+            if(data.appointment_id) return appointmentView;
+            if(data.invoice_id) return invoiceView;
+            if(data.account_id) return './?p=my_invoices&account_id=' + data.account_id;
+            return defaultHistory;
+    }
+  }
+
   function loadNotifications(){
     $.ajax({
         url: _base_url_ + "classes/Master.php?f=get_notifications",
@@ -310,18 +375,23 @@
                     resp.data.forEach(function(notification){
                         var message = notification.message || '';
                         var title = notification.title || 'Notification';
-                        html += '<a href="#" class="dropdown-item notification-item ' + (notification.is_read == 0 ? 'unread' : '') + '" onclick="markNotificationRead(' + notification.id + '); return false;">';
+                        var targetUrl = getNotificationTarget(notification);
+                        var isUnread = notification.is_read == 0;
+                        html += '<a href="' + targetUrl + '" class="dropdown-item notification-item ' + (isUnread ? 'unread' : '') + '" data-id="' + notification.id + '" data-url="' + targetUrl + '">';
                         html += '<div class="d-flex align-items-start">';
                         html += '<div class="notification-icon me-2">';
                         html += '<i class="fas fa-bell text-warning"></i>';
                         html += '</div>';
-                        html += '<div class="notification-content">';
+                        html += '<div class="notification-content flex-grow-1">';
                         html += '<div class="notification-title">' + title + '</div>';
                         if(message){
                             html += '<div class="notification-text">' + message + '</div>';
                         }
                         html += '<div class="notification-time">' + formatTimeAgo(notification.date_created) + '</div>';
                         html += '</div>';
+                        if(isUnread){
+                            html += '<div class="notification-dot ms-2"></div>';
+                        }
                         html += '</div>';
                         html += '</a>';
                     });
@@ -334,7 +404,8 @@
     });
   }
   
-  function markNotificationRead(id){
+  function markNotificationRead(id, options){
+    options = options || {};
     $.ajax({
         url: _base_url_ + "classes/Master.php?f=mark_notification_read",
         method: "POST",
@@ -342,8 +413,33 @@
         dataType: "json",
         success: function(resp){
             if(resp.status == 'success'){
+                // Update the notification count immediately
                 loadNotificationsCount();
-                loadNotifications();
+                // If not redirecting, update the notification list
+                if(!options.redirectTo){
+                    loadNotifications();
+                }
+                if(typeof options.onSuccess === 'function'){
+                    options.onSuccess(resp);
+                }
+                // Only redirect on success
+                if(options.redirectTo){
+                    window.location.href = options.redirectTo;
+                }
+            }else{
+                // Show error message if marking as read failed
+                if(typeof options.onError === 'function'){
+                    options.onError(resp);
+                } else {
+                    alert_toast(resp.msg || 'Failed to mark notification as read', 'error');
+                }
+            }
+        },
+        error: function(err){
+            if(typeof options.onError === 'function'){
+                options.onError(err);
+            } else {
+                alert_toast('An error occurred while processing the notification', 'error');
             }
         }
     });
@@ -412,9 +508,6 @@
                 }else{
                     $('#notificationHistoryLoadMore').hide();
                 }
-                if(reset){
-                    markAllNotificationsRead();
-                }
             }else{
                 $('#notificationHistoryList').html('<div class="text-center p-4 text-muted">Unable to load history.</div>');
                 $('#notificationHistoryLoadMore').hide();
@@ -438,8 +531,10 @@
     items.forEach(function(notification){
         var message = notification.message || '';
         var title = notification.title || 'Notification';
-        var badge = notification.is_read == 0 ? '<span class="badge badge-warning badge-pill ml-2">New</span>' : '';
-        var item = '<div class="list-group-item">';
+        var targetUrl = getNotificationTarget(notification);
+        var isUnread = notification.is_read == 0;
+        var badge = isUnread ? '<span class="badge badge-warning badge-pill ml-2">New</span>' : '';
+        var item = '<a href="' + targetUrl + '" class="list-group-item list-group-item-action notification-history-item ' + (isUnread ? 'unread' : '') + '" data-id="' + notification.id + '" data-url="' + targetUrl + '">';
         item += '<div class="d-flex justify-content-between align-items-center">';
         item += '<h6 class="mb-1">' + title + ' ' + badge + '</h6>';
         item += '<small class="text-muted">' + formatTimeAgo(notification.date_created) + '</small>';
@@ -447,7 +542,7 @@
         if(message){
             item += '<p class="mb-1 text-muted">' + message + '</p>';
         }
-        item += '</div>';
+        item += '</a>';
         container.append(item);
     });
   }
@@ -466,6 +561,53 @@
         $('#notifications-dropdown').on('click', function(){
             loadNotifications();
         });
+        $('#notifications-dropdown').on('show.bs.dropdown', function(){
+            loadNotifications();
+        });
+        if(!window.__clientNotifClickBound){
+            $(document).on('click', '#notifications-content .notification-item', function(e){
+                e.preventDefault();
+                e.stopPropagation();
+                var $item = $(this);
+                var id = $item.data('id');
+                var targetUrl = $item.data('url') || $item.attr('href') || './?p=notifications';
+                if(!id){
+                    window.location.href = targetUrl;
+                    return;
+                }
+                // Close the dropdown before redirecting
+                var $dropdownToggle = $('#notifications-dropdown');
+                if($dropdownToggle.length && $dropdownToggle.data('bs.dropdown')){
+                    $dropdownToggle.dropdown('hide');
+                } else {
+                    // Fallback: remove show class from dropdown menu
+                    $('.dropdown-menu.show').removeClass('show');
+                }
+                // Mark as read and redirect
+                markNotificationRead(id, { redirectTo: targetUrl });
+            });
+            window.__clientNotifClickBound = true;
+        }
+        
+        // Handle notification history modal clicks
+        if(!window.__historyNotifClickBound){
+            $(document).on('click', '#notificationHistoryList .notification-history-item', function(e){
+                e.preventDefault();
+                e.stopPropagation();
+                var $item = $(this);
+                var id = $item.data('id');
+                var targetUrl = $item.data('url') || $item.attr('href') || './?p=notifications';
+                if(!id){
+                    window.location.href = targetUrl;
+                    return;
+                }
+                // Close the modal before redirecting
+                $('#notificationHistoryModal').modal('hide');
+                // Mark as read and redirect
+                markNotificationRead(id, { redirectTo: targetUrl });
+            });
+            window.__historyNotifClickBound = true;
+        }
     }
     
     // Mobile sidebar functionality

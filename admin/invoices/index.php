@@ -1083,7 +1083,7 @@ $('#edit_invoice_form').submit(function(e){
 		// Totals
 		html += '<div class="totals">';
 		html += '<table class="totals-table">';
-		html += '<tr class="total-row"><td><strong>Total Amount:</strong></td><td class="text-right"><strong>₱' + parseFloat(invoice.total_amount).toLocaleString() + '</strong></td></tr>';
+		html += '<tr class="total-row"><td><strong>Total Amount:</strong></td><td class="text-right"><strong>₱' + parseFloat(invoice.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</strong></td></tr>';
 		html += '</table>';
 		html += '</div>';
 		

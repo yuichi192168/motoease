@@ -143,9 +143,9 @@
         </li>
         <!-- Notifications Dropdown Menu -->
         <li class="nav-item dropdown">
-            <a class="nav-link" data-toggle="dropdown" href="#" id="notifications-dropdown">
+            <a class="nav-link position-relative" data-toggle="dropdown" href="#" id="notifications-dropdown">
                 <i class="far fa-bell"></i>
-                <span class="badge badge-warning navbar-badge" id="notifications-count">0</span>
+                <span class="badge badge-danger rounded-circle position-absolute top-0 start-100 translate-middle" id="notifications-count" style="display:none;">0</span>
             </a>
             <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" id="notifications-list">
                 <span class="dropdown-header">
@@ -234,13 +234,82 @@ function loadNotificationsCount(){
         dataType: "json",
         success: function(resp){
             if(resp.status == 'success'){
-                $('#notifications-count').text(resp.count);
+                var count = parseInt(resp.count, 10) || 0;
+                $('#notifications-count').text(count);
+                if(count > 0){
+                    $('#notifications-count').show();
+                }else{
+                    $('#notifications-count').hide();
+                }
             }
         }
     });
 }
 
 function loadNotifications(){
+    function resolveNotificationData(notification){
+        var data = notification && notification.data ? notification.data : {};
+        if(typeof data === 'string'){
+            try{
+                data = JSON.parse(data);
+            }catch(err){
+                data = {};
+            }
+        }
+        return data || {};
+    }
+
+    function getNotificationTarget(notification){
+        var data = resolveNotificationData(notification);
+        if(notification.url) return notification.url;
+        if(data.url) return data.url;
+        if(data.href) return data.href;
+        if(data.link) return data.link;
+        var type = (notification.type || '').toLowerCase();
+        var defaultHistory = './?p=notifications';
+        var orderView = './?p=my_orders' + (data.order_id ? '&id=' + data.order_id : '');
+        var serviceView = data.service_id ? './view_service.php?id=' + data.service_id : './?p=my_services';
+        var appointmentView = data.appointment_id ? './view_appointment.php?id=' + data.appointment_id : './?p=appointments';
+        var accountView = './?p=my_invoices' + (data.account_id ? '&account_id=' + data.account_id : '');
+        var invoiceView = data.invoice_id ? './view_invoice.php?id=' + data.invoice_id : './?p=my_invoices';
+
+        switch(type){
+            case 'order':
+            case 'order_status':
+                return orderView;
+            case 'service':
+            case 'service_status':
+                return serviceView;
+            case 'appointment':
+            case 'appointment_status':
+            case 'appointment_reminder':
+                return appointmentView;
+            case 'product_availability':
+                return data.product_id ? './?p=products&product_id=' + data.product_id : './?p=products';
+            case 'payment':
+            case 'payment_upcoming':
+            case 'payment_missed':
+            case 'payment_received':
+            case 'late_payment':
+            case 'account_status':
+                return './?p=my_invoices' + (data.account_id ? '&account_id=' + data.account_id : '');
+            case 'invoice':
+            case 'invoice_status':
+            case 'invoice_paid':
+            case 'invoice_due':
+                return invoiceView;
+            case 'account':
+                return './?p=manage_account';
+            default:
+                if(data.order_id) return orderView;
+                if(data.service_id) return serviceView;
+                if(data.appointment_id) return appointmentView;
+                if(data.invoice_id) return invoiceView;
+                if(data.account_id) return './?p=my_invoices&account_id=' + data.account_id;
+                return defaultHistory;
+        }
+    }
+
     $.ajax({
         url: _base_url_ + "classes/Master.php?f=get_notifications",
         method: "POST",
@@ -253,8 +322,9 @@ function loadNotifications(){
                     resp.data.forEach(function(notification){
                         var iconClass = getNotificationIcon(notification.type);
                         var priorityClass = getNotificationPriorityClass(notification.priority);
+                        var targetUrl = getNotificationTarget(notification);
                         
-                        html += '<a href="#" class="dropdown-item notification-item ' + (notification.is_read == 0 ? 'unread' : '') + '" onclick="markNotificationRead(' + notification.id + ')">';
+                        html += '<a href="' + targetUrl + '" class="dropdown-item notification-item ' + (notification.is_read == 0 ? 'unread' : '') + '" data-id="' + notification.id + '" data-url="' + targetUrl + '">';
                         html += '<div class="d-flex align-items-start">';
                         html += '<div class="notification-icon ' + priorityClass + '">';
                         html += '<i class="' + iconClass + '"></i>';
@@ -304,6 +374,7 @@ function getNotificationPriorityClass(priority) {
 }
 
 function markNotificationRead(notificationId){
+    var options = (arguments.length > 1 && typeof arguments[1] === 'object') ? arguments[1] : {};
     $.ajax({
         url: _base_url_ + "classes/Master.php?f=mark_notification_read",
         method: "POST",
@@ -311,8 +382,33 @@ function markNotificationRead(notificationId){
         dataType: "json",
         success: function(resp){
             if(resp.status == 'success'){
+                // Update the notification count immediately
                 loadNotificationsCount();
-                loadNotifications();
+                // If not redirecting, update the notification list
+                if(!options.redirectTo){
+                    loadNotifications();
+                }
+                if(typeof options.onSuccess === 'function'){
+                    options.onSuccess(resp);
+                }
+                // Only redirect on success
+                if(options.redirectTo){
+                    window.location.href = options.redirectTo;
+                }
+            }else{
+                // Show error message if marking as read failed
+                if(typeof options.onError === 'function'){
+                    options.onError(resp);
+                } else {
+                    alert_toast(resp.msg || 'Failed to mark notification as read', 'error');
+                }
+            }
+        },
+        error: function(err){
+            if(typeof options.onError === 'function'){
+                options.onError(err);
+            } else {
+                alert_toast('An error occurred while processing the notification', 'error');
             }
         }
     });
@@ -347,5 +443,30 @@ function markAllNotificationsRead(){
 function loadAllNotifications(){
     // Redirect to notifications page or show all notifications
     window.location.href = './?p=notifications';
+}
+
+if(!window.__clientNotifClickBound){
+    $(document).on('click', '#notifications-content .notification-item', function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        var $item = $(this);
+        var notificationId = $item.data('id');
+        var targetUrl = $item.data('url') || $item.attr('href') || './?p=notifications';
+        if(!notificationId){
+            window.location.href = targetUrl;
+            return;
+        }
+        // Close the dropdown before redirecting
+        var $dropdownToggle = $('#notifications-dropdown');
+        if($dropdownToggle.length && $dropdownToggle.data('bs.dropdown')){
+            $dropdownToggle.dropdown('hide');
+        } else {
+            // Fallback: remove show class from dropdown menu
+            $('.dropdown-menu.show').removeClass('show');
+        }
+        // Mark as read and redirect
+        markNotificationRead(notificationId, { redirectTo: targetUrl });
+    });
+    window.__clientNotifClickBound = true;
 }
 </script>

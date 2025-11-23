@@ -91,7 +91,7 @@
           <li class="nav-item dropdown">
             <a class="nav-link position-relative" data-toggle="dropdown" href="#" id="admin-notifications-dropdown">
               <i class="far fa-bell"></i>
-              <span class="badge badge-warning navbar-badge" id="admin-notifications-count" style="display:none;">0</span>
+              <span class="badge badge-danger rounded-circle position-absolute top-0 start-100 translate-middle" id="admin-notifications-count" style="display:none;">0</span>
             </a>
             <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" id="admin-notifications-list">
               <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
@@ -227,6 +227,62 @@
     });
   }
 
+  function adminResolveNotificationData(notification){
+    var data = notification && notification.data ? notification.data : {};
+    if(typeof data === 'string'){
+      try{
+        data = JSON.parse(data);
+      }catch(err){
+        data = {};
+      }
+    }
+    return data || {};
+  }
+
+  function getAdminNotificationTarget(notification){
+    var data = adminResolveNotificationData(notification);
+    if(notification.url) return notification.url;
+    if(data.url) return data.url;
+    if(data.href) return data.href;
+    if(data.link) return data.link;
+    var type = (notification.type || '').toLowerCase();
+    var defaultHistory = './?page=notifications';
+    var orderView = data.order_id ? './?page=orders/view_order&id=' + data.order_id : './?page=orders';
+    var serviceView = data.service_id ? './?page=service_requests/view_request&id=' + data.service_id : './?page=service_requests';
+    var appointmentView = data.appointment_id ? './?page=appointments/view_appointment&id=' + data.appointment_id : './?page=appointments';
+    var accountView = data.account_id ? './?page=customer_account_balances/view_account&id=' + data.account_id : './?page=customer_account_balances';
+    var productView = data.product_id ? './?page=products/view_product&id=' + data.product_id : './?page=products';
+
+    switch(type){
+      case 'order':
+      case 'order_status':
+        return orderView;
+      case 'service':
+      case 'service_status':
+        return serviceView;
+      case 'appointment':
+      case 'appointment_status':
+      case 'appointment_reminder':
+        return appointmentView;
+      case 'product_availability':
+        return productView;
+      case 'payment':
+      case 'payment_upcoming':
+      case 'payment_missed':
+      case 'payment_received':
+      case 'late_payment':
+      case 'account_status':
+        return accountView;
+      default:
+        if(data.order_id) return orderView;
+        if(data.service_id) return serviceView;
+        if(data.appointment_id) return appointmentView;
+        if(data.account_id) return accountView;
+        if(data.product_id) return productView;
+        return defaultHistory;
+    }
+  }
+
   window.adminLoadNotifications = function(){
     $.ajax({
       url: _base_url_ + "classes/Master.php?f=get_admin_notifications",
@@ -240,7 +296,8 @@
             resp.data.forEach(function(n){
               var message = n.message || '';
               var title = n.title || 'Notification';
-              html += '<a href="#" class="dropdown-item notification-item ' + (n.is_read == 0 ? 'unread' : '') + '" onclick="adminMarkNotificationRead(' + n.id + '); return false;">';
+              var targetUrl = getAdminNotificationTarget(n);
+              html += '<a href="' + targetUrl + '" class="dropdown-item notification-item ' + (n.is_read == 0 ? 'unread' : '') + '" data-id="' + n.id + '" data-url="' + targetUrl + '">';
               html += '<div class="d-flex align-items-start">';
               html += '<div class="notification-icon mr-2"><i class="fas fa-bell text-warning"></i></div>';
               html += '<div class="notification-content">';
@@ -260,7 +317,8 @@
     });
   }
 
-  window.adminMarkNotificationRead = function(id){
+  window.adminMarkNotificationRead = function(id, options){
+    options = options || {};
     $.ajax({
       url: _base_url_ + "classes/Master.php?f=mark_admin_notification_read",
       method: "POST",
@@ -270,6 +328,21 @@
         if(resp && resp.status === 'success'){
           adminLoadNotificationsCount();
           adminLoadNotifications();
+          if(typeof options.onSuccess === 'function'){
+            options.onSuccess(resp);
+          }
+        }else if(typeof options.onError === 'function'){
+          options.onError(resp);
+        }
+      },
+      error: function(err){
+        if(typeof options.onError === 'function'){
+          options.onError(err);
+        }
+      },
+      complete: function(){
+        if(options.redirectTo){
+          window.location.href = options.redirectTo;
         }
       }
     });
@@ -319,9 +392,6 @@
           }else{
             $('#adminNotificationHistoryLoadMore').hide();
           }
-          if(reset){
-            adminMarkAllNotificationsRead();
-          }
         }else{
           $('#adminNotificationHistoryList').html('<div class="text-center p-4 text-muted">Unable to load history.</div>');
           $('#adminNotificationHistoryLoadMore').hide();
@@ -366,6 +436,23 @@
     $('#admin-notifications-dropdown').on('click', function(){
       adminLoadNotifications();
     });
+    $('#admin-notifications-dropdown').on('show.bs.dropdown', function(){
+      adminLoadNotifications();
+    });
+    if(!window.__adminNotifClickBound){
+      $('#admin-notifications-content').on('click', '.notification-item', function(e){
+        e.preventDefault();
+        var $item = $(this);
+        var id = $item.data('id');
+        var targetUrl = $item.data('url') || $item.attr('href') || './?page=notifications';
+        if(!id){
+          window.location.href = targetUrl;
+          return;
+        }
+        adminMarkNotificationRead(id, { redirectTo: targetUrl });
+      });
+      window.__adminNotifClickBound = true;
+    }
   });
 })();
 </script>

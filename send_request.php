@@ -93,7 +93,7 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                 <div class="error-msg" id="vehicle_type_error"></div>
             </div>
             <div class="form-group col-md-6">
-                <label for="vehicle_registration_number" class="control-label">Vehicle Registration Number *</label>
+                <label for="vehicle_registration_number" class="control-label">Engine   Number *</label>
                 <input type="text" name="vehicle_registration_number" id="vehicle_registration_number" class="form-control <?php echo $is_standalone ? '' : 'form-control-sm rounded-0'; ?>" required 
                        pattern="[A-Z]{3}[0-9]{3}|[A-Z]{2}[0-9]{3}[A-Z]{2}|[A-Z]{1}[0-9]{3}[A-Z]{3}" 
                        placeholder="ABC123, AB123CD, A123BCD" maxlength="7">
@@ -351,7 +351,7 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                 return false;
             } else if (!pattern.test(regNumber)) {
                 $('#vehicle_registration_number').addClass('is-invalid');
-                $('#vehicle_registration_number_error').text('Please enter a valid registration number format');
+                $('#vehicle_registration_number_error').text('Please enter a valid engine number format');
                 return false;
             } else {
                 $('#vehicle_registration_number').removeClass('is-invalid').addClass('is-valid');

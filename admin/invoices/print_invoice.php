@@ -227,7 +227,6 @@ while($row = $settings_qry->fetch_assoc()){
             <thead>
                 <tr>
                     <th>Item</th>
-                    <th>Description</th>
                     <th class="text-center">Qty</th>
                     <th class="text-right">Unit Price</th>
                     <th class="text-right">Total</th>
@@ -243,7 +242,6 @@ while($row = $settings_qry->fetch_assoc()){
                 ?>
                 <tr>
                     <td><?= $item['item_name'] ?></td>
-                    <td><?= $item['item_description'] ?: '-' ?></td>
                     <td class="text-center"><?= $item['quantity'] ?></td>
                     <td class="text-right">₱<?= number_format($unit_price, 2) ?></td>
                     <td class="text-right">₱<?= number_format($item['total_price'], 2) ?></td>
@@ -255,14 +253,6 @@ while($row = $settings_qry->fetch_assoc()){
         <!-- Totals -->
         <div class="totals">
             <table class="totals-table">
-                <tr>
-                    <td>Subtotal:</td>
-                    <td class="text-right">₱<?= number_format($invoice['subtotal'], 2) ?></td>
-                </tr>
-                <tr>
-                    <td>VAT (<?= $settings['vat_rate'] ?? '12' ?>%):</td>
-                    <td class="text-right">₱<?= number_format($invoice['vat_amount'], 2) ?></td>
-                </tr>
                 <tr class="total-row">
                     <td><strong>Total Amount:</strong></td>
                     <td class="text-right"><strong>₱<?= number_format($invoice['total_amount'], 2) ?></strong></td>
@@ -461,8 +451,6 @@ while($row = $settings_qry->fetch_assoc()){
 
                     <th>Item</th>
 
-                    <th>Description</th>
-
                     <th class="text-center">Qty</th>
 
                     <th class="text-right">Unit Price</th>
@@ -480,8 +468,6 @@ while($row = $settings_qry->fetch_assoc()){
                 <tr>
 
                     <td><?= $item['item_name'] ?></td>
-
-                    <td><?= $item['item_description'] ?: '-' ?></td>
 
                     <td class="text-center"><?= $item['quantity'] ?></td>
 
@@ -504,22 +490,6 @@ while($row = $settings_qry->fetch_assoc()){
         <div class="totals">
 
             <table class="totals-table">
-
-                <tr>
-
-                    <td>Subtotal:</td>
-
-                    <td class="text-right">₱<?= number_format($invoice['subtotal'], 2) ?></td>
-
-                </tr>
-
-                <tr>
-
-                    <td>VAT (<?= $settings['vat_rate'] ?? '12' ?>%):</td>
-
-                    <td class="text-right">₱<?= number_format($invoice['vat_amount'], 2) ?></td>
-
-                </tr>
 
                 <tr class="total-row">
 

@@ -127,22 +127,16 @@
 			<!-- Activity Log Display -->
 			<div id="activity_logs">
 				<?php
-				// Get admin activity logs
-				$admin_logs = $conn->query("
-					SELECT 
-						aal.log_id,
-						aal.action,
-						aal.module,
-						aal.reference_id,
-						aal.timestamp,
-						CONCAT(u.firstname, ' ', u.lastname) as admin_name,
-						u.id as admin_id
-					FROM admin_activity_log aal
-					INNER JOIN users u ON aal.user_id = u.id
-					WHERE aal.timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-					ORDER BY aal.timestamp DESC
-					LIMIT 100
-				");
+				// Get admin activity logs - FIXED VERSION
+				// IMPORTANT: Table uses 'id' column, NOT 'log_id'
+				// Query uses: aal.id as log_id (selects 'id' column and aliases it as 'log_id')
+				$admin_logs = $conn->query("SELECT aal.id as log_id, aal.action, aal.module, aal.reference_id, aal.timestamp, CONCAT(u.firstname, ' ', u.lastname) as admin_name, u.id as admin_id FROM admin_activity_log aal INNER JOIN users u ON aal.user_id = u.id WHERE aal.timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY) ORDER BY aal.timestamp DESC LIMIT 100");
+				
+				// Handle query errors gracefully
+				if ($admin_logs === false) {
+					error_log("Error loading admin activity logs: " . $conn->error);
+					$admin_logs = false;
+				}
 				
 				// Get service requests
 				$service_requests = $conn->query("
@@ -251,17 +245,19 @@
                 }
 				
 				// Admin activity logs
-				while($admin_log = $admin_logs->fetch_assoc()){
-					$activities[] = [
-						'type' => 'admin_action',
-						'date' => $admin_log['timestamp'],
-						'user_id' => $admin_log['admin_id'],
-						'user_name' => $admin_log['admin_name'],
-						'action' => 'Admin Action',
-						'details' => $admin_log['action'],
-						'id' => $admin_log['log_id'],
-						'module' => $admin_log['module'] ?: 'General'
-					];
+				if ($admin_logs && $admin_logs->num_rows > 0) {
+					while($admin_log = $admin_logs->fetch_assoc()){
+						$activities[] = [
+							'type' => 'admin_action',
+							'date' => $admin_log['timestamp'],
+							'user_id' => $admin_log['admin_id'],
+							'user_name' => $admin_log['admin_name'],
+							'action' => 'Admin Action',
+							'details' => $admin_log['action'],
+							'id' => $admin_log['log_id'],
+							'module' => $admin_log['module'] ?: 'General'
+						];
+					}
 				}
 
                 // Sort by date (newest first)

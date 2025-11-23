@@ -59,7 +59,7 @@ while($row = $meta->fetch_assoc()){
                     <input type="text" name="vehicle_name" id="vehicle_name" class="form-control form-control-sm rounded-0" value="<?php echo isset($vehicle_name) ? $vehicle_name : "" ?>" required>
                 </div>
                 <div class="form-group">
-                    <label for="vehicle_registration_number" class="control-label">Vehicle Registration Number</label>
+                    <label for="vehicle_registration_number" class="control-label">Vehicle Engine Number</label>
                     <input type="text" name="vehicle_registration_number" id="vehicle_registration_number" class="form-control form-control-sm rounded-0" value="<?php echo isset($vehicle_registration_number) ? $vehicle_registration_number : "" ?>" required>
                 </div>
                 <div class="form-group">
