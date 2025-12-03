@@ -1448,7 +1448,7 @@ Class Master extends DBConnection {
 		extract($_POST);
 		$data = "";
 		foreach($_POST as $k=> $v){
-			if(in_array($k,array('client_id','mechanic_id','status','vehicle_type','vehicle_name','vehicle_registration_number','vehicle_model'))){
+			if(in_array($k,array('client_id','mechanic_id','status','vehicle_type','vehicle_name','vehicle_registration_number','vehicle_model','amount_to_pay'))){
 				if(!empty($data)){ $data .= ", "; }
 				$v = $this->conn->real_escape_string($v);
 				$data .= " `{$k}` = '{$v}'";
@@ -1497,6 +1497,66 @@ Class Master extends DBConnection {
 			}
 			
 			if($meta_save){
+				// Handle image uploads (only for service_receptionist, service_admin, and admin roles)
+				$role_type = $this->settings->userdata('role_type');
+				$can_manage_images = in_array($role_type, ['service_receptionist', 'service_admin', 'admin']);
+				
+				if($can_manage_images){
+					// Handle promo image upload
+					if(isset($_FILES['promo_image']) && $_FILES['promo_image']['error'] == 0){
+						$allowed_types = ['jpg', 'jpeg', 'png', 'gif'];
+						$ext = strtolower(pathinfo($_FILES['promo_image']['name'], PATHINFO_EXTENSION));
+						if(in_array($ext, $allowed_types)){
+							$dir = base_app."uploads/service_requests/";
+							if(!is_dir($dir)) mkdir($dir, 0777, true);
+							$fname = 'promo_'.$rid.'_'.strtotime(date('y-m-d H:i')).'.'.$ext;
+							$move = move_uploaded_file($_FILES['promo_image']['tmp_name'], $dir.$fname);
+							if($move){
+								$image_path = 'uploads/service_requests/'.$fname;
+								$image_path_escaped = $this->conn->real_escape_string($image_path);
+								// Remove old promo image if exists
+								$old_promo = $this->conn->query("SELECT meta_value FROM request_meta WHERE request_id = '{$rid}' AND meta_field = 'promo_image'");
+								if($old_promo && $old_promo->num_rows > 0){
+									$old_path = $old_promo->fetch_assoc()['meta_value'];
+									if(!empty($old_path) && is_file(base_app.$old_path)){
+										unlink(base_app.$old_path);
+									}
+								}
+								// Save to meta
+								$this->conn->query("DELETE FROM request_meta WHERE request_id = '{$rid}' AND meta_field = 'promo_image'");
+								$this->conn->query("INSERT INTO request_meta (request_id, meta_field, meta_value) VALUES ('{$rid}', 'promo_image', '{$image_path_escaped}')");
+							}
+						}
+					}
+					
+					// Handle customer image upload
+					if(isset($_FILES['customer_image']) && $_FILES['customer_image']['error'] == 0){
+						$allowed_types = ['jpg', 'jpeg', 'png', 'gif'];
+						$ext = strtolower(pathinfo($_FILES['customer_image']['name'], PATHINFO_EXTENSION));
+						if(in_array($ext, $allowed_types)){
+							$dir = base_app."uploads/service_requests/";
+							if(!is_dir($dir)) mkdir($dir, 0777, true);
+							$fname = 'customer_'.$rid.'_'.strtotime(date('y-m-d H:i')).'.'.$ext;
+							$move = move_uploaded_file($_FILES['customer_image']['tmp_name'], $dir.$fname);
+							if($move){
+								$image_path = 'uploads/service_requests/'.$fname;
+								$image_path_escaped = $this->conn->real_escape_string($image_path);
+								// Remove old customer image if exists
+								$old_customer = $this->conn->query("SELECT meta_value FROM request_meta WHERE request_id = '{$rid}' AND meta_field = 'customer_image'");
+								if($old_customer && $old_customer->num_rows > 0){
+									$old_path = $old_customer->fetch_assoc()['meta_value'];
+									if(!empty($old_path) && is_file(base_app.$old_path)){
+										unlink(base_app.$old_path);
+									}
+								}
+								// Save to meta
+								$this->conn->query("DELETE FROM request_meta WHERE request_id = '{$rid}' AND meta_field = 'customer_image'");
+								$this->conn->query("INSERT INTO request_meta (request_id, meta_field, meta_value) VALUES ('{$rid}', 'customer_image', '{$image_path_escaped}')");
+							}
+						}
+					}
+				}
+				
 				$resp['status'] = 'success';
 				$resp['id'] = $rid;
 				if(empty($id))
@@ -1593,6 +1653,344 @@ Class Master extends DBConnection {
 		}
 		if($resp['status'] == 'success')
 		$this->settings->set_flashdata('success',$resp['status']);
+		return json_encode($resp);
+	}
+	
+	function save_promo_image(){
+		extract($_POST);
+		$resp = array();
+		
+		// Check role permissions
+		$role_type = $this->settings->userdata('role_type');
+		// Service receptionist should not manage global promo images
+		$can_manage_images = in_array($role_type, ['service_admin', 'admin', 'data_admin']);
+		
+		if(!$can_manage_images){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Access denied. You do not have permission to manage images.';
+			return json_encode($resp);
+		}
+		
+		if(empty($title)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Title is required.';
+			return json_encode($resp);
+		}
+		
+		$title = $this->conn->real_escape_string($title);
+		$description = isset($description) ? $this->conn->real_escape_string($description) : '';
+		
+		if(empty($id)){
+			// New promo image - file is required
+			if(!isset($_FILES['promo_image']) || $_FILES['promo_image']['error'] != 0){
+				$resp['status'] = 'failed';
+				$resp['msg'] = 'Please upload an image.';
+				return json_encode($resp);
+			}
+		}
+		
+		// Handle image upload
+		$image_path = '';
+		if(isset($_FILES['promo_image']) && $_FILES['promo_image']['error'] == 0){
+			$allowed_types = ['jpg', 'jpeg', 'png', 'gif'];
+			$ext = strtolower(pathinfo($_FILES['promo_image']['name'], PATHINFO_EXTENSION));
+			if(!in_array($ext, $allowed_types)){
+				$resp['status'] = 'failed';
+				$resp['msg'] = 'Invalid file type. Allowed: JPG, JPEG, PNG, GIF.';
+				return json_encode($resp);
+			}
+			
+			$dir = base_app."uploads/promos/";
+			if(!is_dir($dir)) mkdir($dir, 0777, true);
+			$fname = 'promo_'.strtotime(date('y-m-d H:i')).'_'.uniqid().'.'.$ext;
+			$move = move_uploaded_file($_FILES['promo_image']['tmp_name'], $dir.$fname);
+			if($move){
+				$image_path = 'uploads/promos/'.$fname;
+			} else {
+				$resp['status'] = 'failed';
+				$resp['msg'] = 'Failed to upload image.';
+				return json_encode($resp);
+			}
+		}
+		
+		if(empty($id)){
+			// Insert new
+			if(empty($image_path)){
+				$resp['status'] = 'failed';
+				$resp['msg'] = 'Image upload is required.';
+				return json_encode($resp);
+			}
+			$sql = "INSERT INTO promo_images (title, description, image_path) VALUES ('{$title}', '{$description}', '{$image_path}')";
+		} else {
+			// Update existing
+			$id = $this->conn->real_escape_string($id);
+			if(!empty($image_path)){
+				// Delete old image
+				$old_qry = $this->conn->query("SELECT image_path FROM promo_images WHERE id = '{$id}'");
+				if($old_qry && $old_qry->num_rows > 0){
+					$old_path = $old_qry->fetch_assoc()['image_path'];
+					if(!empty($old_path) && is_file(base_app.$old_path)){
+						unlink(base_app.$old_path);
+					}
+				}
+				$sql = "UPDATE promo_images SET title = '{$title}', description = '{$description}', image_path = '{$image_path}' WHERE id = '{$id}'";
+			} else {
+				$sql = "UPDATE promo_images SET title = '{$title}', description = '{$description}' WHERE id = '{$id}'";
+			}
+		}
+		
+		$save = $this->conn->query($sql);
+		if($save){
+			$resp['status'] = 'success';
+			$resp['msg'] = empty($id) ? 'Promo image uploaded successfully.' : 'Promo image updated successfully.';
+		} else {
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Failed to save promo image.';
+			$resp['error'] = $this->conn->error;
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function delete_promo_image(){
+		extract($_POST);
+		$resp = array();
+		
+		// Check role permissions
+		$role_type = $this->settings->userdata('role_type');
+		// Service receptionist should not manage global promo images
+		$can_manage_images = in_array($role_type, ['service_admin', 'admin', 'data_admin']);
+		
+		if(!$can_manage_images){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Access denied.';
+			return json_encode($resp);
+		}
+		
+		$id = $this->conn->real_escape_string($id);
+		
+		// Get image path
+		$qry = $this->conn->query("SELECT image_path FROM promo_images WHERE id = '{$id}'");
+		if($qry && $qry->num_rows > 0){
+			$image_path = $qry->fetch_assoc()['image_path'];
+			
+			// Delete file
+			if(!empty($image_path) && is_file(base_app.$image_path)){
+				unlink(base_app.$image_path);
+			}
+			
+			// Archive in database
+			$del = $this->conn->query("UPDATE promo_images SET delete_flag = 1 WHERE id = '{$id}'");
+			if($del){
+				$resp['status'] = 'success';
+				$resp['msg'] = 'Promo image archived successfully.';
+			} else {
+				$resp['status'] = 'failed';
+				$resp['msg'] = 'Failed to archive promo image.';
+			}
+		} else {
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Promo image not found.';
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function save_customer_image(){
+		extract($_POST);
+		$resp = array();
+		
+		// Check role permissions
+		$role_type = $this->settings->userdata('role_type');
+		// Service receptionist should not manage global customer images
+		$can_manage_images = in_array($role_type, ['service_admin', 'admin', 'data_admin']);
+		
+		if(!$can_manage_images){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Access denied. You do not have permission to manage images.';
+			return json_encode($resp);
+		}
+		
+		if(empty($customer_id)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Customer is required.';
+			return json_encode($resp);
+		}
+		
+		$customer_id = $this->conn->real_escape_string($customer_id);
+		$description = isset($description) ? $this->conn->real_escape_string($description) : '';
+		
+		if(empty($id)){
+			// New customer image - file is required
+			if(!isset($_FILES['customer_image']) || $_FILES['customer_image']['error'] != 0){
+				$resp['status'] = 'failed';
+				$resp['msg'] = 'Please upload an image.';
+				return json_encode($resp);
+			}
+		}
+		
+		// Handle image upload
+		$image_path = '';
+		if(isset($_FILES['customer_image']) && $_FILES['customer_image']['error'] == 0){
+			$allowed_types = ['jpg', 'jpeg', 'png', 'gif'];
+			$ext = strtolower(pathinfo($_FILES['customer_image']['name'], PATHINFO_EXTENSION));
+			if(!in_array($ext, $allowed_types)){
+				$resp['status'] = 'failed';
+				$resp['msg'] = 'Invalid file type. Allowed: JPG, JPEG, PNG, GIF.';
+				return json_encode($resp);
+			}
+			
+			$dir = base_app."uploads/customers/";
+			if(!is_dir($dir)) mkdir($dir, 0777, true);
+			$fname = 'customer_'.strtotime(date('y-m-d H:i')).'_'.uniqid().'.'.$ext;
+			$move = move_uploaded_file($_FILES['customer_image']['tmp_name'], $dir.$fname);
+			if($move){
+				$image_path = 'uploads/customers/'.$fname;
+			} else {
+				$resp['status'] = 'failed';
+				$resp['msg'] = 'Failed to upload image.';
+				return json_encode($resp);
+			}
+		}
+		
+		if(empty($id)){
+			// Insert new
+			if(empty($image_path)){
+				$resp['status'] = 'failed';
+				$resp['msg'] = 'Image upload is required.';
+				return json_encode($resp);
+			}
+			$sql = "INSERT INTO customer_images (customer_id, description, image_path) VALUES ('{$customer_id}', '{$description}', '{$image_path}')";
+		} else {
+			// Update existing
+			$id = $this->conn->real_escape_string($id);
+			if(!empty($image_path)){
+				// Delete old image
+				$old_qry = $this->conn->query("SELECT image_path FROM customer_images WHERE id = '{$id}'");
+				if($old_qry && $old_qry->num_rows > 0){
+					$old_path = $old_qry->fetch_assoc()['image_path'];
+					if(!empty($old_path) && is_file(base_app.$old_path)){
+						unlink(base_app.$old_path);
+					}
+				}
+				$sql = "UPDATE customer_images SET customer_id = '{$customer_id}', description = '{$description}', image_path = '{$image_path}' WHERE id = '{$id}'";
+			} else {
+				$sql = "UPDATE customer_images SET customer_id = '{$customer_id}', description = '{$description}' WHERE id = '{$id}'";
+			}
+		}
+		
+		$save = $this->conn->query($sql);
+		if($save){
+			$resp['status'] = 'success';
+			$resp['msg'] = empty($id) ? 'Customer image uploaded successfully.' : 'Customer image updated successfully.';
+		} else {
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Failed to save customer image.';
+			$resp['error'] = $this->conn->error;
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function delete_customer_image(){
+		extract($_POST);
+		$resp = array();
+		
+		// Check role permissions
+		$role_type = $this->settings->userdata('role_type');
+		// Service receptionist should not manage global customer images
+		$can_manage_images = in_array($role_type, ['service_admin', 'admin', 'data_admin']);
+		
+		if(!$can_manage_images){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Access denied.';
+			return json_encode($resp);
+		}
+		
+		$id = $this->conn->real_escape_string($id);
+		
+		// Get image path
+		$qry = $this->conn->query("SELECT image_path FROM customer_images WHERE id = '{$id}'");
+		if($qry && $qry->num_rows > 0){
+			$image_path = $qry->fetch_assoc()['image_path'];
+			
+			// Delete file
+			if(!empty($image_path) && is_file(base_app.$image_path)){
+				unlink(base_app.$image_path);
+			}
+			
+			// Archive in database
+			$del = $this->conn->query("UPDATE customer_images SET delete_flag = 1 WHERE id = '{$id}'");
+			if($del){
+				$resp['status'] = 'success';
+				$resp['msg'] = 'Customer image archived successfully.';
+			} else {
+				$resp['status'] = 'failed';
+				$resp['msg'] = 'Failed to archive customer image.';
+			}
+		} else {
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Customer image not found.';
+		}
+		
+		return json_encode($resp);
+	}
+	
+	function remove_service_image(){
+		extract($_POST);
+		$resp = array();
+		
+		// Check role permissions
+		$role_type = $this->settings->userdata('role_type');
+		$can_manage_images = in_array($role_type, ['service_receptionist', 'service_admin', 'admin']);
+		
+		if(!$can_manage_images){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Access denied. You do not have permission to manage images.';
+			return json_encode($resp);
+		}
+		
+		if(empty($id) || empty($image_type)){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Invalid request parameters.';
+			return json_encode($resp);
+		}
+		
+		$id = $this->conn->real_escape_string($id);
+		$image_type = $this->conn->real_escape_string($image_type);
+		
+		// Validate image type
+		if(!in_array($image_type, ['promo_image', 'customer_image'])){
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Invalid image type.';
+			return json_encode($resp);
+		}
+		
+		// Get existing image path
+		$qry = $this->conn->query("SELECT meta_value FROM request_meta WHERE request_id = '{$id}' AND meta_field = '{$image_type}'");
+		if($qry && $qry->num_rows > 0){
+			$row = $qry->fetch_assoc();
+			$image_path = $row['meta_value'];
+			
+			// Delete file if exists
+			if(!empty($image_path) && is_file(base_app.$image_path)){
+				unlink(base_app.$image_path);
+			}
+			
+			// Remove from database
+			$del = $this->conn->query("DELETE FROM request_meta WHERE request_id = '{$id}' AND meta_field = '{$image_type}'");
+			if($del){
+				$resp['status'] = 'success';
+				$resp['msg'] = 'Image removed successfully.';
+			} else {
+				$resp['status'] = 'failed';
+				$resp['msg'] = 'Failed to remove image from database.';
+			}
+		} else {
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Image not found.';
+		}
+		
 		return json_encode($resp);
 	}
 	
@@ -4545,6 +4943,21 @@ $sysset = new SystemSettings();
 	break;
 	case 'cancel_service':
 		echo $Master->cancel_service();
+	break;
+	case 'remove_service_image':
+		echo $Master->remove_service_image();
+	break;
+	case 'save_promo_image':
+		echo $Master->save_promo_image();
+	break;
+	case 'delete_promo_image':
+		echo $Master->delete_promo_image();
+	break;
+	case 'save_customer_image':
+		echo $Master->save_customer_image();
+	break;
+	case 'delete_customer_image':
+		echo $Master->delete_customer_image();
 	break;
 	case 'check_service_slot':
 		echo $Master->check_service_slot_availability();

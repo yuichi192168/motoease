@@ -12,30 +12,101 @@
        // Centralized Role-Based Access Control for admin pages
        $role_type = $_settings->userdata('role_type') ?: 'admin';
 
-       // Define allowed page sets per role
-       $always_allowed_pages = ['home'];
-       $service_allowed_pages = ['service_requests','appointments'];
+      // Define allowed page sets per role
+      $always_allowed_pages = ['home'];
+      // Service Admin can manage services plus promo & customer images
+      $service_admin_allowed_pages = ['service_requests','promo_images','customer_images'];
+      // Service Receptionist should only manage services (no image management)
+      $service_receptionist_allowed_pages = ['service_requests'];
        $inventory_allowed_pages = ['products','inventory','inventory/abc_analysis'];
 
-       // Helper: check if a page is allowed for a role
-       $is_allowed = function($page, $role) use ($always_allowed_pages, $service_allowed_pages, $inventory_allowed_pages) {
+      // Helper: check if a page is allowed for a role (with permissions support)
+      $is_allowed = function($page, $role) use ($always_allowed_pages, $service_admin_allowed_pages, $service_receptionist_allowed_pages, $inventory_allowed_pages) {
          if (in_array($page, $always_allowed_pages)) return true;
          if ($role === 'admin') return true;
-         if ($role === 'service_admin') {
-           // Allow exact matches and prefixed sub-pages, e.g., appointments/*
-           foreach ($service_allowed_pages as $p) {
-             if ($page === $p || strpos($page, $p.'/') === 0) return true;
-           }
+
+         // Hard block: service receptionist must never access image management, even if permissions are misconfigured
+         if ($role === 'service_receptionist' && in_array($page, ['promo_images', 'customer_images'])) {
            return false;
          }
-         if ($role === 'inventory') {
-           foreach ($inventory_allowed_pages as $p) {
-             if ($page === $p || strpos($page, $p.'/') === 0) return true;
+         
+        // Map page to permission key
+        $page_to_permission = [
+          'user' => 'user_management',
+          'user/list' => 'user_management',
+          'user/manage_user' => 'user_management',
+          'clients' => 'customer_management',
+          'products' => 'product_management',
+          'inventory' => 'inventory_management',
+          'inventory/abc_analysis' => 'inventory_management',
+          'service_requests' => 'service_requests',
+          'promo_images' => 'promo_images',
+          'customer_images' => 'customer_images',
+          'reviews' => 'reviews_management',
+          'announcements' => 'announcements_management',
+          'content' => 'content_management',
+          'orders' => 'order_management',
+          'invoices' => 'invoice_management',
+          'customer_account_balances' => 'customer_accounts',
+          'orcr_documents' => 'orcr_documents',
+          'report' => 'reports',
+          'system_info' => 'system_settings',
+          'mechanics' => 'mechanics'
+        ];
+         
+         // Check permissions first
+         if(isset($page_to_permission[$page])){
+           $permission_key = $page_to_permission[$page];
+           if(hasPermission($permission_key)){
+             return true;
            }
-           return false;
          }
-         // Default deny for other roles/types
-         return false;
+         
+        // Fallback to role-based access for backward compatibility
+        if ($role === 'system_admin') {
+          // System Admin: Full access to user and customer management
+          if (in_array($page, ['user', 'user/list', 'user/manage_user', 'clients']) || 
+              strpos($page, 'user/') === 0 || strpos($page, 'clients') === 0) {
+            return true;
+          }
+          return false;
+        }
+        if ($role === 'desk_staff') {
+          // Desk/Staff: Daily transactions (inventory and service appointments)
+          $desk_allowed_pages = ['products', 'inventory', 'inventory/abc_analysis', 'service_requests', 'mechanics', 'orders'];
+          foreach ($desk_allowed_pages as $p) {
+            if ($page === $p || strpos($page, $p.'/') === 0) return true;
+          }
+          return false;
+        }
+        if ($role === 'data_admin') {
+          // Data Admin: Promos, reviews, announcements, content
+          $data_allowed_pages = ['promo_images', 'customer_images', 'reviews', 'announcements', 'content'];
+          foreach ($data_allowed_pages as $p) {
+            if ($page === $p || strpos($page, $p.'/') === 0) return true;
+          }
+          return false;
+        }
+        if ($role === 'service_admin') {
+          foreach ($service_admin_allowed_pages as $p) {
+            if ($page === $p || strpos($page, $p.'/') === 0) return true;
+          }
+          return false;
+        }
+        if ($role === 'service_receptionist') {
+          foreach ($service_receptionist_allowed_pages as $p) {
+            if ($page === $p || strpos($page, $p.'/') === 0) return true;
+          }
+          return false;
+        }
+        if ($role === 'inventory') {
+          foreach ($inventory_allowed_pages as $p) {
+            if ($page === $p || strpos($page, $p.'/') === 0) return true;
+          }
+          return false;
+        }
+        // Default deny for other roles/types
+        return false;
        };
 
        if (!$is_allowed($page, $role_type)) {

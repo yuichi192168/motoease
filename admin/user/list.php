@@ -63,6 +63,7 @@
                                             break;
                                             case 'stock_admin':
                                             case 'inventory_staff':
+                                            case 'inventory':
                                                 $role = 'Inventory Staff';
                                             break;
                                             case 'service_admin':
@@ -77,6 +78,14 @@
                                         $role = ($row['type'] == 1) ? 'Administrator' : 'Staff';
                                     }
                                     echo $role;
+                                    
+                                    // Show permissions count if available
+                                    if(isset($row['permissions']) && !empty($row['permissions'])){
+                                        $perms = json_decode($row['permissions'], true);
+                                        if(is_array($perms) && count($perms) > 0){
+                                            echo '<br><small class="text-muted">(' . count($perms) . ' permissions)</small>';
+                                        }
+                                    }
                                 ?>
                             </td>
 							<td align="center">

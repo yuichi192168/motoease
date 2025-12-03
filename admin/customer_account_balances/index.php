@@ -232,6 +232,15 @@ if($_settings->chk_flashdata('success')): ?>
 						<input type="number" step="0.01" name="amount" id="amount" class="form-control" required>
 					</div>
 					<div class="form-group">
+						<label for="due_date_display" class="control-label">Due Date</label>
+						<input type="text" id="due_date_display" class="form-control" readonly placeholder="Select schedule to see due date">
+					</div>
+					<div class="form-group">
+						<label for="payment_date" class="control-label">Payment Date</label>
+						<input type="datetime-local" name="payment_date" id="payment_date" class="form-control">
+						<small class="form-text text-muted">Leave blank to use current date/time</small>
+					</div>
+					<div class="form-group">
 						<label for="payment_method" class="control-label">Payment Method <span class="text-danger">*</span></label>
 						<select name="payment_method" id="payment_method" class="form-control" required>
 							<option value="cash">Cash</option>
@@ -457,19 +466,20 @@ $(document).ready(function(){
 			success: function(response){
 				if(response.status == 'success'){
 					var options = '<option value="">General Payment</option>';
-					// Store schedule data for amount auto-population
-					scheduleData = {};
-					$.each(response.schedule, function(i, item){
+				// Store schedule data for amount auto-population
+				scheduleData = {};
+				$.each(response.schedule, function(i, item){
 						var dueDate = new Date(item.due_date).toLocaleDateString();
 						var status = item.payment_status;
 						var amount = parseFloat(item.remaining_balance || 0).toFixed(2);
 						var scheduleId = item.id;
 						// Store schedule data with ID as key
-						scheduleData[scheduleId] = {
-							remaining_balance: parseFloat(item.remaining_balance || 0),
-							amount_due: parseFloat(item.amount_due || 0),
-							installment_number: item.installment_number
-						};
+					scheduleData[scheduleId] = {
+						remaining_balance: parseFloat(item.remaining_balance || 0),
+						amount_due: parseFloat(item.amount_due || 0),
+						installment_number: item.installment_number,
+						due_date: item.due_date
+					};
 						options += '<option value="'+scheduleId+'" data-amount="'+amount+'">Month '+item.installment_number+' - Due: '+dueDate+' - ₱'+amount+' ('+status+')</option>';
 					});
 					$('#schedule_id').html(options);
@@ -491,9 +501,18 @@ $(document).ready(function(){
 		if(scheduleId && scheduleData[scheduleId]){
 			var remainingBalance = scheduleData[scheduleId].remaining_balance;
 			$('#amount').val(remainingBalance.toFixed(2));
-		} else {
+				// populate due date display and default payment_date to now
+				$('#due_date_display').val(new Date(scheduleData[scheduleId].due_date).toLocaleDateString());
+				// set payment_date input to current local datetime in HTML5 format
+				var now = new Date();
+				var tzoffset = now.getTimezoneOffset() * 60000; //offset in milliseconds
+				var localISOTime = (new Date(now - tzoffset)).toISOString().slice(0,16);
+				$('#payment_date').val(localISOTime);
+			} else {
 			// Clear amount if "General Payment" is selected
-			$('#amount').val('');
+				$('#amount').val('');
+				$('#due_date_display').val('');
+				$('#payment_date').val('');
 		}
 	});
 	

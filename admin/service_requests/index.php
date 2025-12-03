@@ -5,7 +5,12 @@
 <?php endif;?>
 <div class="card card-outline card-primary">
 	<div class="card-header">
-		<h3 class="card-title">List of Service Requests</h3>
+		<div class="d-flex justify-content-between align-items-center">
+			<h3 class="card-title">List of Service Requests</h3>
+			<a href="javascript:void(0)" id="create_new" class="btn btn-primary btn-sm">
+				<span class="fas fa-plus"></span> Create New Request
+			</a>
+		</div>
 	</div>
 	<div class="card-body">
 		<div class="container-fluid">
@@ -13,10 +18,12 @@
 			<table class="table table-bordered table-stripped">
 				<colgroup>
 					<col width="5%">
-					<col width="15%">
-					<col width="35%">
-					<col width="15%">
+					<col width="12%">
+					<col width="25%">
+					<col width="20%">
 					<col width="10%">
+					<col width="13%">
+					<col width="15%">
 				</colgroup>
 				<thead>
 					<tr>
@@ -25,6 +32,7 @@
 						<th>Client Name</th>
 						<th>Service</th>
 						<th>Status</th>
+						<th>Amount to Pay</th>
 						<th>Action</th>
 					</tr>
 				</thead>
@@ -85,6 +93,15 @@
 									<span class="badge badge-secondary rounded-pill px-3">Pending</span>
 								<?php endif; ?>
 							</td>
+							<td class="text-right">
+								<?php if(isset($row['amount_to_pay']) && $row['amount_to_pay'] > 0): ?>
+									<span class="text-success font-weight-bold">
+										<i class="fa fa-peso-sign"></i> ₱<?= number_format($row['amount_to_pay'], 2) ?>
+									</span>
+								<?php else: ?>
+									<span class="text-muted">-</span>
+								<?php endif; ?>
+							</td>
 							<td align="center">
 								 <button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">
 				                  		Action
@@ -122,6 +139,9 @@
 		})
 		$('.edit_data').click(function(){
 			uni_modal("Service Request Details","service_requests/manage_request.php?id="+$(this).attr('data-id'),'large')
+		})
+		$('#create_new').click(function(){
+			uni_modal("Service Request Details","service_requests/manage_request.php",'large')
 		})
 		$('.table').dataTable();
 	})

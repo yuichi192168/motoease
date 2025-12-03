@@ -258,11 +258,11 @@ $customer_id = $_settings->userdata('id');
                 <div class="card card-outline card-dark shadow rounded-0">
                     <div class="card-header">
                         <h4 class="card-title"><b>Invoice History</b></h4>
-                        <div class="card-tools">
+                        <!-- <div class="card-tools">
                             <button class="btn btn-sm btn-primary" onclick="refreshInvoices()">
                                 <i class="fa fa-refresh"></i> Refresh
                             </button>
-                        </div>
+                        </div> -->
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -326,9 +326,9 @@ $customer_id = $_settings->userdata('id');
                 <!-- Receipt details will be loaded here -->
             </div>
             <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-success" onclick="printReceipt()">
+                <!-- <button type="button" class="btn btn-success" onclick="printReceipt()">
                     <i class="fas fa-print"></i> Print Receipt
-                </button>
+                </button> -->
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
         </div>
@@ -375,24 +375,69 @@ $(document).ready(function(){
         e.preventDefault();
         var invoice_id = $(this).data('id');
         $.ajax({
-            url: _base_url_ + 'classes/Invoice.php?action=get_receipt&invoice_id=' + invoice_id,
+            url: _base_url_ + 'classes/Invoice.php?action=get_all_receipts&invoice_id=' + invoice_id,
             method: 'GET',
             dataType: 'json',
             success: function(resp) {
-                if(resp.status === 'success' && resp.data) {
-                    var r = resp.data;
-                    var html = generateStyledReceiptHTML(r);
+                if(resp.status === 'success' && resp.data && resp.data.length > 0) {
+                    var receipts = resp.data;
+                    var html = '';
+                    
+                    // Display all receipts
+                    if(receipts.length > 1) {
+                        html += '<div class="alert alert-info m-3"><strong>' + receipts.length + ' Payment(s) Found</strong></div>';
+                    }
+                    
+                    receipts.forEach(function(receipt, index) {
+                        html += generateStyledReceiptHTML(receipt);
+                        if(index < receipts.length - 1) {
+                            html += '<hr class="my-4">';
+                        }
+                    });
+                    
                     $('#receipt_details').html(html);
-                    $('#viewReceiptModal').data('receipt-data', r);
+                    $('#viewReceiptModal').data('receipt-data', receipts);
                     $('#viewReceiptModal').modal('show');
                 } else {
-                    $('#receipt_details').html('<div class="alert alert-danger m-3">Receipt not found.</div>');
-                    $('#viewReceiptModal').modal('show');
+                    // Fallback to single receipt if all_receipts fails
+                    $.ajax({
+                        url: _base_url_ + 'classes/Invoice.php?action=get_receipt&invoice_id=' + invoice_id,
+                        method: 'GET',
+                        dataType: 'json',
+                        success: function(resp) {
+                            if(resp.status === 'success' && resp.data) {
+                                var r = resp.data;
+                                var html = generateStyledReceiptHTML(r);
+                                $('#receipt_details').html(html);
+                                $('#viewReceiptModal').data('receipt-data', r);
+                                $('#viewReceiptModal').modal('show');
+                            } else {
+                                $('#receipt_details').html('<div class="alert alert-danger m-3">Receipt not found.</div>');
+                                $('#viewReceiptModal').modal('show');
+                            }
+                        }
+                    });
                 }
             },
             error: function(){
-                $('#receipt_details').html('<div class="alert alert-danger">Error loading receipt details. Please try again.</div>');
-                $('#viewReceiptModal').modal('show');
+                // Fallback to single receipt on error
+                $.ajax({
+                    url: _base_url_ + 'classes/Invoice.php?action=get_receipt&invoice_id=' + invoice_id,
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(resp) {
+                        if(resp.status === 'success' && resp.data) {
+                            var r = resp.data;
+                            var html = generateStyledReceiptHTML(r);
+                            $('#receipt_details').html(html);
+                            $('#viewReceiptModal').data('receipt-data', r);
+                            $('#viewReceiptModal').modal('show');
+                        } else {
+                            $('#receipt_details').html('<div class="alert alert-danger m-3">Receipt not found.</div>');
+                            $('#viewReceiptModal').modal('show');
+                        }
+                    }
+                });
             }
         });
     });
@@ -627,7 +672,7 @@ $(document).ready(function(){
             html += '<p class="mb-2"><strong><i class="fas fa-ban"></i> Arrears (Penalties):</strong> <span class="text-danger">₱' + parseFloat(invoice.arrears_amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span></p>';
         }
         if(typeof invoice.total_balance_due !== 'undefined' && parseFloat(invoice.total_balance_due) > 0){
-            html += '<p class="mb-2"><strong><i class="fas fa-money-bill-wave"></i> Total Balance Due:</strong> <span class="text-danger font-weight-bold">₱' + parseFloat(invoice.total_balance_due).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span></p>';
+            html += '<p class="mb-2"><strong><i class="fas fa-money-bill-wave"></i> Total Monthly Due:</strong> <span class="text-danger font-weight-bold">₱' + parseFloat(invoice.total_balance_due).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span></p>';
         }
         html += '</div>';
         html += '</div>';
@@ -842,6 +887,34 @@ $(document).ready(function(){
         }
         
         html += '</div>';
+        // Loyalty discount information (display-only). Apply 2% discount for spare parts orders when customer has a loyalty indicator
+        try{
+            var txnType = (receipt.transaction_type || '').toString().toLowerCase();
+            var isParts = txnType.indexOf('part') !== -1 || txnType.indexOf('motorcycle_parts') !== -1 || txnType.indexOf('motorcycle_parts_purchase') !== -1;
+            // check common loyalty fields returned from client_list (flexible): loyalty_card, has_loyalty, membership_card, loyalty
+            var hasLoyalty = false;
+            if(receipt.loyalty_card || receipt.has_loyalty || receipt.loyalty || receipt.membership_card || receipt.membership){
+                // treat non-empty strings and truthy values as having loyalty
+                hasLoyalty = true;
+            }
+            if(isParts && hasLoyalty){
+                var invoiceTotal = parseFloat(receipt.invoice_total_amount || receipt.amount_paid || 0);
+                var discount = +(invoiceTotal * 0.02).toFixed(2);
+                var discountedTotal = +(invoiceTotal - discount).toFixed(2);
+                html += '<div class="receipt-details-card" style="background:#fff7ed;border-left-color:#ff8c00;">';
+                html += '<h5 style="color:#b35b00;"><i class="fas fa-gift"></i> Loyalty Discount</h5>';
+                html += '<p style="margin:0;">Customer has loyalty card — a 2% discount is applied to spare parts purchases.</p>';
+                html += '<div class="receipt-detail-row" style="border:none;padding-top:10px;">';
+                html += '<span class="receipt-detail-label">Discount (2%):</span>';
+                html += '<span class="receipt-detail-value">-₱' + discount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</span>';
+                html += '</div>';
+                html += '<div class="receipt-detail-row" style="border:none;">';
+                html += '<span class="receipt-detail-label"><strong>Total after Discount:</strong></span>';
+                html += '<span class="receipt-detail-value"><strong>₱' + discountedTotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</strong></span>';
+                html += '</div>';
+                html += '</div>';
+            }
+        }catch(e){ console.error(e); }
         
         // Acknowledgment Note
         if(receipt.acknowledgment_note){
@@ -1089,6 +1162,21 @@ function generatePrintInvoiceHTML(invoice){
     html += '<div class="totals">';
     html += '<table class="totals-table">';
     html += '<tr><td>Subtotal:</td><td class="text-right">₱' + parseFloat(invoice.subtotal).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td></tr>';
+    // Loyalty discount for spare parts orders (display-only) - 2%
+    try{
+        var txnTypeInv = (invoice.transaction_type || '').toString().toLowerCase();
+        var isInvParts = txnTypeInv.indexOf('part') !== -1 || txnTypeInv.indexOf('motorcycle_parts') !== -1;
+        var invHasLoyalty = false;
+        if(invoice.loyalty_card || invoice.has_loyalty || invoice.loyalty || invoice.membership_card || invoice.membership){
+            invHasLoyalty = true;
+        }
+        var loyaltyDiscount = 0;
+        if(isInvParts && invHasLoyalty){
+            var baseTotal = parseFloat(invoice.total_amount || invoice.subtotal || 0);
+            loyaltyDiscount = +(baseTotal * 0.02).toFixed(2);
+            html += '<tr><td>Loyalty Discount (2%):</td><td class="text-right">-₱' + loyaltyDiscount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td></tr>';
+        }
+    }catch(e){ console.error(e); }
     // VAT removed - no longer displayed
     if(typeof invoice.interest_amount !== 'undefined' && parseFloat(invoice.interest_amount) > 0){
         html += '<tr><td>Interest:</td><td class="text-right">₱' + parseFloat(invoice.interest_amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td></tr>';
@@ -1099,12 +1187,13 @@ function generatePrintInvoiceHTML(invoice){
     if(typeof invoice.arrears_amount !== 'undefined' && parseFloat(invoice.arrears_amount) > 0){
         html += '<tr><td>Arrears (Penalties):</td><td class="text-right text-danger">₱' + parseFloat(invoice.arrears_amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td></tr>';
     }
-    html += '<tr class="total-row"><td><strong>Total Amount:</strong></td><td class="text-right"><strong>₱' + parseFloat(invoice.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</strong></td></tr>';
+    var displayTotal = parseFloat(invoice.total_amount || 0) - (loyaltyDiscount || 0);
+    html += '<tr class="total-row"><td><strong>Total Amount:</strong></td><td class="text-right"><strong>₱' + displayTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</strong></td></tr>';
     if(typeof invoice.balance_remaining !== 'undefined' && parseFloat(invoice.balance_remaining) > 0){
         html += '<tr><td>Balance Remaining:</td><td class="text-right">₱' + parseFloat(invoice.balance_remaining).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td></tr>';
     }
     if(typeof invoice.total_balance_due !== 'undefined' && parseFloat(invoice.total_balance_due) > 0){
-        html += '<tr class="total-row"><td><strong>Total Balance Due (incl. charges):</strong></td><td class="text-right"><strong class="text-danger">₱' + parseFloat(invoice.total_balance_due).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</strong></td></tr>';
+        html += '<tr class="total-row"><td><strong>Monthly Due (incl. charges):</strong></td><td class="text-right"><strong class="text-danger">₱' + parseFloat(invoice.total_balance_due).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</strong></td></tr>';
     }
     html += '</table>';
     html += '</div>';

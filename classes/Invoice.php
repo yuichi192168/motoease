@@ -409,9 +409,103 @@ class Invoice extends DBConnection {
                 }
             }
             
-            // Get installment schedule if payment type is installment
+            // Get installment schedule from both installment_contracts and customer_account_balances
             $invoice['installment_schedule'] = [];
-            if(!empty($invoice['payment_type']) && strtolower($invoice['payment_type']) == 'installment' && !empty($invoice['order_id'])){
+            $has_order_id = !empty($invoice['order_id']);
+            $invoice_id = $invoice['id'] ?? 0;
+            $customer_id = $invoice['customer_id'] ?? 0;
+            
+            // First, try to get schedule from customer_account_balances (Account Balances system)
+            if($invoice_id > 0 || $has_order_id || $customer_id > 0){
+                try {
+                    // Use existing accountBalanceManager if available, otherwise create new instance
+                    $accountBalance = null;
+                    if($this->accountBalanceManager){
+                        $accountBalance = $this->accountBalanceManager;
+                    } elseif(class_exists('CustomerAccountBalance')){
+                        $accountBalance = new CustomerAccountBalance($this->conn);
+                    }
+                    
+                    if($accountBalance){
+                            
+                            // Try to find account by invoice_id first, then order_id, then customer_id
+                            $account_id = null;
+                            if($invoice_id > 0){
+                                $account_query = $this->conn->query("SELECT id FROM customer_account_balances WHERE invoice_id = '{$invoice_id}' LIMIT 1");
+                                if($account_query && $account_query->num_rows > 0){
+                                    $account_row = $account_query->fetch_assoc();
+                                    $account_id = $account_row['id'];
+                                }
+                            }
+                            
+                            if(!$account_id && $has_order_id){
+                                $order_id = $this->conn->real_escape_string($invoice['order_id']);
+                                $account_query = $this->conn->query("SELECT id FROM customer_account_balances WHERE order_id = '{$order_id}' LIMIT 1");
+                                if($account_query && $account_query->num_rows > 0){
+                                    $account_row = $account_query->fetch_assoc();
+                                    $account_id = $account_row['id'];
+                                }
+                            }
+                            
+                            if(!$account_id && $customer_id > 0){
+                                // Get the most recent account for this customer
+                                $account_query = $this->conn->query("SELECT id FROM customer_account_balances WHERE client_id = '{$customer_id}' ORDER BY created_at DESC LIMIT 1");
+                                if($account_query && $account_query->num_rows > 0){
+                                    $account_row = $account_query->fetch_assoc();
+                                    $account_id = $account_row['id'];
+                                }
+                            }
+                            
+                            // Get payment schedule from account balance
+                            if($account_id){
+                                $account_schedule = $accountBalance->getPaymentSchedule($account_id);
+                                if(!empty($account_schedule)){
+                                    foreach($account_schedule as $payment){
+                                        $amount_due = floatval($payment['amount_due'] ?? 0);
+                                        $paid_amount = floatval($payment['paid_amount'] ?? 0);
+                                        $late_fee = floatval($payment['late_fee'] ?? 0);
+                                        $remaining_balance = floatval($payment['remaining_balance'] ?? ($amount_due - $paid_amount));
+                                        $payment_status = strtolower($payment['payment_status'] ?? 'unpaid');
+                                        
+                                        // Map payment_status to match expected format
+                                        $status = 'pending';
+                                        if($payment_status == 'paid') $status = 'paid';
+                                        elseif($payment_status == 'late') $status = 'overdue';
+                                        elseif($payment_status == 'partial') $status = 'partial';
+                                        
+                                        // IMPORTANT: amount_due already includes late_fee (it was added when late fee was applied)
+                                        // So monthly_due = amount_due - late_fee (original monthly payment)
+                                        // total_due = amount_due (already includes late fee)
+                                        $monthly_due = $amount_due - $late_fee;
+                                        $total_due = $amount_due; // Already includes late fee, don't add it again
+                                        
+                                        $invoice['installment_schedule'][] = [
+                                            'due_date' => $payment['due_date'] ?? '',
+                                            'amount' => $monthly_due, // Original monthly payment without late fee
+                                            'amount_due' => $monthly_due, // Original monthly payment
+                                            'status' => $status,
+                                            'paid_amount' => $paid_amount,
+                                            'remaining_due' => $remaining_balance,
+                                            'penalty_amount' => 0, // Account balance uses late_fee instead
+                                            'late_fee' => $late_fee,
+                                            'total_due' => $total_due,
+                                            'total_due_with_penalties' => $total_due, // amount_due already includes late fee
+                                            'principal_amount' => 0,
+                                            'interest_amount' => 0
+                                        ];
+                                    }
+                                }
+                            }
+                    }
+                } catch(Exception $e) {
+                    error_log("Error loading account balance schedule: " . $e->getMessage());
+                } catch(Error $e) {
+                    error_log("Fatal error loading account balance schedule: " . $e->getMessage());
+                }
+            }
+            
+            // Also try to get schedule from installment_contracts (legacy system)
+            if(empty($invoice['installment_schedule']) && $has_order_id){
                 try {
                     $order_id = $this->conn->real_escape_string($invoice['order_id']);
                     // Try to get installment contract from order_id
@@ -460,11 +554,9 @@ class Invoice extends DBConnection {
                 } catch(Exception $e) {
                     // If tables don't exist or query fails, just skip installment schedule
                     error_log("Error loading installment schedule: " . $e->getMessage());
-                    $invoice['installment_schedule'] = [];
                 } catch(Error $e) {
                     // Catch fatal errors too
                     error_log("Fatal error loading installment schedule: " . $e->getMessage());
-                    $invoice['installment_schedule'] = [];
                 }
             }
         }
@@ -475,8 +567,35 @@ class Invoice extends DBConnection {
      * Get receipt details for a given invoice
      */
     public function getReceipt($invoice_id) {
-        $receipt = $this->conn->query("SELECT r.*, u.firstname as staff_firstname, u.lastname as staff_lastname FROM receipts r LEFT JOIN users u ON r.received_by = u.id WHERE r.invoice_id = '{$invoice_id}' ORDER BY r.id DESC LIMIT 1")->fetch_assoc();
+        // Include related invoice and client information so the front-end can calculate/display discounts
+        $sql = "SELECT r.*, u.firstname as staff_firstname, u.lastname as staff_lastname, i.transaction_type, i.total_amount as invoice_total_amount, i.invoice_number, c.* 
+                FROM receipts r 
+                LEFT JOIN users u ON r.received_by = u.id 
+                LEFT JOIN invoices i ON r.invoice_id = i.id 
+                LEFT JOIN client_list c ON r.customer_id = c.id 
+                WHERE r.invoice_id = '{$invoice_id}' ORDER BY r.id DESC LIMIT 1";
+        $receipt = $this->conn->query($sql)->fetch_assoc();
         return $receipt ?: null;
+    }
+
+    /**
+     * Get all receipts for an invoice (for admin viewing)
+     */
+    public function getAllReceiptsForInvoice($invoice_id) {
+        $sql = "SELECT r.*, u.firstname as staff_firstname, u.lastname as staff_lastname, i.transaction_type, i.total_amount as invoice_total_amount, i.invoice_number, c.* 
+                FROM receipts r 
+                LEFT JOIN users u ON r.received_by = u.id 
+                LEFT JOIN invoices i ON r.invoice_id = i.id 
+                LEFT JOIN client_list c ON r.customer_id = c.id 
+                WHERE r.invoice_id = '{$invoice_id}' ORDER BY r.id ASC";
+        $result = [];
+        $receipts = $this->conn->query($sql);
+        if($receipts && $receipts->num_rows > 0) {
+            while($receipt = $receipts->fetch_assoc()) {
+                $result[] = $receipt;
+            }
+        }
+        return $result ?: [];
     }
     
     /**
@@ -706,6 +825,16 @@ if(isset($_GET['action'])) {
                     echo json_encode(['status' => 'success', 'data' => $result]);
                 } else {
                     echo json_encode(['status' => 'error', 'msg' => 'Receipt not found']);
+                }
+            }
+            break;
+        case 'get_all_receipts':
+            if(isset($_GET['invoice_id'])) {
+                $result = $invoice->getAllReceiptsForInvoice($_GET['invoice_id']);
+                if($result && count($result) > 0) {
+                    echo json_encode(['status' => 'success', 'data' => $result]);
+                } else {
+                    echo json_encode(['status' => 'error', 'msg' => 'No receipts found']);
                 }
             }
             break;

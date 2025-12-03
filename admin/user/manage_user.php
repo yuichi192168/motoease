@@ -47,10 +47,102 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 					<label for="role_type">Staff Position</label>
 					<select name="role_type" id="role_type" class="custom-select">
 						<option value="admin" <?php echo isset($meta['role_type']) && $meta['role_type'] == 'admin' ? 'selected' : '' ?>>Admin</option>
+						<option value="system_admin" <?php echo isset($meta['role_type']) && $meta['role_type'] == 'system_admin' ? 'selected' : '' ?>>System Admin</option>
+						<option value="desk_staff" <?php echo isset($meta['role_type']) && $meta['role_type'] == 'desk_staff' ? 'selected' : '' ?>>Desk/Staff</option>
+						<option value="data_admin" <?php echo isset($meta['role_type']) && $meta['role_type'] == 'data_admin' ? 'selected' : '' ?>>Data Admin</option>
 						<option value="inventory" <?php echo isset($meta['role_type']) && $meta['role_type'] == 'inventory' ? 'selected' : '' ?>>Inventory</option>
 						<option value="service_admin" <?php echo isset($meta['role_type']) && $meta['role_type'] == 'service_admin' ? 'selected' : '' ?>>Service Receptionist</option>
 					</select>
 					<small class="form-text text-muted">Select the staff position for this user.</small>
+				</div>
+				
+				<!-- Permissions Checklist -->
+				<div class="form-group col-12">
+					<label class="control-label">Access Permissions</label>
+					<div class="card card-outline card-info">
+						<div class="card-header">
+							<h6 class="card-title mb-0">Select modules/features this user can access:</h6>
+						</div>
+						<div class="card-body">
+							<?php 
+							// Get existing permissions if editing
+							$existing_permissions = [];
+							if(isset($meta['permissions']) && !empty($meta['permissions'])){
+								$existing_permissions = json_decode($meta['permissions'], true);
+								if(!is_array($existing_permissions)){
+									$existing_permissions = [];
+								}
+							}
+							
+							// Define all available permissions/modules
+							$permissions_list = [
+								'user_management' => 'User Management',
+								'customer_management' => 'Customer Management',
+								'product_management' => 'Product Management',
+								'inventory_management' => 'Inventory Management',
+								'stock_management' => 'Stock Management',
+								'service_requests' => 'Service Requests',
+								'promo_images' => 'Promo Images',
+								'customer_images' => 'Customer Images',
+								'reviews_management' => 'Reviews Management',
+								'announcements_management' => 'Announcements Management',
+								'content_management' => 'Content Management',
+								'order_management' => 'Order Management',
+								'invoice_management' => 'Invoice Management',
+								'customer_accounts' => 'Customer Accounts',
+								'orcr_documents' => 'OR/CR Documents',
+								'reports' => 'Reports',
+								'system_settings' => 'System Settings',
+								'mechanics' => 'Mechanics Management'
+							];
+							
+							// Group permissions by category
+							$permission_groups = [
+								'User & Customer' => ['user_management', 'customer_management', 'customer_accounts'],
+								'Inventory & Products' => ['product_management', 'inventory_management', 'stock_management'],
+								'Services' => ['service_requests', 'mechanics', 'promo_images', 'customer_images'],
+								'Content & Data' => ['reviews_management', 'announcements_management', 'content_management'],
+								'Sales & Orders' => ['order_management', 'invoice_management'],
+								'Documents' => ['orcr_documents'],
+								'System' => ['reports', 'system_settings']
+							];
+							?>
+							
+							<div class="row">
+								<?php foreach($permission_groups as $group_name => $permissions): ?>
+								<div class="col-md-6 mb-3">
+									<div class="border rounded p-3">
+										<h6 class="text-primary mb-2"><i class="fa fa-folder"></i> <?php echo $group_name ?></h6>
+										<?php foreach($permissions as $perm_key): ?>
+										<?php if(isset($permissions_list[$perm_key])): ?>
+										<div class="form-check mb-2">
+											<input class="form-check-input permission-checkbox" type="checkbox" 
+												name="permissions[]" 
+												id="perm_<?php echo $perm_key ?>" 
+												value="<?php echo $perm_key ?>"
+												<?php echo in_array($perm_key, $existing_permissions) ? 'checked' : '' ?>>
+											<label class="form-check-label" for="perm_<?php echo $perm_key ?>">
+												<?php echo $permissions_list[$perm_key] ?>
+											</label>
+										</div>
+										<?php endif; ?>
+										<?php endforeach; ?>
+									</div>
+								</div>
+								<?php endforeach; ?>
+							</div>
+							
+							<div class="mt-3">
+								<button type="button" class="btn btn-sm btn-secondary" id="select_all_perms">
+									<i class="fa fa-check-square"></i> Select All
+								</button>
+								<button type="button" class="btn btn-sm btn-secondary" id="deselect_all_perms">
+									<i class="fa fa-square"></i> Deselect All
+								</button>
+							</div>
+						</div>
+					</div>
+					<small class="form-text text-muted">Note: Permissions work in conjunction with the selected Staff Position. Some permissions may be automatically granted based on role.</small>
 				</div>
 				<div class="form-group col-6">
 					<label for="" class="control-label">Avatar</label>
@@ -93,9 +185,63 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
 	        reader.readAsDataURL(input.files[0]);
 	    }
 	}
+	// Select All / Deselect All permissions
+	$('#select_all_perms').click(function(){
+		$('.permission-checkbox').prop('checked', true);
+	});
+	
+	$('#deselect_all_perms').click(function(){
+		$('.permission-checkbox').prop('checked', false);
+	});
+	
+	// Auto-select permissions based on role type
+	$('#role_type').change(function(){
+		var role = $(this).val();
+		var permissions = [];
+		
+		// Define default permissions for each role
+		if(role === 'admin'){
+			// Admin gets all permissions
+			$('.permission-checkbox').prop('checked', true);
+		} else if(role === 'system_admin'){
+			// System Admin: Full access to all user accounts (System Users and Customers)
+			$('.permission-checkbox').prop('checked', false);
+			$('#perm_user_management, #perm_customer_management').prop('checked', true);
+		} else if(role === 'desk_staff'){
+			// Desk/Staff: Daily transactions - Inventory staff (product stocks) and Reception staff (service appointments)
+			$('.permission-checkbox').prop('checked', false);
+			$('#perm_product_management, #perm_inventory_management, #perm_stock_management, #perm_service_requests, #perm_mechanics, #perm_order_management').prop('checked', true);
+		} else if(role === 'data_admin'){
+			// Data Admin: Manages promos, reviews, announcements, content and other data-driven modules
+			$('.permission-checkbox').prop('checked', false);
+			$('#perm_promo_images, #perm_customer_images, #perm_reviews_management, #perm_announcements_management, #perm_content_management').prop('checked', true);
+		} else if(role === 'inventory'){
+			// Inventory role gets inventory-related permissions
+			$('.permission-checkbox').prop('checked', false);
+			$('#perm_product_management, #perm_inventory_management, #perm_stock_management').prop('checked', true);
+		} else if(role === 'service_admin'){
+			// Service admin gets service-related permissions
+			$('.permission-checkbox').prop('checked', false);
+			$('#perm_service_requests, #perm_promo_images, #perm_customer_images, #perm_mechanics').prop('checked', true);
+		}
+	});
+	
 	$('#manage-user').submit(function(e){
 		e.preventDefault();
 		var _this = $(this)
+		
+		// Collect permissions into a JSON string
+		var permissions = [];
+		$('.permission-checkbox:checked').each(function(){
+			permissions.push($(this).val());
+		});
+		
+		// Create a hidden input for permissions JSON
+		if($('#permissions_json').length === 0){
+			$(this).append('<input type="hidden" name="permissions_json" id="permissions_json">');
+		}
+		$('#permissions_json').val(JSON.stringify(permissions));
+		
 		start_loader()
 		$.ajax({
 			url:_base_url_+'classes/Users.php?f=save',

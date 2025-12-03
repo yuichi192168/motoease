@@ -15,32 +15,47 @@
         <div class="d-none d-lg-flex navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
             <a class="nav-link fw-bold text-center" style="font-size:1.2rem; font-weight: 700;" <?= isset($page) && $page == 'home'? "class='nav-link fw-bold active text-center'" : '' ?> href="./">Home</a>
             <a class="nav-link fw-bold text-center" style="font-size:1.2rem; font-weight: 700;" <?= isset($page) && $page == 'products'? "class='nav-link fw-bold active text-center'" : '' ?> href="./?p=products">Products</a>
-            <a class="nav-link fw-bold text-center" style="font-size:1.2rem; font-weight: 700;" <?= isset($page) && $page == 'services'? "class='nav-link fw-bold active text-center'" : '' ?> href="./?p=services">Services</a>
+            <!-- <a class="nav-link fw-bold text-center" style="font-size:1.2rem; font-weight: 700;" <?= isset($page) && $page == 'services'? "class='nav-link fw-bold active text-center'" : '' ?> href="./?p=services">Services</a> -->
             <a class="nav-link fw-bold text-center" style="font-size:1.2rem; font-weight: 700;" <?= isset($page) && $page == 'about'? "class='nav-link fw-bold active text-center'" : '' ?> href="./?p=about">About Us</a>
         </div>
         
         <!-- Right side menu - Only show on desktop -->
-        <div class="navbar-nav ms-auto d-none d-lg-flex">
+        <div class="navbar-nav ms-auto d-none d-lg-flex gap-2">
             <?php if($_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2): ?>
                 <!-- Cart -->
-                <div class="nav-item">
+                <div class="nav-item d-flex align-items-center">
                     <?php 
                     $cart_count = $conn->query("SELECT SUM(quantity) from cart_list where client_id = '{$_settings->userdata('id')}'")->fetch_array()[0];
                     $cart_count = $cart_count > 0 ? number_format($cart_count) : 0;
                     ?>
-                    <a href="./?p=cart" class="nav-link position-relative">
-                        <i class="fas fa-shopping-cart"></i>
-                        <span id="cart_count" class="badge badge-danger rounded-circle position-absolute top-0 start-100 translate-middle" <?= $cart_count == 0 ? 'style="display:none;"' : '' ?>><?= $cart_count ?></span>
-                        <span class="ms-1">Cart</span>
+                    <a href="./?p=cart" class="nav-link position-relative d-flex align-items-center" style="padding: 0; height: 56px; width: 40px; border-radius: 50%;">
+                        <i class="fas fa-shopping-cart" style="font-size: 1.2rem; color: #ffffff;"></i>
+                        <span id="cart_count" class="badge badge-danger rounded-circle position-absolute" style="top: -5px; right: -8px; min-width: 20px; height: 20px; padding: 2px 4px; font-size: 11px; line-height: 16px; <?= $cart_count == 0 ? 'display:none;' : '' ?>"><?= $cart_count ?></span>
                     </a>
                 </div>
                 
                 <!-- Notifications -->
-                <div class="nav-item dropdown">
-                    <a class="nav-link position-relative client-notification-toggle" data-toggle="dropdown" href="#" id="notifications-dropdown" style="padding-right: 10px;">
-                        <i class="far fa-bell"></i>
-                        <span class="badge badge-danger rounded-circle position-absolute" id="notifications-count" style="display:none; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 2px 5px; font-size: 10px; line-height: 14px;">0</span>
+                <div class="nav-item dropdown d-flex align-items-center">
+                    <a class="nav-link position-relative client-notification-toggle d-flex align-items-center" data-toggle="dropdown" href="#" id="notifications-dropdown" style="padding: 0; height: 56px; width: 40px; border-radius: 50%;">
+                        <i class="fas fa-bell" style="font-size: 1.2rem; color: #ffffff;"></i>
+                        <span class="badge badge-danger rounded-circle position-absolute" id="notifications-count" style="display:none; top: -5px; right: -8px; min-width: 20px; height: 20px; padding: 2px 4px; font-size: 11px; line-height: 16px;">0</span>
                     </a>
+                    <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" id="notifications-list">
+                        <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+                            <span class="dropdown-header mb-0">Notifications</span>
+                            <button class="btn btn-sm btn-link text-primary p-0" type="button" onclick="markAllNotificationsRead()">
+                                Mark all read
+                            </button>
+                        </div>
+                        <div id="notifications-content">
+                            <div class="text-center p-3">
+                                <i class="fas fa-spinner fa-spin"></i> Loading...
+                            </div>
+                        </div>
+                        <div class="dropdown-divider mb-0"></div>
+                        <a href="#" class="dropdown-item dropdown-footer" onclick="openNotificationHistory(event)">View Notification History</a>
+                    </div>
+                </div>
                     <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" id="notifications-list">
                         <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
                             <span class="dropdown-header mb-0">Notifications</span>
@@ -59,12 +74,12 @@
                 </div>
                 
                 <!-- Profile Settings -->
-                <div class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="padding-left: 10px;">
+                <div class="nav-item dropdown d-flex align-items-center">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="padding: 0.5rem 0.75rem; height: 56px;">
                         <div class="position-relative" style="margin-right: 8px;">
                             <img src="<?php echo validate_image($_settings->userdata('avatar')) ?>" class="rounded-circle" style="width: 25px; height: 25px; object-fit: cover;" alt="Avatar">
                         </div>
-                        <span><?= $_settings->userdata('firstname') ? ucwords($_settings->userdata('firstname')) : $_settings->userdata('email') ?></span>
+                        <span class="d-lg-inline d-none"><?= $_settings->userdata('firstname') ? ucwords($_settings->userdata('firstname')) : $_settings->userdata('email') ?></span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="profileDropdownMenuLink">
                         <a class="dropdown-item" href="./?p=my_orders"><i class="fas fa-shopping-bag me-2"></i>My Orders</a>
@@ -153,7 +168,7 @@
                     </a>
                     <a href="#" class="quick-action-btn" onclick="loadNotifications()">
                         <span class="quick-action-icon position-relative d-inline-flex align-items-center justify-content-center" style="width: 24px; height: 24px;">
-                            <i class="far fa-bell"></i>
+                            <i class="fas fa-bell"></i>
                             <span class="badge badge-danger rounded-circle position-absolute" id="mobile-notifications-count" style="display:none; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 2px 5px; font-size: 10px; line-height: 14px;">0</span>
                         </span>
                         <span class="ms-2">Notifications</span>
@@ -177,12 +192,12 @@
                         <span>Products</span>
                     </a>
                 </li>
-                <li class="nav-item">
+                <!-- <li class="nav-item">
                     <a class="nav-link fw-bold <?= isset($page) && $page == 'services'? "active" : '' ?>" href="./?p=services" style="font-size:1.1rem; font-weight: 700;">
                         <i class="fas fa-tools"></i>
                         <span>Services</span>
                     </a>
-                </li>
+                </li> -->
                 <li class="nav-item">
                     <a class="nav-link fw-bold <?= isset($page) && $page == 'about'? "active" : '' ?>" href="./?p=about" style="font-size:1.1rem; font-weight: 700;">
                         <i class="fas fa-info-circle"></i>

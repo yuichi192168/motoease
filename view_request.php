@@ -95,6 +95,18 @@ if(isset($_GET['id'])){
             <div class="ml-3"><b><?= isset($mechanic_id) && isset($mechanic_arr[$mechanic_id]) ? $mechanic_arr[$mechanic_id] : "N/A" ?></b></div>
         </div>
     </div>
+    <?php if(isset($amount_to_pay) && $amount_to_pay > 0): ?>
+    <div class="row">
+        <div class="col-md-12">
+            <label for="" class="text-muted">Amount to Pay</label>
+            <div class="ml-3">
+                <b class="text-success" style="font-size: 1.2rem;">
+                    <i class="fa fa-peso-sign"></i> ₱<?= number_format($amount_to_pay, 2) ?>
+                </b>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
     <div class="row">
         <div class="col-md-6">
             <label for="" class="text-muted">Service Type</label>

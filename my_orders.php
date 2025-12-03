@@ -57,7 +57,7 @@
                                         </td>
                                         <td class="text-center align-middle">
                                             <button class="btn btn-sm btn-primary view_order" data-id="<?= $row['id'] ?>">
-                                                <i class="fa fa-eye"></i> View Details
+                                                <i class="fa fa-eye"></i> View
                                             </button>
                                             <?php if($row['status'] == 0): ?>
                                                 <button class="btn btn-sm btn-outline-danger cancel_order" data-id="<?= $row['id'] ?>">
@@ -159,10 +159,84 @@
         </div>
     </div>
 </div>
+
+<style>
+    /* Fix DataTable Show Entries selector overlap */
+    .dataTables_wrapper {
+        margin-bottom: 20px;
+    }
+
+    .dataTables_length {
+        display: inline-block;
+        margin-right: 20px;
+        margin-bottom: 10px;
+    }
+
+    .dataTables_filter {
+        display: inline-block;
+        margin-bottom: 10px;
+        float: right;
+    }
+
+    .dataTables_length label {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        white-space: nowrap;
+    }
+
+    .dataTables_length select {
+        display: inline-block;
+        min-width: 50px;
+    }
+
+    .dataTables_filter label {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        white-space: nowrap;
+    }
+
+    .dataTables_filter input {
+        display: inline-block;
+        margin-left: 10px;
+    }
+
+    @media (max-width: 768px) {
+        .dataTables_length,
+        .dataTables_filter {
+            display: block;
+            width: 100%;
+            margin: 0 0 10px 0;
+            float: none !important;
+        }
+
+        .dataTables_filter input {
+            width: 100%;
+        }
+    }
+
+    /* Better table scrolling */
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    .table thead th {
+        position: sticky;
+        top: 0;
+        background: #f4f6f9;
+        z-index: 10;
+    }
+</style>
+
 <script>
     $(function(){
-        $('.table th, .table td').addClass("align-middle px-2 py-1")
-		$('.table').dataTable();
+        $('.table th, .table td').addClass("align-middle px-2 py-1");
+        $('.table').dataTable({
+            "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]],
+            "pageLength": 10,
+            "ordering": false
+        });
 		
 		
 		// Handle view order button clicks

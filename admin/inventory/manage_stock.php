@@ -1,5 +1,14 @@
 <?php
 require_once('./../../config.php');
+// Check role permissions - only inventory and admin can edit
+$role_type = $_settings->userdata('role_type');
+$can_edit_inventory = in_array($role_type, ['inventory', 'admin']);
+
+if(!$can_edit_inventory){
+    echo "<script>alert('Access denied. Only inventory admin can edit stock.');location.replace('./?page=inventory');</script>";
+    exit;
+}
+
 // Accept either 'pid' or 'product_id' for compatibility
 if(isset($_GET['pid']) && !empty($_GET['pid']))
 	$product_id = $_GET['pid'];

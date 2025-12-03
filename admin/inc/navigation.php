@@ -1,6 +1,28 @@
-$<?php 
+<?php 
 $usertype = $_settings->userdata('type');
 $role_type = $_settings->userdata('role_type') ?: 'admin';
+$user_permissions = getUserPermissions();
+$is_admin = ($role_type === 'admin' || in_array('all', $user_permissions));
+$service_roles = ['service_admin','service_receptionist'];
+$is_service_role = in_array($role_type, $service_roles);
+// Service roles but only service_admin should manage images; receptionists are service-only
+$is_service_admin = ($role_type === 'service_admin');
+// Explicit flag for service receptionist
+$is_service_receptionist = ($role_type === 'service_receptionist');
+$data_admin_roles = ['data_admin'];
+$is_data_admin = in_array($role_type, $data_admin_roles);
+
+// Role display names
+$role_display_names = [
+    'admin' => 'Admin',
+    'system_admin' => 'System Admin',
+    'desk_staff' => 'Desk/Staff',
+    'data_admin' => 'Data Admin',
+    'inventory' => 'Inventory',
+    'service_admin' => 'Service Receptionist',
+    'service_receptionist' => 'Service Receptionist'
+];
+$role_display = isset($role_display_names[$role_type]) ? $role_display_names[$role_type] : ucfirst(str_replace('_', ' ', $role_type));
 ?>
 <style>
     /* Small red notification dot for sidebar */
@@ -30,7 +52,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
             </div>
             <div class="info">
                 <a href="#" class="d-block"><?php echo ucwords($_settings->userdata('firstname').' '.$_settings->userdata('lastname')) ?></a>
-                <small class="text-muted"><?php echo ucfirst($role_type) ?></small>
+                <small class="text-muted"><?php echo $role_display ?></small>
             </div>
         </div>
         <!-- Sidebar Menu -->
@@ -45,7 +67,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 <!-- Notifications removed: using per-section indicators instead -->
                 
                 <!-- Role-based Menu Items -->
-                <?php if(in_array($role_type, ['admin'])): ?>
+                <?php if($is_admin || hasPermission('user_management') || hasPermission('customer_management')): ?>
                 <!-- User Management -->
                 <li class="nav-item <?php echo in_array($page, ['user','clients']) ? 'menu-open' : '' ?>">
                     <a href="#" class="nav-link <?php echo in_array($page, ['user','clients']) ? 'active' : '' ?>">
@@ -56,7 +78,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                         </p>
                     </a>
                     <ul class="nav nav-treeview">
-                        <?php if(in_array($role_type, ['admin'])): ?>
+                        <?php if($is_admin || hasPermission('user_management')): ?>
                         <li class="nav-item">
                             <a href="./?page=user/list" class="nav-link <?php echo ($page == 'user' || $page == 'user/list') ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
@@ -64,18 +86,20 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                             </a>
                         </li>
                         <?php endif; ?>
+                        <?php if($is_admin || hasPermission('customer_management')): ?>
                         <li class="nav-item">
                             <a href="./?page=clients" class="nav-link <?php echo $page == 'clients' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Customers</p>
                             </a>
                         </li>
+                        <?php endif; ?>
                     </ul>
                 </li>
                 <?php endif; ?>
                 
                <!-- Inventory Management -->
-<?php if(in_array($role_type, ['admin','inventory'])): ?>
+<?php if($is_admin || hasPermission('inventory_management') || hasPermission('product_management') || hasPermission('stock_management')): ?>
 <li class="nav-item <?php echo in_array($page, ['products','inventory','inventory/abc_analysis']) ? 'menu-open' : '' ?>">
     <a href="#" class="nav-link <?php echo in_array($page, ['products','inventory','inventory/abc_analysis']) ? 'active' : '' ?>">
         <i class="nav-icon fas fa-boxes"></i>
@@ -85,32 +109,38 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
         </p>
     </a>
     <ul class="nav nav-treeview">
+        <?php if($is_admin || hasPermission('product_management')): ?>
         <li class="nav-item">
             <a href="./?page=products" class="nav-link <?php echo $page == 'products' ? 'active' : '' ?>">
                 <i class="far fa-circle nav-icon"></i>
                 <p>Products</p>
             </a>
         </li>
+        <?php endif; ?>
+        <?php if($is_admin || hasPermission('stock_management')): ?>
         <li class="nav-item">
             <a href="./?page=inventory" class="nav-link <?php echo $page == 'inventory' ? 'active' : '' ?>">
                 <i class="far fa-circle nav-icon"></i>
                 <p>Stock Management</p>
             </a>
         </li>
+        <?php endif; ?>
+        <?php if($is_admin || hasPermission('inventory_management')): ?>
         <li class="nav-item">
             <a href="./?page=inventory/abc_analysis" class="nav-link <?php echo $page == 'inventory/abc_analysis' ? 'active' : '' ?>">
                 <i class="far fa-circle nav-icon"></i>
                 <p>ABC Analysis</p>
             </a>
         </li>
+        <?php endif; ?>
     </ul>
 </li>
 <?php endif; ?>
                 
                 <!-- Service Management -->
-                <?php if(in_array($role_type, ['admin','service_admin'])): ?>
-                <li class="nav-item <?php echo in_array($page, ['service_management','service_requests','appointments','mechanics']) ? 'menu-open' : '' ?>">
-                    <a href="#" class="nav-link <?php echo in_array($page, ['service_management','service_requests','appointments','mechanics']) ? 'active' : '' ?>">
+                <?php if($is_admin || $is_service_role || hasPermission('service_requests') || hasPermission('mechanics')): ?>
+                <li class="nav-item <?php echo in_array($page, ['service_management','service_requests','mechanics']) ? 'menu-open' : '' ?>">
+                    <a href="#" class="nav-link <?php echo in_array($page, ['service_management','service_requests','mechanics']) ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-tools"></i>
                         <p>
                             Services
@@ -118,19 +148,22 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                         </p>
                     </a>
                     <ul class="nav nav-treeview">
+                        <?php if($is_admin || $is_service_role || hasPermission('service_requests')): ?>
                         <li class="nav-item">
                             <a href="./?page=service_requests" data-href="./?page=service_requests&status=pending" id="link-services" class="nav-link <?php echo $page == 'service_requests' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Service Requests <span id="dot-services" class="sidebar-dot" style="display:none;"></span></p>
                             </a>
                         </li>
-                        <li class="nav-item">
+                        <?php endif; ?>
+                        <!-- Appointments commented out per requirements -->
+                        <!-- <li class="nav-item">
                             <a href="./?page=appointments" data-href="./?page=appointments&status=pending" id="link-appointments" class="nav-link <?php echo $page == 'appointments' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Appointments <span id="dot-appointments" class="sidebar-dot" style="display:none;"></span></p>
                             </a>
-                        </li>
-                        <?php if(in_array($role_type, ['admin'])): ?>
+                        </li> -->
+                        <?php if($is_admin || $is_service_role || hasPermission('mechanics')): ?>
                         <li class="nav-item">
                             <a href="./?page=mechanics" class="nav-link <?php echo $page == 'mechanics' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
@@ -142,8 +175,81 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 </li>
                 <?php endif; ?>
                 
+                <!-- Promo & Customer Images Management -->
+                <?php 
+                // Images Management is strictly role-based: only Admin, Service Admin, and Data Admin.
+                // Service Receptionist must NEVER see this section, even if permissions are misconfigured.
+                if(in_array($role_type, ['admin', 'data_admin'])): ?>
+                <li class="nav-item <?php echo in_array($page, ['promo_images','customer_images']) ? 'menu-open' : '' ?>">
+                    <a href="#" class="nav-link <?php echo in_array($page, ['promo_images','customer_images']) ? 'active' : '' ?>">
+                        <i class="nav-icon fas fa-images"></i>
+                        <p>
+                            Images Management
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <?php if(in_array($role_type, ['admin', 'data_admin'])): ?>
+                        <li class="nav-item">
+                            <a href="./?page=promo_images" class="nav-link <?php echo $page == 'promo_images' ? 'active' : '' ?>">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Promo Images</p>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if(in_array($role_type, ['admin', 'data_admin'])): ?>
+                        <li class="nav-item">
+                            <a href="./?page=customer_images" class="nav-link <?php echo $page == 'customer_images' ? 'active' : '' ?>">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Customer Images</p>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                    </ul>
+                </li>
+                <?php endif; ?>
+                
+                <!-- Content & Data Management -->
+                <?php if($is_admin || $is_data_admin || hasPermission('reviews_management') || hasPermission('announcements_management') || hasPermission('content_management')): ?>
+                <!-- <li class="nav-item <?php echo in_array($page, ['reviews','announcements','content']) ? 'menu-open' : '' ?>">
+                    <a href="#" class="nav-link <?php echo in_array($page, ['reviews','announcements','content']) ? 'active' : '' ?>">
+                        <i class="nav-icon fas fa-newspaper"></i>
+                        <p>
+                            Content & Data
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <?php if($is_admin || $is_data_admin || hasPermission('reviews_management')): ?>
+                        <li class="nav-item">
+                            <a href="./?page=reviews" class="nav-link <?php echo $page == 'reviews' ? 'active' : '' ?>">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Reviews</p>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if($is_admin || $is_data_admin || hasPermission('announcements_management')): ?>
+                        <li class="nav-item">
+                            <a href="./?page=announcements" class="nav-link <?php echo $page == 'announcements' ? 'active' : '' ?>">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Announcements</p>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if($is_admin || $is_data_admin || hasPermission('content_management')): ?>
+                        <li class="nav-item">
+                            <a href="./?page=content" class="nav-link <?php echo $page == 'content' ? 'active' : '' ?>">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Content Management</p>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                    </ul>
+                </li> -->
+                <?php endif; ?>
+                
                 <!-- Order Management -->
-                <?php if(in_array($role_type, ['admin'])): ?>
+                <?php if($is_admin || hasPermission('order_management')): ?>
                 <li class="nav-item">
                     <a href="./?page=orders" data-href="./?page=orders&status=pending" id="link-orders" class="nav-link <?php echo $page == 'orders' ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-shopping-cart"></i>
@@ -153,7 +259,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 <?php endif; ?>
                 
                 <!-- Reports -->
-                <?php if(in_array($role_type, ['admin'])): ?>
+                <?php if($is_admin || hasPermission('reports')): ?>
                 <li class="nav-item <?php echo in_array($page, ['report', 'user_log_history']) ? 'menu-open' : '' ?>">
                     <a href="#" class="nav-link <?php echo in_array($page, ['report', 'user_log_history']) ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-chart-bar"></i>
@@ -169,6 +275,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                                 <p>Service Reports</p>
                             </a>
                         </li> -->
+                        <?php if($is_admin || hasPermission('reports')): ?>
                         <li class="nav-item">
                             <a href="./?page=report/orders" class="nav-link <?php echo $page == 'report/orders' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
@@ -187,19 +294,22 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                                 <p>Invoice Report</p>
                             </a>
                         </li>
+                        <?php endif; ?>
                         
+                        <?php if($is_admin || hasPermission('reports')): ?>
                         <li class="nav-item">
                             <a href="./?page=user_log_history" class="nav-link <?php echo $page == 'user_log_history' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>User Activity Log</p>
                             </a>
                         </li>
+                        <?php endif; ?>
                     </ul>
                 </li>
                 <?php endif; ?>
                 
                 <!-- Services & Categories Management -->
-                <?php if(in_array($role_type, ['admin'])): ?>
+                <?php if($is_admin || hasPermission('system_settings')): ?>
                 <li class="nav-item <?php echo in_array($page, ['maintenance/category','maintenance/services','maintenance/manage_category','maintenance/manage_service']) ? 'menu-open' : '' ?>">
                     <a href="#" class="nav-link <?php echo in_array($page, ['maintenance/category','maintenance/services','maintenance/manage_category','maintenance/manage_service']) ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-cogs"></i>
@@ -226,7 +336,7 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                 <?php endif; ?>
 
                  <!-- Customer Account Management -->
-                 <?php if(in_array($role_type, ['admin', 'branch_supervisor', 'admin_assistant'])): ?>
+                 <?php if($is_admin || hasPermission('customer_accounts') || hasPermission('invoice_management') || hasPermission('orcr_documents')): ?>
                 <li class="nav-item <?php echo in_array($page, ['customer_accounts', 'customer_account_balances']) ? 'menu-open' : '' ?>">
                     <a href="#" class="nav-link <?php echo in_array($page, ['customer_accounts', 'customer_account_balances']) ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-user-cog"></i>
@@ -236,46 +346,46 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                         </p>
                     </a>
                     <ul class="nav nav-treeview">
+                        <?php if($is_admin || hasPermission('customer_accounts')): ?>
                         <li class="nav-item">
                             <a href="./?page=customer_account_balances" class="nav-link <?php echo $page == 'customer_account_balances' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Account Balances</p>
                             </a>
                         </li>
+                        <?php endif; ?>
                         <!-- <li class="nav-item">
                             <a href="./?page=customer_accounts" class="nav-link <?php echo $page == 'customer_accounts' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Account Balances (Legacy)</p>
                             </a>
                         </li> -->
+                        <?php if($is_admin || hasPermission('invoice_management')): ?>
                         <li class="nav-item">
                             <a href="./?page=invoices" class="nav-link <?php echo $page == 'invoices' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Invoices & Receipts</p>
                             </a>
                         </li>
+                        <?php endif; ?>
+                        <?php if($is_admin || hasPermission('orcr_documents')): ?>
                         <li class="nav-item">
                             <a href="./?page=orcr_documents" class="nav-link <?php echo $page == 'orcr_documents' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>OR/CR Documents</p>
                             </a>
                         </li>
+                        <?php endif; ?>
                     </ul>
                 </li>
                 <?php endif; ?>
                 
                 <!-- System Settings -->
-                <?php if(in_array($role_type, ['admin'])): ?>
+                <?php if($is_admin || hasPermission('system_settings')): ?>
                 <li class="nav-item">
                     <a href="./?page=system_info" class="nav-link <?php echo $page == 'system_info' ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-cog"></i>
                         <p>System Settings</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="./?page=promo_management" class="nav-link <?php echo $page == 'promo_management' ? 'active' : '' ?>">
-                        <i class="nav-icon fas fa-images"></i>
-                        <p>Promo & Customer Images</p>
                     </a>
                 </li>
                 <?php endif; ?>
@@ -287,8 +397,8 @@ $role_type = $_settings->userdata('role_type') ?: 'admin';
                         <i class="nav-icon fas fa-building"></i>
                         <p>Branch Management</p>
                     </a>
-                </li> -->
-                <?php endif; ?>
+                </li>
+                <?php endif; ?> -->
                 
                
                 

@@ -80,7 +80,53 @@ if(isset($service_id) && !empty($service_id) && $service_id !== '0'){
             </dl>
         </div>
     </div>
-    <div class="w-100 d-flex justify-content-end mx-2">
+    
+    <?php 
+    // Get promo and customer images from meta
+    $promo_image = '';
+    $customer_image = '';
+    $image_meta = $conn->query("SELECT meta_field, meta_value FROM request_meta WHERE request_id = '{$id}' AND meta_field IN ('promo_image', 'customer_image')");
+    while($img_row = $image_meta->fetch_assoc()){
+        if($img_row['meta_field'] == 'promo_image'){
+            $promo_image = $img_row['meta_value'];
+        } elseif($img_row['meta_field'] == 'customer_image'){
+            $customer_image = $img_row['meta_value'];
+        }
+    }
+    ?>
+    
+    <?php if(!empty($promo_image) || !empty($customer_image)): ?>
+    <hr class="border-light">
+    <div class="row">
+        <?php if(!empty($promo_image)): ?>
+        <div class="col-md-6">
+            <div class="card card-outline card-info">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="fa fa-image"></i> Promo Image</h5>
+                </div>
+                <div class="card-body text-center">
+                    <img src="<?php echo validate_image($promo_image) ?>" alt="Promo Image" class="img-thumbnail" style="max-width: 100%; max-height: 400px;">
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+        
+        <?php if(!empty($customer_image)): ?>
+        <div class="col-md-6">
+            <div class="card card-outline card-success">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="fa fa-user-circle"></i> Customer Image</h5>
+                </div>
+                <div class="card-body text-center">
+                    <img src="<?php echo validate_image($customer_image) ?>" alt="Customer Image" class="img-thumbnail" style="max-width: 100%; max-height: 400px;">
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+    
+    <div class="w-100 d-flex justify-content-end mx-2 mt-3">
         <div class="col-auto">
             <button class="btn btn-light btn-sm rounded-0" type="button" data-dismiss="modal">Close</button>
         </div>

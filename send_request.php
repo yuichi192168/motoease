@@ -351,7 +351,7 @@ $user_requests = $conn->query("SELECT * FROM service_requests WHERE client_id = 
                 return false;
             } else if (!pattern.test(regNumber)) {
                 $('#vehicle_registration_number').addClass('is-invalid');
-                $('#vehicle_registration_number_error').text('Please enter a valid engine number format');
+                $('#vehicle_registration_number_error').text('Please enter a valid Plate Number format');
                 return false;
             } else {
                 $('#vehicle_registration_number').removeClass('is-invalid').addClass('is-valid');

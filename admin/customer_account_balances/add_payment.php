@@ -50,6 +50,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
 	$payment_method = isset($_POST['payment_method']) ? $_POST['payment_method'] : 'cash';
 	$receipt_number = isset($_POST['receipt_number']) ? trim($_POST['receipt_number']) : null;
 	$notes = isset($_POST['notes']) ? trim($_POST['notes']) : null;
+	// Accept optional payment_date (actual payment datetime) from admin UI
+	$payment_date = isset($_POST['payment_date']) && !empty($_POST['payment_date']) ? trim($_POST['payment_date']) : null;
 	$processed_by = $_settings->userdata('id');
 	
 	if($account_id <= 0){
@@ -118,6 +120,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
 			$receipt_number,
 			$notes,
 			$processed_by,
+			$payment_date,
 			true // Skip late fee check - already done above
 		);
 		

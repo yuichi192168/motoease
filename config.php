@@ -47,6 +47,121 @@ function isMobileDevice(){
     return false;
 }
 
+/**
+ * Check if user has permission to access a module
+ * @param string $permission_key The permission key to check (e.g., 'user_management', 'inventory_management')
+ * @param object $settings The SystemSettings object
+ * @param object $conn Database connection
+ * @return bool True if user has permission, false otherwise
+ */
+function hasPermission($permission_key, $settings = null, $conn = null){
+    global $_settings, $conn;
+    
+    if($settings === null) $settings = $_settings;
+    
+    // Admin always has all permissions
+    $role_type = $settings->userdata('role_type');
+    if($role_type === 'admin'){
+        return true;
+    }
+    
+    // Get user permissions from database (cache per user for current request)
+    static $permission_cache = [];
+    $user_id = $settings->userdata('id');
+    if(empty($user_id)) return false;
+    
+    if(!isset($permission_cache[$user_id])){
+        if($conn === null) global $conn;
+        $permission_cache[$user_id] = [];
+        $user = $conn->query("SELECT permissions FROM users WHERE id = '{$user_id}'");
+        if($user && $user->num_rows > 0){
+            $user_data = $user->fetch_assoc();
+            $permissions = $user_data['permissions'];
+            
+            if(!empty($permissions)){
+                $permissions_array = json_decode($permissions, true);
+                if(is_array($permissions_array)){
+                    $permission_cache[$user_id] = $permissions_array;
+                }
+            }
+        }
+    }
+    
+    if(in_array($permission_key, $permission_cache[$user_id])){
+        return true;
+    }
+    
+    // Map page names to permission keys for backward compatibility
+    $page_to_permission_map = [
+        'user' => 'user_management',
+        'user/list' => 'user_management',
+        'user/manage_user' => 'user_management',
+        'clients' => 'customer_management',
+        'products' => 'product_management',
+        'inventory' => 'inventory_management',
+        'inventory/abc_analysis' => 'inventory_management',
+        'service_requests' => 'service_requests',
+        'promo_images' => 'promo_images',
+        'customer_images' => 'customer_images',
+        'orders' => 'order_management',
+        'invoices' => 'invoice_management',
+        'customer_account_balances' => 'customer_accounts',
+        'orcr_documents' => 'orcr_documents',
+        'report' => 'reports',
+        'system_info' => 'system_settings',
+        'mechanics' => 'mechanics'
+    ];
+    
+    // If permission key not found, try to map from page name
+    if(isset($page_to_permission_map[$permission_key])){
+        $mapped_permission = $page_to_permission_map[$permission_key];
+        if($mapped_permission === $permission_key){
+            return false; // prevent infinite recursion if mapping points to itself
+        }
+        return hasPermission($mapped_permission, $settings, $conn);
+    }
+    
+    return false;
+}
+
+/**
+ * Get all permissions for current user
+ * @param object $settings The SystemSettings object
+ * @param object $conn Database connection
+ * @return array Array of permission keys
+ */
+function getUserPermissions($settings = null, $conn = null){
+    global $_settings, $conn;
+    
+    if($settings === null) $settings = $_settings;
+    
+    // Admin has all permissions
+    $role_type = $settings->userdata('role_type');
+    if($role_type === 'admin'){
+        return ['all']; // Return special 'all' flag for admin
+    }
+    
+    $user_id = $settings->userdata('id');
+    if(empty($user_id)) return [];
+    
+    if($conn === null) global $conn;
+    
+    $user = $conn->query("SELECT permissions FROM users WHERE id = '{$user_id}'");
+    if($user && $user->num_rows > 0){
+        $user_data = $user->fetch_assoc();
+        $permissions = $user_data['permissions'];
+        
+        if(!empty($permissions)){
+            $permissions_array = json_decode($permissions, true);
+            if(is_array($permissions_array)){
+                return $permissions_array;
+            }
+        }
+    }
+    
+    return [];
+}
+
 if(!function_exists('get_product_stock_levels')){
 	function get_product_stock_levels($conn, $product_id){
 		$snapshot = [

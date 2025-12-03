@@ -3,12 +3,18 @@
 	alert_toast("<?php echo $_settings->flashdata('success') ?>",'success')
 </script>
 <?php endif;?>
+<?php 
+$role_type = $_settings->userdata('role_type');
+$can_edit_inventory = in_array($role_type, ['inventory', 'admin']);
+?>
 <div class="card card-outline card-primary">
 	<div class="card-header">
 		<h3 class="card-title">Product Stocks</h3>
+		<?php if($can_edit_inventory): ?>
 		<div class="card-tools">
 			<a href="javascript:void(0)" id="add_new" class="btn btn-flat btn-primary"><span class="fas fa-plus"></span>  Add New</a>
 		</div>
+		<?php endif; ?>
 	</div>
 	<div class="card-body">
 		<div class="container-fluid">
@@ -111,6 +117,7 @@
 								<br><small class="text-muted"><?php echo $stock_status; ?></small>
 							</td>
 							<td align="center">
+								<?php if($can_edit_inventory): ?>
 								 <button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">
 				                  		Action
 				                    <span class="sr-only">Toggle Dropdown</span>
@@ -120,6 +127,11 @@
 				                    <div class="dropdown-divider"></div>
                                     <a class="dropdown-item" href="javascript:void(0)" onclick="uni_modal('Add Stock','inventory/manage_stock.php?product_id=<?php echo $row['id'] ?>')"><span class="fa fa-plus text-primary"></span> Add Stock</a>
 				                  </div>
+								<?php else: ?>
+									<a class="btn btn-flat btn-default btn-sm" href="?page=inventory/view_stock&id=<?php echo $row['id'] ?>">
+										<span class="fa fa-boxes text-dark"></span> View Stock
+									</a>
+								<?php endif; ?>
 							</td>
 						</tr>
 					<?php endwhile; ?>
@@ -145,9 +157,11 @@
 			if(val){ params.set('search', val); } else { params.delete('search'); }
 			window.location.search = params.toString();
 		});
+		<?php if($can_edit_inventory): ?>
 		$('#add_new').click(function(){
 			uni_modal("Add New Stock","inventory/manage_stock.php")
 		})
+		<?php endif; ?>
 		$('.delete_data').click(function(){
 			_conf("Are you sure to delete this product permanently?","delete_product",[$(this).attr('data-id')])
 		})

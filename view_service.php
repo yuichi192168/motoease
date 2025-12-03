@@ -64,6 +64,13 @@ foreach($qry->fetch_array() as $k => $v){
             </span>
         </dd>
         <?php endif; ?>
+        <?php if(isset($service_amount) && $service_amount > 0): ?>
+        <dd class="mt-2">
+            <span class="badge badge-success" style="font-size: 1rem;">
+                <i class="fa fa-peso-sign"></i> ₱<?php echo number_format($service_amount, 2) ?>
+            </span>
+        </dd>
+        <?php endif; ?>
     </dl>
     <hr>
     <style>

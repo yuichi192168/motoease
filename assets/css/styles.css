@@ -53,6 +53,338 @@
     }
 }
 
+  /* Add to Cart button icon - ensure white color for visibility against red background */
+  .featured-product-card .btn-primary,
+  .featured-product-card .btn-primary i,
+  .featured-product-card .btn-primary i.fa-cart-plus,
+  .featured-product-card .btn-primary i.fa,
+  .featured-product-card .btn-primary i.fas,
+  .featured-product-card .btn-primary i.far {
+      color: #ffffff !important;
+  }
+  
+  .featured-product-card .btn-primary:hover,
+  .featured-product-card .btn-primary:hover i,
+  .featured-product-card .btn-primary:hover i.fa-cart-plus,
+  .featured-product-card .btn-primary:hover i.fa,
+  .featured-product-card .btn-primary:hover i.fas,
+  .featured-product-card .btn-primary:hover i.far {
+      color: #ffffff !important;
+  }
+  
+  /* Ensure all primary buttons have white icons across the site */
+  .btn-primary i,
+  .btn-primary i.fa-cart-plus,
+  .btn-primary i.fa-bell,
+  .btn-primary i.fa,
+  .btn-primary i.fas,
+  .btn-primary i.far {
+      color: #ffffff !important;
+  }
+  
+  .btn-primary:hover i,
+  .btn-primary:hover i.fa-cart-plus,
+  .btn-primary:hover i.fa-bell,
+  .btn-primary:hover i.fa,
+  .btn-primary:hover i.fas,
+  .btn-primary:hover i.far {
+      color: #ffffff !important;
+  }
+  
+  /* Force white color for all icons inside primary buttons */
+  .featured-product-card .btn-primary *,
+  .featured-product-card .btn-primary i.fa-cart-plus,
+  .featured-product-card button.btn-primary i,
+  .featured-product-card button.btn-primary i.fa,
+  .featured-product-card button.btn-primary i.fas {
+      color: #ffffff !important;
+      fill: #ffffff !important;
+  }
+  
+  /* Ensure cart plus icon is visible on homepage */
+  .featured-product-card button.btn-primary .fa-cart-plus,
+  .featured-product-card .btn-primary .fa-cart-plus,
+  .featured-product-card button.btn-primary i.fa-cart-plus,
+  .featured-product-card .btn-primary i.fa-cart-plus,
+  button.btn-primary i.fa-cart-plus,
+  .btn-primary i.fa-cart-plus {
+      color: #ffffff !important;
+      opacity: 1 !important;
+      display: inline-block !important;
+      visibility: visible !important;
+  }
+  
+  /* Force white color on all child elements of primary button */
+  .featured-product-card .btn-primary,
+  .featured-product-card button.btn-primary {
+      color: #ffffff !important;
+  }
+  
+  .featured-product-card .btn-primary *,
+  .featured-product-card button.btn-primary * {
+      color: #ffffff !important;
+  }
+  
+  /* Ensure icon is visible with proper font rendering */
+  .featured-product-card .btn-primary i,
+  .featured-product-card button.btn-primary i,
+  .featured-product-card .btn-primary i.fa-cart-plus,
+  .featured-product-card button.btn-primary i.fa-cart-plus,
+  .featured-product-card .btn-primary i.fas,
+  .featured-product-card button.btn-primary i.fas {
+      color: #ffffff !important;
+      opacity: 1 !important;
+      display: inline-block !important;
+      visibility: visible !important;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+      font-weight: normal !important;
+  }
+  
+  /* Override any Bootstrap or theme styles that might hide the icon */
+  .featured-product-card .btn-primary i::before,
+  .featured-product-card button.btn-primary i::before,
+  button.btn-primary i.fa-cart-plus::before,
+  .btn-primary i.fa-cart-plus::before,
+  i.fa-cart-plus::before,
+  i.fas.fa-cart-plus::before {
+      color: #ffffff !important;
+      opacity: 1 !important;
+      font-size: inherit !important;
+      display: inline-block !important;
+  }
+  
+  /* Override Bootstrap's .btn color that affects all child elements */
+  .featured-product-card .btn-primary *,
+  .featured-product-card button.btn-primary *,
+  button.btn-primary *,
+  .btn-primary * {
+      color: #ffffff !important;
+  }
+  
+  /* Ensure button text and icons are white - override Bootstrap's .btn color */
+  .featured-product-card .btn-primary,
+  .featured-product-card button.btn-primary,
+  button.btn-primary.btn-sm {
+      color: #ffffff !important;
+  }
+  
+  /* Force all child elements to be white */
+  .featured-product-card .btn-primary *,
+  .featured-product-card button.btn-primary *,
+  button.btn-primary * {
+      color: #ffffff !important;
+  }
+  
+  /* GLOBAL OVERRIDE: Force cart plus icon to always be white - highest priority */
+  /* Override Bootstrap's .btn color that affects child elements */
+  .btn-primary,
+  button.btn-primary,
+  .featured-product-card .btn-primary,
+  .featured-product-card button.btn-primary {
+      color: #ffffff !important;
+  }
+  
+  /* Force icon color - must override button's inherited color */
+  i.fa-cart-plus,
+  i.fas.fa-cart-plus,
+  .fa-cart-plus,
+  .fas.fa-cart-plus,
+  [class*="fa-cart-plus"],
+  button .fa-cart-plus,
+  button i.fa-cart-plus,
+  .btn .fa-cart-plus,
+  .btn i.fa-cart-plus,
+  .btn-primary .fa-cart-plus,
+  .btn-primary i.fa-cart-plus,
+  button.btn-primary .fa-cart-plus,
+  button.btn-primary i.fa-cart-plus,
+  .featured-product-card .fa-cart-plus,
+  .featured-product-card button .fa-cart-plus,
+  .featured-product-card .btn-primary .fa-cart-plus,
+  .featured-product-card button.btn-primary .fa-cart-plus,
+  .featured-product-card .btn-primary i,
+  .featured-product-card button.btn-primary i {
+      color: #ffffff !important;
+      fill: #ffffff !important;
+      stroke: #ffffff !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      display: inline-block !important;
+      font-size: inherit !important;
+      width: auto !important;
+      height: auto !important;
+      line-height: inherit !important;
+  }
+  
+  /* Override for pseudo-elements (Font Awesome uses ::before) */
+  i.fa-cart-plus::before,
+  i.fas.fa-cart-plus::before,
+  .fa-cart-plus::before,
+  .fas.fa-cart-plus::before,
+  [class*="fa-cart-plus"]::before,
+  button .fa-cart-plus::before,
+  .btn .fa-cart-plus::before,
+  .btn-primary .fa-cart-plus::before,
+  button.btn-primary .fa-cart-plus::before,
+  .featured-product-card .fa-cart-plus::before,
+  .featured-product-card button .fa-cart-plus::before,
+  .featured-product-card .btn-primary .fa-cart-plus::before,
+  .featured-product-card button.btn-primary .fa-cart-plus::before {
+      color: #ffffff !important;
+      opacity: 1 !important;
+  }
+  
+  /* Override for hover states */
+  button:hover .fa-cart-plus,
+  .btn:hover .fa-cart-plus,
+  .btn-primary:hover .fa-cart-plus,
+  button.btn-primary:hover .fa-cart-plus,
+  .featured-product-card .btn-primary:hover .fa-cart-plus,
+  .featured-product-card button.btn-primary:hover .fa-cart-plus,
+  button:hover i.fa-cart-plus,
+  .btn:hover i.fa-cart-plus,
+  .btn-primary:hover i.fa-cart-plus,
+  button.btn-primary:hover i.fa-cart-plus {
+      color: #ffffff !important;
+      opacity: 1 !important;
+  }
+  
+  /* Override for active/focus states */
+  button:active .fa-cart-plus,
+  button:focus .fa-cart-plus,
+  .btn:active .fa-cart-plus,
+  .btn:focus .fa-cart-plus,
+  .btn-primary:active .fa-cart-plus,
+  .btn-primary:focus .fa-cart-plus,
+  button.btn-primary:active .fa-cart-plus,
+  button.btn-primary:focus .fa-cart-plus {
+      color: #ffffff !important;
+      opacity: 1 !important;
+  }
+  
+  /* Match products page card styling */
+  .featured-product-card {
+      border: 1px solid #e9ecef;
+      border-radius: 0;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .featured-product-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  }
+  
+  .featured-product-card .card-body {
+      border-top: 1px solid #dee2e6;
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+  }
+  
+  .featured-product-card .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      line-height: 1.2;
+  }
+  
+  .featured-product-card .card-text {
+      font-size: 0.875rem;
+      color: #6c757d;
+      line-height: 1.5;
+      margin-bottom: 1rem;
+      flex-grow: 1;
+  }
+  
+  /* Stock Status Badges - Red and Black Theme matching products page */
+  .featured-product-card .badge-success {
+      background: linear-gradient(135deg, #dc3545, #c82333);
+      color: white;
+      box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+  }
+  
+  .featured-product-card .badge-warning {
+      background: linear-gradient(135deg, #fd7e14, #e8590c);
+      color: white;
+      box-shadow: 0 2px 8px rgba(253, 126, 20, 0.3);
+  }
+  
+  .featured-product-card .badge-danger {
+      background: linear-gradient(135deg, #000000, #343a40);
+      color: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Price Tag with Peso Symbol - Red Theme matching products page */
+  .featured-product-card .price-tag,
+  .featured-product-card .product-badge-bottom-right .badge {
+      background: linear-gradient(135deg, #dc3545, #c82333) !important;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+  }
+  
+  /* Add to Cart Button Styles - Red and Black Theme matching products page */
+  .featured-product-card .btn-primary {
+      background: linear-gradient(135deg, #dc3545, #c82333);
+      border: none;
+      color: #ffffff !important;
+      transition: all 0.3s ease;
+  }
+  
+  .featured-product-card .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+      color: #ffffff !important;
+  }
+  
+  /* Ensure all children (including icons) inherit white color */
+  .featured-product-card .btn-primary,
+  .featured-product-card .btn-primary *,
+  .featured-product-card .btn-primary i,
+  .featured-product-card .btn-primary i::before {
+      color: #ffffff !important;
+  }
+  
+  .featured-product-card .btn-outline-primary {
+      border: 2px solid #dc3545;
+      color: #dc3545;
+      transition: all 0.3s ease;
+  }
+  
+  .featured-product-card .btn-outline-primary:hover {
+      background: #dc3545;
+      color: white;
+      transform: translateY(-2px);
+  }
+/* Ensure cart plus icon is always white */
+.fa-cart-plus,
+.fa.fa-cart-plus,
+i.fa-cart-plus,
+i.fa.fa-cart-plus {
+    color: white !important;
+}
+
+/* Or target it within buttons specifically */
+.btn-danger .fa-cart-plus,
+.btn-danger i.fa-cart-plus,
+.btn-primary .fa-cart-plus,
+.btn-primary i.fa-cart-plus {
+    color: white !important;
+}
+
+/* Even more specific for your featured products */
+.featured-product-card .btn-danger i.fa-cart-plus,
+.featured-product-card .btn-primary i.fa-cart-plus {
+    color: white !important;
+}
 body {
     margin: 0;
     font-size: 1rem;

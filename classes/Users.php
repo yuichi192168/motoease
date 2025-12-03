@@ -55,11 +55,26 @@ Class Users extends DBConnection {
 				return json_encode(['status' => 'failed', 'msg' => 'Email already exists.']);
 			}
 		}
+		// Handle permissions separately - convert to JSON
+		$permissions_json = '';
+		if(isset($_POST['permissions_json']) && !empty($_POST['permissions_json'])){
+			$permissions_json = $this->conn->real_escape_string($_POST['permissions_json']);
+		} elseif(isset($_POST['permissions']) && is_array($_POST['permissions'])){
+			// Fallback: if permissions_json not set, use permissions array
+			$permissions_json = $this->conn->real_escape_string(json_encode($_POST['permissions']));
+		}
+		
 		foreach($_POST as $k => $v){
-			if(!in_array($k,array('id','password'))){
+			if(!in_array($k,array('id','password','permissions','permissions_json'))){
 				if(!empty($data)) $data .=" , ";
 				$data .= " {$k} = '{$v}' ";
 			}
+		}
+		
+		// Add permissions JSON to data
+		if(!empty($permissions_json)){
+			if(!empty($data)) $data .=" , ";
+			$data .= " `permissions` = '{$permissions_json}' ";
 		}
 		if(!empty($password)){
 			$password = md5($password);

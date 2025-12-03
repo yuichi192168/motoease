@@ -31,27 +31,42 @@ class CustomerAccountBalance {
      * @return int|false Account ID or false on failure
      */
     public function createAccount($client_id, $order_id, $item_purchased, $total_price, $downpayment_amount, $installment_plan_months = null, $monthly_payment_amount = null, $invoice_id = null, $contract_id = null) {
-        // For installment plans with predefined monthly payments, calculate the actual financed total
-        // The financed total = down payment + (monthly payment × months)
-        // This may exceed the product price due to financing charges/interest
-        if ($installment_plan_months && $monthly_payment_amount && $monthly_payment_amount > 0) {
-            // Calculate total financed amount from payment schedule
-            $total_financed = $downpayment_amount + ($monthly_payment_amount * $installment_plan_months);
-            
-            // Use the financed total as the account total_price (this includes financing charges)
-            // This ensures the account balance matches the actual payment schedule
-            $account_total_price = $total_financed;
-            
-            // Remaining balance after downpayment
-            $remaining_balance = $monthly_payment_amount * $installment_plan_months;
-        } else {
-            // For full payment or if monthly payment not provided, use original logic
-            $account_total_price = $total_price;
-            $remaining_balance = $total_price - $downpayment_amount;
-            
-            // If installment plan, calculate monthly payment if not provided
-            if ($installment_plan_months && !$monthly_payment_amount && $remaining_balance > 0) {
-                $monthly_payment_amount = $remaining_balance / $installment_plan_months;
+        /**
+         * ACCOUNT BALANCE FORMULA:
+         * ========================
+         * total_cost = downpayment_amount + (monthly_payment_amount × installment_plan_months)
+         * paid_amount = SUM of recorded transactions (downpayment + monthly payments)
+         * remaining_balance = total_cost - paid_amount
+         * 
+         * Initial state (at account creation):
+         * - paid_amount = 0.00 (no payments recorded yet)
+         * - remaining_balance = total_cost (full amount outstanding until payments are recorded)
+         * - downpayment_amount = stored as preference (not as paid until admin records it)
+         */
+        
+        // Calculate total financed amount (applies to both installment and non-installment)
+        $total_financed = $downpayment_amount + ($monthly_payment_amount && $installment_plan_months ? ($monthly_payment_amount * $installment_plan_months) : 0);
+        
+        // If no installment plan or monthly payment, use the original total_price
+        if (!$installment_plan_months || !$monthly_payment_amount || $monthly_payment_amount <= 0) {
+            $total_financed = $total_price;
+        }
+        
+        // Store the financed total as the account total_price
+        $account_total_price = $total_financed;
+        
+        // Initial state: no payments recorded yet
+        $initial_paid = 0.00;
+        // remaining_balance starts equal to total_price until payments are recorded
+        $db_remaining_balance = $account_total_price;
+        
+        // If installment plan but no monthly payment provided, calculate it
+        if ($installment_plan_months && !$monthly_payment_amount && $account_total_price > 0) {
+            // For non-predefined amortization, calculate monthly from total
+            // But we need downpayment separately, so monthly applies to (total - downpayment)
+            $monthly_to_finance = $account_total_price - $downpayment_amount;
+            if ($installment_plan_months > 0 && $monthly_to_finance > 0) {
+                $monthly_payment_amount = $monthly_to_finance / $installment_plan_months;
             }
         }
         
@@ -64,9 +79,7 @@ class CustomerAccountBalance {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
         ");
         
-        $initial_paid = $downpayment_amount > 0 ? $downpayment_amount : 0;
-        
-        $stmt->bind_param("iiisddddidd", 
+        $stmt->bind_param("iiiisddddid", 
             $client_id, 
             $order_id, 
             $invoice_id, 
@@ -75,7 +88,7 @@ class CustomerAccountBalance {
             $account_total_price, 
             $downpayment_amount, 
             $initial_paid, 
-            $remaining_balance, 
+            $db_remaining_balance, 
             $installment_plan_months, 
             $monthly_payment_amount
         );
@@ -88,14 +101,13 @@ class CustomerAccountBalance {
         $account_id = $stmt->insert_id;
         $stmt->close();
         
-        // Record downpayment transaction if exists
-        if ($downpayment_amount > 0) {
-            $this->recordTransaction($account_id, null, 'downpayment', $downpayment_amount, 'cash', null, 'Initial downpayment');
-        }
-        
         // Create monthly payment schedule if installment plan exists
-        if ($installment_plan_months && $monthly_payment_amount && $remaining_balance > 0) {
-            $this->createPaymentSchedule($account_id, $installment_plan_months, $monthly_payment_amount, $remaining_balance);
+        // The schedule should cover monthly payments only (downpayment is separate)
+        if ($installment_plan_months && $monthly_payment_amount && $monthly_payment_amount > 0) {
+            $schedule_total_balance = $monthly_payment_amount * $installment_plan_months;
+            if ($schedule_total_balance > 0) {
+                $this->createPaymentSchedule($account_id, $installment_plan_months, $monthly_payment_amount, $schedule_total_balance);
+            }
         }
         
         return $account_id;
@@ -165,7 +177,7 @@ class CustomerAccountBalance {
      * @param int|null $processed_by (admin/staff ID)
      * @return int|false Transaction ID or false
      */
-    public function recordTransaction($account_id, $schedule_id, $transaction_type, $amount, $payment_method = 'cash', $receipt_number = null, $notes = null, $processed_by = null) {
+    public function recordTransaction($account_id, $schedule_id, $transaction_type, $amount, $payment_method = 'cash', $receipt_number = null, $notes = null, $processed_by = null, $transaction_date = null) {
         // Validate inputs
         if ($account_id <= 0) {
             error_log("Invalid account_id: {$account_id}");
@@ -184,10 +196,11 @@ class CustomerAccountBalance {
             return false;
         }
         
+        // allow explicit transaction_date (actual payment date) to be recorded
         $stmt = $this->conn->prepare("
             INSERT INTO customer_account_transactions 
-            (account_id, schedule_id, transaction_type, amount, payment_method, receipt_number, notes, processed_by) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (account_id, schedule_id, transaction_type, amount, payment_method, receipt_number, notes, processed_by, transaction_date) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         
         if (!$stmt) {
@@ -195,7 +208,10 @@ class CustomerAccountBalance {
             return false;
         }
         
-        $stmt->bind_param("iisdsssi", $account_id, $schedule_id, $transaction_type, $amount, $payment_method, $receipt_number, $notes, $processed_by);
+        // If transaction_date not provided, use current timestamp
+        $transaction_date = $transaction_date ? $transaction_date : date('Y-m-d H:i:s');
+
+        $stmt->bind_param("iisdsssis", $account_id, $schedule_id, $transaction_type, $amount, $payment_method, $receipt_number, $notes, $processed_by, $transaction_date);
         
         if (!$stmt->execute()) {
             error_log("Error recording transaction: " . $stmt->error . " | Account ID: {$account_id} | Amount: {$amount}");
@@ -213,11 +229,64 @@ class CustomerAccountBalance {
             return false;
         }
         
-        // If schedule_id provided, update schedule payment
+        // If schedule_id provided, evaluate lateness based on provided transaction_date
         if ($schedule_id) {
-            if (!$this->updateSchedulePayment($schedule_id, $amount)) {
+            $schedule = $this->getScheduleInfo($schedule_id);
+            if ($schedule) {
+                // If a payment date was supplied and it's after due_date, mark as Late and apply fee
+                if ($transaction_date) {
+                    $due_ts = strtotime($schedule['due_date']);
+                    $pay_ts = strtotime($transaction_date);
+                    $days_diff = floor(($pay_ts - $due_ts) / (60 * 60 * 24));
+                    // 7 or more days late -> apply late fee rule
+                    if ($days_diff >= 7 && $schedule['payment_status'] != 'Paid') {
+                        $account_info = $this->getAccountInfo($account_id);
+                        $monthly_amount = isset($account_info['monthly_payment_amount']) ? floatval($account_info['monthly_payment_amount']) : floatval($schedule['amount_due']);
+                        $late_fee_rate = 0.03;
+                        $late_fee_amount = $monthly_amount * $late_fee_rate;
+
+                        // Update schedule to include late fee
+                        $update_stmt = $this->conn->prepare("
+                            UPDATE customer_account_schedule 
+                            SET late_fee = IFNULL(late_fee,0) + ?, 
+                                remaining_balance = remaining_balance + ?, 
+                                amount_due = amount_due + ?, 
+                                payment_status = 'Late', 
+                                updated_at = NOW() 
+                            WHERE id = ? 
+                        ");
+                        $update_stmt->bind_param("dddi", $late_fee_amount, $late_fee_amount, $late_fee_amount, $schedule_id);
+                        $update_stmt->execute();
+                        $update_stmt->close();
+
+                        // Increase account remaining balance to reflect new charge
+                        $acc_stmt = $this->conn->prepare("
+                            UPDATE customer_account_balances 
+                            SET remaining_balance = remaining_balance + ?, 
+                                updated_at = NOW() 
+                            WHERE id = ? 
+                        ");
+                        $acc_stmt->bind_param("di", $late_fee_amount, $account_id);
+                        $acc_stmt->execute();
+                        $acc_stmt->close();
+
+                        // Notify customer/admin about late fee
+                        $this->createNotification(
+                            $account_id, 
+                            $schedule_id, 
+                            $account_info['client_id'], 
+                            'late_payment', 
+                            'Late Payment Fee Applied', 
+                            "A late fee of ₱" . number_format($late_fee_amount, 2) . " has been applied to your payment due on " . date('M d, Y', $due_ts) . "."
+                        );
+                    }
+                }
+            }
+
+            // Update schedule payment using the transaction_date
+            if (!$this->updateSchedulePayment($schedule_id, $amount, $transaction_date)) {
                 error_log("Failed to update schedule payment for schedule: {$schedule_id}");
-                // Non-critical - transaction is recorded and balance is updated
+                // Non-critical
             }
         }
         
@@ -260,15 +329,15 @@ class CustomerAccountBalance {
      * @param int|null $processed_by
      * @return bool
      */
-    public function addPayment($account_id, $schedule_id, $amount, $payment_method = 'cash', $receipt_number = null, $notes = null, $processed_by = null, $skip_late_fee_check = false) {
+    public function addPayment($account_id, $schedule_id, $amount, $payment_method = 'cash', $receipt_number = null, $notes = null, $processed_by = null, $transaction_date = null, $skip_late_fee_check = false) {
         // Check and apply late fees before processing payment (unless already checked)
         if(!$skip_late_fee_check) {
             $this->checkAndApplyLateFees($account_id);
         }
-        
+
         $transaction_type = $schedule_id ? 'monthly_payment' : 'monthly_payment';
-        
-        return $this->recordTransaction($account_id, $schedule_id, $transaction_type, $amount, $payment_method, $receipt_number, $notes, $processed_by) !== false;
+
+        return $this->recordTransaction($account_id, $schedule_id, $transaction_type, $amount, $payment_method, $receipt_number, $notes, $processed_by, $transaction_date) !== false;
     }
     
     /**
@@ -305,7 +374,7 @@ class CustomerAccountBalance {
      * @param float $amount
      * @return bool
      */
-    private function updateSchedulePayment($schedule_id, $amount) {
+    private function updateSchedulePayment($schedule_id, $amount, $payment_date = null) {
         $schedule = $this->getScheduleInfo($schedule_id);
         if (!$schedule) return false;
         
@@ -320,17 +389,18 @@ class CustomerAccountBalance {
             $status = 'Late';
         }
         
+        // Set paid_date to provided payment_date if given, otherwise leave as-is
         $stmt = $this->conn->prepare("
             UPDATE customer_account_schedule 
             SET paid_amount = ?, 
                 remaining_balance = ?,
                 payment_status = ?,
-                paid_date = CASE WHEN ? = 0 THEN NOW() ELSE paid_date END,
+                paid_date = IFNULL(?, paid_date),
                 updated_at = NOW()
             WHERE id = ?
         ");
         
-        $stmt->bind_param("ddssi", $new_paid, $new_remaining, $status, $new_remaining, $schedule_id);
+        $stmt->bind_param("ddssi", $new_paid, $new_remaining, $status, $payment_date, $schedule_id);
         $result = $stmt->execute();
         $stmt->close();
         
@@ -339,12 +409,21 @@ class CustomerAccountBalance {
     
     /**
      * Check and apply late fees (3% if payment is >7 days late)
+     * RULE: If payment is 7+ days late, apply 3% fee based on MONTHLY AMORTIZATION amount
      * @param int $account_id
      * @return bool
      */
     public function checkAndApplyLateFees($account_id) {
         $today = date('Y-m-d');
         $late_fee_rate = 0.03; // 3%
+        
+        // Get account info to retrieve monthly payment amount
+        $account_info = $this->getAccountInfo($account_id);
+        if (!$account_info || !$account_info['monthly_payment_amount']) {
+            return false;
+        }
+        
+        $monthly_amount = floatval($account_info['monthly_payment_amount']);
         
         // Get all unpaid or partial schedules
         $stmt = $this->conn->prepare("
@@ -365,9 +444,10 @@ class CustomerAccountBalance {
             $current_date = strtotime($today);
             $days_overdue = floor(($current_date - $due_date) / (60 * 60 * 24));
             
-            // If more than 7 days late and no late fee applied yet
-            if ($days_overdue > 7 && $schedule['late_fee'] == 0 && $schedule['payment_status'] != 'Paid') {
-                $late_fee_amount = $schedule['remaining_balance'] * $late_fee_rate;
+            // If 7 or more days late and no late fee applied yet
+            if ($days_overdue >= 7 && $schedule['late_fee'] == 0 && $schedule['payment_status'] != 'Paid') {
+                // CORRECTED: Late fee = 3% of MONTHLY AMORTIZATION (not remaining_balance)
+                $late_fee_amount = $monthly_amount * $late_fee_rate;
                 
                 // Update schedule with late fee
                 $update_stmt = $this->conn->prepare("
@@ -430,7 +510,7 @@ class CustomerAccountBalance {
                     $updated = true;
                 }
                 $update_stmt->close();
-            } elseif ($days_overdue > 7 && $schedule['payment_status'] == 'Unpaid') {
+            } elseif ($days_overdue >= 7 && $schedule['payment_status'] == 'Unpaid') {
                 // Update status to Late even if fee already applied
                 $status_stmt = $this->conn->prepare("
                     UPDATE customer_account_schedule 
@@ -552,9 +632,10 @@ class CustomerAccountBalance {
      */
     public function getTransactionHistory($account_id) {
         $stmt = $this->conn->prepare("
-            SELECT cat.*, u.firstname as processor_firstname, u.lastname as processor_lastname
+                SELECT cat.*, u.firstname as processor_firstname, u.lastname as processor_lastname, cas.due_date AS schedule_due_date, cas.paid_date AS schedule_paid_date
             FROM customer_account_transactions cat
             LEFT JOIN users u ON cat.processed_by = u.id
+            LEFT JOIN customer_account_schedule cas ON cat.schedule_id = cas.id
             WHERE cat.account_id = ? 
             ORDER BY cat.transaction_date DESC
         ");

@@ -18,8 +18,8 @@ while($row = $qry->fetch_assoc()){ $products[] = $row; }
             /* Theme: red (#dc3545 primary) and black accents */
             .compare-table thead th{background:#dc3545;color:#fff;border-color:#c82333}
             .compare-table td,.compare-table th{vertical-align:top;padding:12px 8px}
-            .color-badge{display:inline-flex;align-items:center;padding:2px 8px;border:1px solid #2c2c2c;border-radius:14px;font-size:.86rem;margin:0 6px 6px 0;background:#111;color:#fff}
-            .color-badge img{width:18px;height:18px;border-radius:3px;margin-right:6px;object-fit:cover;border:1px solid #444;background:#fff}
+            .color-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:14px;font-size:.86rem;margin:0 6px 6px 0;background:#111;color:#fff}
+            .color-badge img{width:18px;height:18px;border-radius:3px;margin-right:6px;object-fit:cover;background:#fff}
             .price-cell{font-weight:700;color:#dc3545}
             
             /* Bulleted list improvements */

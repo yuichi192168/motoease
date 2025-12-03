@@ -7,12 +7,90 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
         }
         $stock_levels = get_product_stock_levels($conn, $id);
         $available = (int)($stock_levels['available_stock'] ?? 0);
+        $current_stock = (int)($stock_levels['current_stock'] ?? 0);
+        $reserved_orders = (int)($stock_levels['reserved_orders'] ?? 0);
+        
         // Load multi-compatibility models if available
         $compat_models = [];
         if($id){
             $cm_rs = $conn->query("SELECT model_name FROM product_compatibility WHERE product_id = '{$id}' ORDER BY model_name ASC");
             if($cm_rs){
                 while($cm = $cm_rs->fetch_assoc()) $compat_models[] = $cm['model_name'];
+            }
+        }
+        
+        // Load installment plans for pricing
+        $installment_plans = [];
+        $plans_query = $conn->query("SELECT * FROM installment_plans WHERE status = 'active' ORDER BY number_of_installments ASC");
+        if($plans_query){
+            while($plan = $plans_query->fetch_assoc()){
+                $installment_plans[] = $plan;
+            }
+        }
+
+        // Predefined motorcycle-specific installment data (use when product matches)
+        $motorcycle_installments = [
+            'pcx160 (cbs)' => [
+                'srp' => 132800,
+                'rows' => [
+                    ['dp'=>10000,'12'=>14594,'18'=>10881,'24'=>8969,'30'=>7877,'36'=>7136,'48'=>null],
+                    ['dp'=>13300,'12'=>14091,'18'=>10367,'24'=>8460,'30'=>7385,'36'=>6653,'48'=>5807],
+                    ['dp'=>20000,'12'=>13265,'18'=>9738,'24'=>7865,'30'=>6842,'36'=>6143,'48'=>5333],
+                    ['dp'=>26600,'12'=>12506,'18'=>9146,'24'=>7344,'30'=>6375,'36'=>5712,'48'=>4940],
+                    ['dp'=>39900,'12'=>11039,'18'=>8079,'24'=>6492,'30'=>5639,'36'=>5055,'48'=>4375],
+                ]
+            ],
+            'rs125' => [
+                'srp' => 74800,
+                'rows' => [
+                    ['dp'=>3800,'12'=>9144,'18'=>6862,'24'=>5690,'30'=>5004,'36'=>4523,'48'=>null],
+                    ['dp'=>5700,'12'=>8563,'18'=>6406,'24'=>5295,'30'=>4661,'36'=>4230,'48'=>null],
+                    ['dp'=>7500,'12'=>8284,'18'=>6117,'24'=>5007,'30'=>4382,'36'=>3955,'48'=>3463],
+                    ['dp'=>11300,'12'=>7815,'18'=>5759,'24'=>4667,'30'=>4071,'36'=>3664,'48'=>3191],
+                    ['dp'=>15000,'12'=>7388,'18'=>5425,'24'=>4373,'30'=>3807,'36'=>3420,'48'=>2969],
+                ]
+            ],
+            'air blade150' => [
+                'srp' => 110800,
+                'rows' => [
+                    ['dp'=>8400,'12'=>12303,'18'=>9181,'24'=>7573,'30'=>6655,'36'=>6032,'48'=>null],
+                    ['dp'=>11100,'12'=>11889,'18'=>8755,'24'=>7150,'30'=>6246,'36'=>5630,'48'=>4918],
+                    ['dp'=>16700,'12'=>11198,'18'=>8229,'24'=>6652,'30'=>5791,'36'=>5203,'48'=>4521],
+                    ['dp'=>22200,'12'=>10565,'18'=>7734,'24'=>6217,'30'=>5401,'36'=>4843,'48'=>4193],
+                    ['dp'=>33300,'12'=>9341,'18'=>6844,'24'=>5506,'30'=>4786,'36'=>4294,'48'=>3721],
+                ]
+            ],
+            'supra gtr150' => [
+                'srp' => 107800,
+                'rows' => [
+                    ['dp'=>8100,'12'=>11999,'18'=>8956,'24'=>7389,'30'=>6494,'36'=>5886,'48'=>null],
+                    ['dp'=>10800,'12'=>11588,'18'=>8535,'24'=>6972,'30'=>6090,'36'=>5490,'48'=>4797],
+                    ['dp'=>16200,'12'=>10921,'18'=>8027,'24'=>6490,'30'=>5650,'36'=>5077,'48'=>4412],
+                    ['dp'=>21600,'12'=>10300,'18'=>7542,'24'=>6063,'30'=>5268,'36'=>4724,'48'=>4091],
+                    ['dp'=>32400,'12'=>9109,'18'=>6676,'24'=>5372,'30'=>4670,'36'=>4190,'48'=>3632],
+                ]
+            ],
+        ];
+        // build normalized lookup map (strip non-alphanumeric, lowercase) for more robust matching
+        $motorcycle_installments_map = [];
+        foreach($motorcycle_installments as $mk => $mv){
+            $norm = preg_replace('/[^a-z0-9]/','',strtolower($mk));
+            $motorcycle_installments_map[$norm] = $mv;
+        }
+        
+        // Load motorcycle specifications
+        $specifications = null;
+        $specs_query = $conn->query("SELECT * FROM motorcycle_specifications WHERE product_id = '{$id}' LIMIT 1");
+        if($specs_query && $specs_query->num_rows > 0){
+            $specifications = $specs_query->fetch_assoc();
+        }
+        
+        // Load all available colors from product_color_images
+        $all_colors = [];
+        $colors_query = $conn->query("SELECT color, image_path FROM product_color_images WHERE product_id = '{$id}' ORDER BY color ASC");
+        if($colors_query){
+            while($color_row = $colors_query->fetch_assoc()){
+                $all_colors[] = $color_row;
             }
         }
         
@@ -213,6 +291,195 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
             table-layout: auto;
         }
     }
+    
+    /* Installment Options Styling */
+    .installment-section {
+        width: 100%;
+    }
+
+    .installment-options {
+        max-height: 400px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .installment-option {
+        background-color: #f8f9fa;
+        transition: all 0.3s ease;
+        border-left: 4px solid #dc3545 !important;
+    }
+    
+    .installment-option:hover {
+        background-color: #e9ecef;
+        transform: translateX(5px);
+        box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
+    }
+
+    .installment-option .row {
+        margin: 0;
+    }
+
+    .installment-option .col-12,
+    .installment-option .col-sm-6 {
+        padding: 0;
+    }
+
+    .installment-option small {
+        line-height: 1.4;
+    }
+
+    @media (max-width: 575.98px) {
+        .installment-options {
+            max-height: none;
+        }
+
+        .installment-option {
+            margin-bottom: 1rem !important;
+        }
+
+        .installment-option .text-sm-right {
+            text-align: left;
+        }
+    }
+
+    @media (min-width: 576px) {
+        .installment-option .text-sm-right {
+            text-align: right;
+        }
+    }
+    
+    /* Color Badge Styling */
+    .color-badge {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .color-badge:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-color: #dc3545 !important;
+    }
+    
+    /* Specifications Table Styling */
+    .specifications-table-container {
+        overflow-x: auto;
+    }
+    
+    .specifications-table-container table {
+        font-size: 0.9rem;
+    }
+    
+    .specifications-table-container th {
+        background-color: #dc3545;
+        color: white;
+        font-weight: 600;
+        padding: 12px;
+    }
+    
+    .specifications-table-container td {
+        padding: 12px;
+        vertical-align: middle;
+    }
+    
+    .specifications-table-container tr:nth-child(even) {
+        background-color: #f8f9fa;
+    }
+    
+    .specifications-table-container tr:hover {
+        background-color: #e9ecef;
+    }
+    
+    /* Responsive Design Improvements */
+    @media (max-width: 768px) {
+        .product-img {
+            width: 100%;
+            height: auto;
+            max-height: 300px;
+        }
+        
+        .installment-options {
+            max-height: none;
+        }
+        
+        .installment-option {
+            font-size: 0.85rem;
+            padding: 0.75rem !important;
+        }
+
+        .installment-option .row {
+            flex-direction: column;
+        }
+        
+        .color-badge {
+            min-width: 80px !important;
+        }
+        
+        .color-badge img {
+            width: 50px !important;
+            height: 50px !important;
+        }
+        
+        .specifications-table-container table {
+            font-size: 0.8rem;
+        }
+        
+        .specifications-table-container th,
+        .specifications-table-container td {
+            padding: 8px;
+        }
+        
+        .pl-4 {
+            padding-left: 0.5rem !important;
+        }
+        
+        .mx-2 {
+            margin-left: 0.5rem !important;
+            margin-right: 0.5rem !important;
+        }
+    }
+    
+    /* Remove empty space from conditional sections */
+    .row:empty,
+    .row:has(> div:empty) {
+        display: none;
+    }
+    
+    /* Compact spacing */
+    .card-body .row {
+        margin-bottom: 1rem;
+    }
+    
+    .card-body .row:last-child {
+        margin-bottom: 0;
+    }
+    
+    /* Remove extra padding on mobile */
+    @media (max-width: 768px) {
+        .card-body .container-fluid {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+        
+        .card-body .row {
+            margin-bottom: 0.75rem;
+        }
+        
+        h3, h5 {
+            font-size: 1.25rem;
+        }
+        
+        .stock-status {
+            font-size: 0.8em;
+            padding: 4px 8px;
+        }
+    }
+    
+    /* Ensure no empty rows show */
+    .row:empty {
+        display: none !important;
+    }
 </style>
 <div class="content py-5 mt-3">
     <div class="container">
@@ -232,7 +499,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 </div>
             </div>
             <div class="card-body">
-                <div class="container">
+                <div class="container-fluid px-0">
                     <div class="row">
                         <div class="col-12">
                             <style>
@@ -240,10 +507,12 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                     position: relative; 
                                     overflow: hidden; 
                                     padding: 0 40px;
+                                    margin-bottom: 1.5rem;
                                 }
                                 @media (max-width: 767.98px){ 
                                     .color-carousel{ 
                                         padding: 0 10px; 
+                                        margin-bottom: 1rem;
                                     } 
                                 }
                                 .color-track{
@@ -303,6 +572,9 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                     gap: 8px; 
                                     justify-content: center; 
                                     margin-top: 15px;
+                                }
+                                .color-dots > * {
+                                    margin: 0 4px 4px 0;
                                 }
                                 .color-dot{
                                     width: 30px;
@@ -474,51 +746,173 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                         </div>
                     </div>
                     <div class="row mt-2">
-                        <div class="col-md-6">
-                            <small class="mx-2 text-muted">Product Name</small>
-                            <div class="pl-4"><?= isset($name) ? $name : '' ?></div>
+                        <div class="col-md-6 mb-2">
+                            <small class="mx-2 text-muted d-block mb-1">Product Name</small>
+                            <div class="pl-4"><strong><?= isset($name) ? htmlspecialchars($name) : '' ?></strong></div>
                         </div>
-                        <div class="col-md-6">
-                            <small class="mx-2 text-muted">Category</small>
-                            <div class="pl-4"><?= isset($category) ? $category : '' ?></div>
+                        <div class="col-md-6 mb-2">
+                            <small class="mx-2 text-muted d-block mb-1">Category</small>
+                            <div class="pl-4"><?= isset($category) ? htmlspecialchars($category) : '' ?></div>
                         </div>
                     </div>
+                    <?php if(!empty($compat_models) || (isset($models) && trim($models) !== '')): ?>
                     <div class="row">
                         <div class="col-md-12">
-                            <small class="mx-2 text-muted">Compatibility</small>
+                            <small class="mx-2 text-muted d-block mb-1">Compatibility</small>
                             <div class="pl-4">
                                 <?php if(!empty($compat_models)): ?>
                                     <?php foreach($compat_models as $m): ?>
                                         <span class="badge badge-secondary mr-1 mb-1"><?= htmlspecialchars($m) ?></span>
                                     <?php endforeach; ?>
-                                <?php else: ?>
-                                    <?= isset($models) ? $models : '' ?>
+                                <?php elseif(isset($models) && trim($models) !== ''): ?>
+                                    <span class="badge badge-secondary"><?= htmlspecialchars($models) ?></span>
                                 <?php endif; ?>
                             </div>
                         </div>
                     </div>
+                    <?php endif; ?>
                     <div class="row">
-                        <div class="col-md-6">
-                            <small class="mx-2 text-muted">Price</small>
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <small class="mx-2 text-muted d-block mb-1">Cash Price</small>
                             <div class="pl-4">
-                                <h3 class="text-primary">₱<?= number_format(isset($price) ? $price : 0,2) ?></h3>
+                                <h3 class="text-primary mb-2">₱<?= number_format(isset($price) ? $price : 0,2) ?></h3>
                             </div>
+                            
+                            <!-- Installment Pricing -->
+                            <?php if((!empty($installment_plans) || !empty($motorcycle_installments)) && isset($price) && $price > 0): ?>
+                            <div class="installment-section mt-4">
+                                <small class="text-muted d-block mb-3"><strong>Installment Options:</strong></small>
+                                <div class="installment-options">
+                                    <?php 
+                                    // prefer predefined motorcycle-specific installments when available for this product name
+                                    $cash_price = floatval($price);
+                                    // normalize product name for matching (remove non-alphanumeric)
+                                    $prod_key_norm = preg_replace('/[^a-z0-9]/','',strtolower($name ?? ''));
+                                    if(isset($motorcycle_installments_map[$prod_key_norm])):
+                                        $mc = $motorcycle_installments_map[$prod_key_norm];
+                                        $srp = floatval($mc['srp']);
+                                    ?>
+                                    <div class="installment-option mb-3 p-3 border rounded">
+                                        <div class="row mb-2">
+                                            <!-- <div class="col-12">
+                                                <strong class="d-block">SRP: ₱<?= number_format($srp,2) ?></strong>
+                                            </div> -->
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Down Payment (₱)</th>
+                                                        <th class="text-center">12 Months</th>
+                                                        <th class="text-center">18 Months</th>
+                                                        <th class="text-center">24 Months</th>
+                                                        <th class="text-center">30 Months</th>
+                                                        <th class="text-center">36 Months</th>
+                                                        <th class="text-center">48 Months</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach($mc['rows'] as $row): ?>
+                                                    <tr>
+                                                        <td>₱<?= number_format(floatval($row['dp']),2) ?></td>
+                                                        <?php foreach(['12','18','24','30','36','48'] as $k): ?>
+                                                            <td class="text-center"><?= (array_key_exists($k,$row) && $row[$k] !== null) ? '₱'.number_format(floatval($row[$k]),2) : 'N/A' ?></td>
+                                                        <?php endforeach; ?>
+                                                    </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <?php
+                                    else:
+                                        // fallback to configured installment plans
+                                        foreach($installment_plans as $plan): 
+                                            // only allow these terms
+                                            $allowed_terms = [12,18,24,30,36,48];
+                                            $down_payment_pct = floatval($plan['down_payment_percentage'] ?? 20);
+                                            $down_payment = ($cash_price * $down_payment_pct) / 100;
+                                            $remaining = $cash_price - $down_payment;
+                                            $num_months = intval($plan['number_of_installments'] ?? 12);
+                                            // skip plans not in allowed terms
+                                            if(!in_array($num_months, $allowed_terms)) continue;
+                                            $interest_rate = floatval($plan['interest_rate'] ?? 0);
+                                            
+                                            // Calculate monthly payment
+                                            if($interest_rate > 0){
+                                                $monthly_rate = $interest_rate / 100 / 12;
+                                                $monthly_payment = $remaining * ($monthly_rate * pow(1 + $monthly_rate, $num_months)) / (pow(1 + $monthly_rate, $num_months) - 1);
+                                            } else {
+                                                $monthly_payment = $remaining / $num_months;
+                                            }
+                                            $monthly_payment = round($monthly_payment, 2);
+                                            $total_installment = $down_payment + ($monthly_payment * $num_months);
+                                    ?>
+                                    <div class="installment-option mb-3 p-3 border rounded">
+                                        <div class="row align-items-center">
+                                            <div class="col-12 col-sm-6 mb-2 mb-sm-0">
+                                                <strong class="d-block"><?= htmlspecialchars($plan['plan_name'] ?? "{$num_months} Months") ?></strong>
+                                                <small class="text-muted"><?= $num_months ?> months @ ₱<?= number_format($monthly_payment, 2) ?>/month</small>
+                                            </div>
+                                            <div class="col-12 col-sm-6">
+                                                <div class="text-left text-sm-right">
+                                                    <small class="text-muted d-block">Down: ₱<?= number_format($down_payment, 2) ?></small>
+                                                    <small class="text-primary d-block"><strong>Total: ₱<?= number_format($total_installment, 2) ?></strong></small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php endif; ?>
                         </div>
                         <div class="col-md-6">
-                            <small class="mx-2 text-muted">Stock Status</small>
+                            <small class="mx-2 text-muted d-block mb-1">Stock Availability</small>
                             <div class="pl-4">
                                 <?php if($available > 10): ?>
-                                    <span class="stock-status stock-available">
-                                        <i class="fa fa-check-circle"></i> In Stock (<?= $available ?> available)
+                                    <span class="stock-status stock-available mb-2 d-inline-block">
+                                        <i class="fa fa-check-circle"></i> In Stock
                                     </span>
+                                    <div class="mt-2">
+                                        <small class="text-muted d-block">
+                                            <strong>Available:</strong> <?= $available ?> units
+                                        </small>
+                                        <small class="text-muted d-block">
+                                            <strong>Current Stock:</strong> <?= $current_stock ?> units
+                                        </small>
+                                        <small class="text-muted d-block">
+                                            <strong>Reserved:</strong> <?= $reserved_orders ?> units
+                                        </small>
+                                    </div>
                                 <?php elseif($available > 0): ?>
-                                    <span class="stock-status stock-low">
-                                        <i class="fa fa-exclamation-triangle"></i> Low Stock (<?= $available ?> available)
+                                    <span class="stock-status stock-low mb-2 d-inline-block">
+                                        <i class="fa fa-exclamation-triangle"></i> Low Stock
                                     </span>
+                                    <div class="mt-2">
+                                        <small class="text-muted d-block">
+                                            <strong>Available:</strong> <?= $available ?> units
+                                        </small>
+                                        <small class="text-muted d-block">
+                                            <strong>Current Stock:</strong> <?= $current_stock ?> units
+                                        </small>
+                                        <small class="text-muted d-block">
+                                            <strong>Reserved:</strong> <?= $reserved_orders ?> units
+                                        </small>
+                                    </div>
                                 <?php else: ?>
-                                    <span class="stock-status stock-out">
+                                    <span class="stock-status stock-out mb-2 d-inline-block">
                                         <i class="fa fa-times-circle"></i> Out of Stock
                                     </span>
+                                    <div class="mt-2">
+                                        <small class="text-muted d-block">
+                                            <strong>Current Stock:</strong> <?= $current_stock ?> units
+                                        </small>
+                                        <small class="text-muted d-block">
+                                            <strong>Reserved:</strong> <?= $reserved_orders ?> units
+                                        </small>
+                                    </div>
                                     
                                     <!-- Product Recommendations for Out of Stock Items -->
                                     <div id="product_recommendations" class="mt-3">
@@ -531,14 +925,303 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Available Colors Section -->
+                    <?php if(!empty($all_colors) || (isset($available_colors) && trim($available_colors) !== '')): ?>
                     <div class="row">
                         <div class="col-md-12">
-                            <small class="mx-2 text-muted">Specifications</small>
-                            <div class="pl-4 specifications-content">
-                                <?= isset($description) ? html_entity_decode($description) : '' ?>
+                            <small class="mx-2 text-muted d-block mb-1">Available Colors</small>
+                            <div class="pl-4">
+                                <?php if(!empty($all_colors)): ?>
+                                    <div class="d-flex flex-wrap" style="gap: 0.5rem;">
+                                        <?php foreach($all_colors as $color_item): ?>
+                                        <div class="color-badge p-2 border rounded text-center" style="min-width: 100px;">
+                                            <?php if(!empty($color_item['image_path'])): ?>
+                                            <img src="<?= validate_image($color_item['image_path']) ?>" alt="<?= htmlspecialchars($color_item['color']) ?>" 
+                                                 style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
+                                            <?php endif; ?>
+                                            <div class="mt-1">
+                                                <small class="text-muted"><?= htmlspecialchars($color_item['color']) ?></small>
+                                            </div>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php elseif(isset($available_colors) && trim($available_colors) !== ''): ?>
+                                    <div class="d-flex flex-wrap" style="gap: 0.5rem;">
+                                        <?php 
+                                        $color_list = explode(',', $available_colors);
+                                        foreach($color_list as $color): 
+                                            $color = trim($color);
+                                            if($color !== ''):
+                                        ?>
+                                        <span class="badge badge-primary p-2" style="font-size: 0.9rem;"><?= htmlspecialchars($color) ?></span>
+                                        <?php 
+                                            endif;
+                                        endforeach; 
+                                        ?>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
+                    <?php endif; ?>
+                    
+                    <!-- Product Description -->
+                    <?php if(isset($description) && trim($description) !== ''): ?>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <small class="mx-2 text-muted d-block mb-1">Product Description</small>
+                            <div class="pl-4 specifications-content">
+                                <?= html_entity_decode($description) ?>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <!-- Full Product Specifications -->
+                    <?php if($specifications): ?>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h5 class="mb-3 mt-3"><i class="fa fa-cog"></i> Full Specifications</h5>
+                            <div class="specifications-table-container">
+                                <table class="table table-bordered table-striped mb-0">
+                                    <tbody>
+                                        <?php if(!empty($specifications['make'])): ?>
+                                        <tr>
+                                            <th style="width: 30%;">Make</th>
+                                            <td><?= htmlspecialchars($specifications['make']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['model'])): ?>
+                                        <tr>
+                                            <th>Model</th>
+                                            <td><?= htmlspecialchars($specifications['model']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['engine_type'])): ?>
+                                        <tr>
+                                            <th>Engine Type</th>
+                                            <td><?= htmlspecialchars($specifications['engine_type']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['displacement'])): ?>
+                                        <tr>
+                                            <th>Displacement</th>
+                                            <td><?= htmlspecialchars($specifications['displacement']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['maximum_power'])): ?>
+                                        <tr>
+                                            <th>Maximum Power</th>
+                                            <td><?= htmlspecialchars($specifications['maximum_power']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['maximum_torque'])): ?>
+                                        <tr>
+                                            <th>Maximum Torque</th>
+                                            <td><?= htmlspecialchars($specifications['maximum_torque']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['transmission']) || !empty($specifications['transmission_type'])): ?>
+                                        <tr>
+                                            <th>Transmission</th>
+                                            <td><?= htmlspecialchars($specifications['transmission'] ?? $specifications['transmission_type'] ?? '') ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['fuel_system'])): ?>
+                                        <tr>
+                                            <th>Fuel System</th>
+                                            <td><?= htmlspecialchars($specifications['fuel_system']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['fuel_capacity']) || !empty($specifications['fuel_tank_capacity'])): ?>
+                                        <tr>
+                                            <th>Fuel Capacity</th>
+                                            <td><?= htmlspecialchars($specifications['fuel_capacity'] ?? $specifications['fuel_tank_capacity'] ?? '') ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['fuel_consumption'])): ?>
+                                        <tr>
+                                            <th>Fuel Consumption</th>
+                                            <td><?= htmlspecialchars($specifications['fuel_consumption']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['compression_ratio'])): ?>
+                                        <tr>
+                                            <th>Compression Ratio</th>
+                                            <td><?= htmlspecialchars($specifications['compression_ratio']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['bore_stroke'])): ?>
+                                        <tr>
+                                            <th>Bore x Stroke</th>
+                                            <td><?= htmlspecialchars($specifications['bore_stroke']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['ignition_type']) || !empty($specifications['ignition_system'])): ?>
+                                        <tr>
+                                            <th>Ignition System</th>
+                                            <td><?= htmlspecialchars($specifications['ignition_type'] ?? $specifications['ignition_system'] ?? '') ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['starting_system'])): ?>
+                                        <tr>
+                                            <th>Starting System</th>
+                                            <td><?= htmlspecialchars($specifications['starting_system']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['gear_shift_pattern'])): ?>
+                                        <tr>
+                                            <th>Gear Shift Pattern</th>
+                                            <td><?= htmlspecialchars($specifications['gear_shift_pattern']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['brake_system_front']) || !empty($specifications['brake_type_front'])): ?>
+                                        <tr>
+                                            <th>Front Brake</th>
+                                            <td><?= htmlspecialchars($specifications['brake_system_front'] ?? $specifications['brake_type_front'] ?? '') ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['brake_system_rear']) || !empty($specifications['brake_type_rear'])): ?>
+                                        <tr>
+                                            <th>Rear Brake</th>
+                                            <td><?= htmlspecialchars($specifications['brake_system_rear'] ?? $specifications['brake_type_rear'] ?? '') ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['suspension_front'])): ?>
+                                        <tr>
+                                            <th>Front Suspension</th>
+                                            <td><?= htmlspecialchars($specifications['suspension_front']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['suspension_rear'])): ?>
+                                        <tr>
+                                            <th>Rear Suspension</th>
+                                            <td><?= htmlspecialchars($specifications['suspension_rear']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['front_tire']) || !empty($specifications['tire_size_front'])): ?>
+                                        <tr>
+                                            <th>Front Tire</th>
+                                            <td><?= htmlspecialchars($specifications['front_tire'] ?? $specifications['tire_size_front'] ?? '') ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['rear_tire']) || !empty($specifications['tire_size_rear'])): ?>
+                                        <tr>
+                                            <th>Rear Tire</th>
+                                            <td><?= htmlspecialchars($specifications['rear_tire'] ?? $specifications['tire_size_rear'] ?? '') ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['wheels_type']) || !empty($specifications['wheel_type'])): ?>
+                                        <tr>
+                                            <th>Wheel Type</th>
+                                            <td><?= htmlspecialchars($specifications['wheels_type'] ?? $specifications['wheel_type'] ?? '') ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['overall_dimensions']) || !empty($specifications['overall_dimensions_lwh'])): ?>
+                                        <tr>
+                                            <th>Overall Dimensions</th>
+                                            <td><?= htmlspecialchars($specifications['overall_dimensions'] ?? $specifications['overall_dimensions_lwh'] ?? '') ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['wheelbase'])): ?>
+                                        <tr>
+                                            <th>Wheelbase</th>
+                                            <td><?= htmlspecialchars($specifications['wheelbase']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['seat_height'])): ?>
+                                        <tr>
+                                            <th>Seat Height</th>
+                                            <td><?= htmlspecialchars($specifications['seat_height']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['ground_clearance']) || !empty($specifications['minimum_ground_clearance'])): ?>
+                                        <tr>
+                                            <th>Ground Clearance</th>
+                                            <td><?= htmlspecialchars($specifications['ground_clearance'] ?? $specifications['minimum_ground_clearance'] ?? '') ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['curb_weight'])): ?>
+                                        <tr>
+                                            <th>Curb Weight</th>
+                                            <td><?= htmlspecialchars($specifications['curb_weight']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['frame_type'])): ?>
+                                        <tr>
+                                            <th>Frame Type</th>
+                                            <td><?= htmlspecialchars($specifications['frame_type']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['headlight'])): ?>
+                                        <tr>
+                                            <th>Headlight</th>
+                                            <td><?= htmlspecialchars($specifications['headlight']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['taillight'])): ?>
+                                        <tr>
+                                            <th>Taillight</th>
+                                            <td><?= htmlspecialchars($specifications['taillight']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['engine_oil_capacity'])): ?>
+                                        <tr>
+                                            <th>Engine Oil Capacity</th>
+                                            <td><?= htmlspecialchars($specifications['engine_oil_capacity']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['battery_type'])): ?>
+                                        <tr>
+                                            <th>Battery Type</th>
+                                            <td><?= htmlspecialchars($specifications['battery_type']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php if(!empty($specifications['category'])): ?>
+                                        <tr>
+                                            <th>Category</th>
+                                            <td><?= htmlspecialchars($specifications['category']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

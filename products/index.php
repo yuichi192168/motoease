@@ -184,11 +184,17 @@ $sort = isset($_GET['sort']) ? $_GET['sort'] : 'popular';
                                     </div>
                                     
                                     <!-- Compare Checkbox -->
-                                    <div class="position-absolute" style="top:6px; right:6px;">
-                                        <label class="badge mb-0" style="cursor:pointer; background:#fff; color:#fff; border:1px solid #2c2c2c;">
-                                            <input type="checkbox" class="compare-checkbox" data-id="<?= (int)$row['pid'] ?>" style="vertical-align:middle;"> <span style="color:#dc3545;font-weight:600;">Compare</span>
-                                        </label>
-                                    </div>
+<div class="position-absolute" style="top:6px; right:6px;">
+    <div class="d-flex align-items-center" style="background: rgba(255,255,255,0.9); padding: 4px 8px; border-radius: 4px;">
+        <input type="checkbox" class="compare-checkbox mr-1" 
+               data-id="<?= (int)$row['pid'] ?>" 
+               style="cursor:pointer;" 
+               title="Add to compare list">
+        <label class="mb-0" style="cursor:pointer; font-size: 0.85rem; font-weight: 500;">
+            Compare
+        </label>
+    </div>
+</div>
                                     
                                     <!-- Price Tag with Peso Symbol -->
                                     <span class="position-absolute price-tag rounded-pill bg-success text-light px-3" style="bottom:6px; right:6px;">
@@ -234,19 +240,24 @@ $sort = isset($_GET['sort']) ? $_GET['sort'] : 'popular';
                                     
                                     <!-- Add to Cart Button -->
                                     <div class="mt-3">
-                                        <?php if($available > 0): ?>
-                                            <button class="btn btn-primary btn-sm w-100" onclick="if('<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>' != 1){ Swal.fire({ title: 'Login Required', text: 'Please login first to add items to cart.', icon: 'warning', confirmButtonText: 'Login Now', showCancelButton: true, cancelButtonText: 'Cancel' }).then((result) => { if (result.isConfirmed) { location.href = './login.php'; } }); return false; } addToCart(<?= (int)$row['pid'] ?>);">
-                                                <i class="fa fa-cart-plus"></i> Add to Cart
-                                            </button>
-                                        <?php else: ?>
-                                            <button class="btn btn-secondary btn-sm w-100" onclick="showOutOfStockOptions(<?= (int)$row['pid'] ?>, '<?= htmlspecialchars($row['name']) ?>', '<?= htmlspecialchars($row['category']) ?>')">
-                                                <i class="fa fa-bell"></i> Notify When Available
-                                            </button>
-                                        <?php endif; ?>
-                                        
-                                        <a href="./?p=products/view_product&id=<?= (int)$row['pid'] ?>" class="btn btn-outline-primary btn-sm w-100 mt-1" title="View Details">
-                                            <i class="fa fa-eye"></i>
-                                        </a>
+                                        <div class="row g-2">
+                                            <div class="col-6">
+                                                <?php if($available > 0): ?>
+                                                    <button class="btn btn-primary btn-sm w-100" onclick="if('<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>' != 1){ Swal.fire({ title: 'Login Required', text: 'Please login first to add items to cart.', icon: 'warning', confirmButtonText: 'Login Now', showCancelButton: true, cancelButtonText: 'Cancel' }).then((result) => { if (result.isConfirmed) { location.href = './login.php'; } }); return false; } addToCart(<?= (int)$row['pid'] ?>);">
+                                                    <i class="fa fa-cart-plus"></i>
+                                                </button>
+                                                <?php else: ?>
+                                                    <button class="btn btn-secondary btn-sm w-100" onclick="showOutOfStockOptions(<?= (int)$row['pid'] ?>, '<?= htmlspecialchars($row['name']) ?>', '<?= htmlspecialchars($row['category']) ?>')">
+                                                        <i class="fa fa-bell"></i> Notify
+                                                    </button>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="col-6">
+                                                <a href="./?p=products/view_product&id=<?= (int)$row['pid'] ?>" class="btn btn-outline-primary btn-sm w-100" title="View Details">
+                                                    <i class="fa fa-eye"></i>
+                                                </a>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

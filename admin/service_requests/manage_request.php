@@ -59,7 +59,7 @@ while($row = $meta->fetch_assoc()){
                     <input type="text" name="vehicle_name" id="vehicle_name" class="form-control form-control-sm rounded-0" value="<?php echo isset($vehicle_name) ? $vehicle_name : "" ?>" required>
                 </div>
                 <div class="form-group">
-                    <label for="vehicle_registration_number" class="control-label">Vehicle Engine Number</label>
+                    <label for="vehicle_registration_number" class="control-label">Vehicle Plate Number</label>
                     <input type="text" name="vehicle_registration_number" id="vehicle_registration_number" class="form-control form-control-sm rounded-0" value="<?php echo isset($vehicle_registration_number) ? $vehicle_registration_number : "" ?>" required>
                 </div>
                 <div class="form-group">
@@ -107,6 +107,15 @@ while($row = $meta->fetch_assoc()){
                         <option value="3" <?php echo isset($status) && $status == 3 ? "selected" : '' ?>>Done</option>
                         <option value="4" <?php echo isset($status) && $status == 4 ? "selected" : '' ?>>Cancelled</option>
                     </select>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="amount_to_pay" class="control-label">Amount to Pay</label>
+                    <input type="number" name="amount_to_pay" id="amount_to_pay" class="form-control form-control-sm rounded-0" value="<?php echo isset($amount_to_pay) ? $amount_to_pay : "" ?>" step="0.01" min="0" placeholder="0.00">
+                    <small class="text-muted">Enter the amount the customer needs to pay for this service request</small>
                 </div>
             </div>
         </div>

@@ -470,6 +470,8 @@ if($orders_query){
 									<th>Amount</th>
 									<th>Payment Method</th>
 									<th>Receipt Number</th>
+									<th>Due Date</th>
+									<th>Payment Date</th>
 									<th>Processed By</th>
 									<th>Notes</th>
 								</tr>
@@ -496,6 +498,8 @@ if($orders_query){
 										</td>
 										<td><?php echo ucfirst(str_replace('_', ' ', $transaction['payment_method'])) ?></td>
 										<td><?php echo $transaction['receipt_number'] ?: '-' ?></td>
+										<td><?php echo isset($transaction['schedule_due_date']) && $transaction['schedule_due_date'] ? date('M d, Y', strtotime($transaction['schedule_due_date'])) : '-' ?></td>
+										<td><?php echo isset($transaction['schedule_paid_date']) && $transaction['schedule_paid_date'] ? date('M d, Y h:i A', strtotime($transaction['schedule_paid_date'])) : date('M d, Y h:i A', strtotime($transaction['transaction_date'])) ?></td>
 										<td>
 											<?php 
 											if($transaction['processor_firstname']){

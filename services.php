@@ -18,7 +18,7 @@ $category_filter = isset($_GET['category_filter']) ? explode(",",$_GET['category
             <p class="lead fw-normal text-white-50 mb-0">We will take care of your vehicle</p>
             <div class="col-auto mt-2">
                 <?php if($_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2): ?>
-                    <a href="./?p=send_request" class="btn btn-primary btn-lg rounded-0" id="send_request">Send Service Request</a>
+                    <!-- <a href="./?p=send_request" class="btn btn-primary btn-lg rounded-0" id="send_request">Send Service Request</a> -->
                 <?php else: ?>
                     <button class="btn btn-primary btn-lg rounded-0" id="send_request" type="button" onclick="if('<?= $_settings->userdata('id') > 0 && $_settings->userdata('login_type') == 2 ?>' != 1){ Swal.fire({ title: 'Login Required', text: 'Please login first to send service request.', icon: 'warning', confirmButtonText: 'Login Now', showCancelButton: true, cancelButtonText: 'Cancel' }).then((result) => { if (result.isConfirmed) { location.href = './login.php'; } }); return false; } uni_modal('Fill the Service Request Form','send_request.php','large');">Send Service Request</button>
                 <?php endif; ?>

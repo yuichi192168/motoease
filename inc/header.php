@@ -66,9 +66,10 @@
     }
     #main-header{
         position:relative;
-        background: rgb(0,0,0)!important;
-        background: radial-gradient(circle, rgba(0,0,0,0.48503151260504207) 22%, rgba(0,0,0,0.39539565826330536) 49%, rgba(0,212,255,0) 100%)!important;
-        height:70vh;
+        height:50vh;
+        min-height: 300px;
+        /* Background image handled by :before pseudo-element */
+        background: transparent;
     }
     #main-header:before{
         content:"";
@@ -87,11 +88,12 @@
 
     /* Hero Section Styles */
     .hero-section {
-        height: 100vh;
-        min-height: 600px;
-        background: linear-gradient(135deg, rgba(0,0,0,0.8), rgba(220,38,38,0.4));
+        height: 50vh;
+        min-height: 300px;
+        max-height: 500px;
         display: flex;
         align-items: center;
+        /* Background is handled by #main-header, no need to duplicate */
     }
     
     .hero-overlay {
@@ -102,6 +104,11 @@
         height: 100%;
         background: linear-gradient(135deg, rgba(0,0,0,0.7), rgba(220,38,38,0.3));
         z-index: 1;
+    }
+    
+    /* Ensure #main-header background doesn't conflict */
+    #main-header.hero-section {
+        background: transparent !important;
     }
     
     .hero-content {
@@ -475,8 +482,14 @@
     
     @media (max-width: 768px) {
         .hero-section {
-            height: 80vh;
-            min-height: 500px;
+            height: 50vh;
+            min-height: 250px;
+            max-height: 400px;
+        }
+        
+        #main-header {
+            height: 50vh;
+            min-height: 250px;
         }
         
         .hero-content h1 {
@@ -696,13 +709,69 @@
         }
     }
 
-    /* Customer notification badge / icon */
-    .client-notification-toggle {
-        display: inline-flex;
+    /* Cart and Notification Icons - Unified styling without background shade */
+    .navbar-nav .nav-link[href*="cart"],
+    #notifications-dropdown.client-notification-toggle {
+        display: inline-flex !important;
         align-items: center;
         justify-content: center;
-        font-size: 1.25rem;
-        padding: 0.5rem;
+        position: relative;
+        transition: all 0.2s ease;
+        border-radius: 50% !important;
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px !important;
+        min-height: 40px !important;
+        padding: 0 !important;
+        margin: 0 auto;
+    }
+    
+    .navbar-nav .nav-link[href*="cart"]:hover,
+    #notifications-dropdown.client-notification-toggle:hover {
+        transform: scale(1.05);
+    }
+    
+    .navbar-nav .nav-link[href*="cart"] i,
+    #notifications-dropdown.client-notification-toggle i {
+        font-size: 1.2rem !important;
+        color: #ffffff !important;
+        transition: all 0.2s ease;
+        margin: 0;
+    }
+    
+    .navbar-nav .nav-link[href*="cart"]:hover i,
+    #notifications-dropdown.client-notification-toggle:hover i {
+        color: #ffffff !important;
+    }
+    
+    /* Override any gray color styling - ensure white icons */
+    #notifications-dropdown.client-notification-toggle,
+    #notifications-dropdown.client-notification-toggle i,
+    .navbar-nav .nav-link[href*="cart"],
+    .navbar-nav .nav-link[href*="cart"] i {
+        color: #ffffff !important;
+    }
+    
+    /* Profile name visibility - ensure white text in navbar */
+    .navbar-dark .navbar-nav .nav-link,
+    .navbar-dark .navbar-nav .nav-link span,
+    .navbar-dark .navbar-nav .nav-link.dropdown-toggle,
+    #profileDropdownMenuLink,
+    #profileDropdownMenuLink span {
+        color: #ffffff !important;
+    }
+    
+    .navbar-dark .navbar-nav .nav-link:hover,
+    .navbar-dark .navbar-nav .nav-link.dropdown-toggle:hover,
+    #profileDropdownMenuLink:hover,
+    #profileDropdownMenuLink:hover span {
+        color: rgba(255, 255, 255, 0.9) !important;
+    }
+    
+    /* Ensure profile dropdown text is visible */
+    .navbar-nav .nav-item.dropdown .nav-link span.d-lg-inline {
+        color: #ffffff !important;
+        display: inline-block !important;
     }
     
     .client-notification-toggle .navbar-badge,
@@ -1142,6 +1211,84 @@
             width: 50vw;
             left: -50vw;
         }
+    }
+    
+    /* GLOBAL OVERRIDE: Force cart plus icon to always be white - site-wide */
+    /* First, override button color to prevent inheritance issues */
+    .btn-primary,
+    button.btn-primary {
+        color: #ffffff !important;
+    }
+    
+    /* Force icon color - must override Bootstrap's .btn color inheritance */
+    i.fa-cart-plus,
+    i.fas.fa-cart-plus,
+    .fa-cart-plus,
+    .fas.fa-cart-plus,
+    [class*="fa-cart-plus"],
+    button .fa-cart-plus,
+    button i.fa-cart-plus,
+    .btn .fa-cart-plus,
+    .btn i.fa-cart-plus,
+    .btn-primary .fa-cart-plus,
+    .btn-primary i.fa-cart-plus,
+    button.btn-primary .fa-cart-plus,
+    button.btn-primary i.fa-cart-plus,
+    .btn-primary i,
+    button.btn-primary i {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        display: inline-block !important;
+        font-size: inherit !important;
+        width: auto !important;
+        height: auto !important;
+        line-height: inherit !important;
+    }
+    
+    /* Override for pseudo-elements (Font Awesome uses ::before) */
+    i.fa-cart-plus::before,
+    i.fas.fa-cart-plus::before,
+    .fa-cart-plus::before,
+    .fas.fa-cart-plus::before,
+    [class*="fa-cart-plus"]::before,
+    button .fa-cart-plus::before,
+    button i.fa-cart-plus::before,
+    .btn .fa-cart-plus::before,
+    .btn i.fa-cart-plus::before,
+    .btn-primary .fa-cart-plus::before,
+    .btn-primary i.fa-cart-plus::before,
+    button.btn-primary .fa-cart-plus::before,
+    button.btn-primary i.fa-cart-plus::before {
+        color: #ffffff !important;
+        opacity: 1 !important;
+        font-size: inherit !important;
+        display: inline-block !important;
+    }
+    
+    /* Force all children of primary buttons to be white - override Bootstrap */
+    .btn-primary *,
+    button.btn-primary * {
+        color: #ffffff !important;
+    }
+    
+    /* Override for all button states */
+    button:hover .fa-cart-plus,
+    button:active .fa-cart-plus,
+    button:focus .fa-cart-plus,
+    .btn:hover .fa-cart-plus,
+    .btn:active .fa-cart-plus,
+    .btn:focus .fa-cart-plus,
+    .btn-primary:hover .fa-cart-plus,
+    .btn-primary:active .fa-cart-plus,
+    .btn-primary:focus .fa-cart-plus,
+    button.btn-primary:hover .fa-cart-plus,
+    button.btn-primary:active .fa-cart-plus,
+    button.btn-primary:focus .fa-cart-plus {
+        color: #ffffff !important;
+        opacity: 1 !important;
     }
 
  </style>

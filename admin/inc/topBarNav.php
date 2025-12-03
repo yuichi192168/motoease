@@ -7,6 +7,34 @@
         left: -7%;
         top: -12%;
   }
+  
+  /* Notification bell icon - increased size for better visibility */
+  #admin-notifications-dropdown i.fa-bell {
+    font-size: 1.4rem !important;
+    transition: transform 0.2s ease;
+  }
+  
+  #admin-notifications-dropdown:hover i.fa-bell {
+    transform: scale(1.1);
+  }
+  
+  /* Notification badge styling to prevent overlap - increased size to match larger icon */
+  #admin-notifications-count {
+    min-width: 20px !important;
+    height: 20px !important;
+    padding: 2px 6px !important;
+    font-size: 11px !important;
+    line-height: 16px !important;
+    border-radius: 10px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    z-index: 10 !important;
+  }
+  
+  /* Ensure proper spacing between notification and profile */
+  .navbar-nav .nav-item.dropdown + .nav-item {
+    margin-left: 8px;
+  }
   .btn-rounded{
         border-radius: 50px;
   }
@@ -42,6 +70,24 @@
         padding: 8px 16px;
         font-size: 0.9rem;
     }
+    
+    /* Ensure notification badge doesn't overlap on mobile */
+    #admin-notifications-dropdown {
+      padding-right: 10px !important;
+    }
+    
+    #admin-notifications-dropdown i.fa-bell {
+      font-size: 1.2rem !important;
+    }
+    
+    #admin-notifications-count {
+      top: -2px !important;
+      right: 2px !important;
+      font-size: 10px !important;
+      min-width: 18px !important;
+      height: 18px !important;
+      line-height: 14px !important;
+    }
   }
 
   @media (max-width: 576px) {
@@ -72,6 +118,21 @@
     .main-header .navbar-brand {
         font-size: 0.9rem;
     }
+    
+    /* Extra small screens - ensure badge visibility */
+    #admin-notifications-dropdown {
+      padding-right: 8px !important;
+    }
+    
+    #admin-notifications-count {
+      top: -1px !important;
+      right: 1px !important;
+      font-size: 8px !important;
+      min-width: 14px !important;
+      height: 14px !important;
+      line-height: 10px !important;
+      padding: 1px 4px !important;
+    }
   }
 </style>
 <!-- Navbar -->
@@ -88,10 +149,10 @@
         <!-- Right navbar links -->
         <ul class="navbar-nav ml-auto">
           <!-- Notifications Dropdown -->
-          <li class="nav-item dropdown">
-            <a class="nav-link position-relative" data-toggle="dropdown" href="#" id="admin-notifications-dropdown">
-              <i class="far fa-bell"></i>
-              <span class="badge badge-danger rounded-circle position-absolute top-0 start-100 translate-middle" id="admin-notifications-count" style="display:none;">0</span>
+          <li class="nav-item dropdown d-flex align-items-center">
+            <a class="nav-link position-relative d-flex align-items-center" data-toggle="dropdown" href="#" id="admin-notifications-dropdown" style="padding: 0.5rem 0.75rem; height: 56px;">
+              <i class="far fa-bell" style="font-size: 1.4rem;"></i>
+              <span class="badge badge-danger position-absolute" id="admin-notifications-count" style="display:none; top: -2px; right: 2px; min-width: 20px; height: 20px; padding: 2px 6px; font-size: 11px; line-height: 16px; border-radius: 10px; text-align: center; white-space: nowrap; z-index: 10;">0</span>
             </a>
             <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" id="admin-notifications-list">
               <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
@@ -109,44 +170,17 @@
               <a href="#" class="dropdown-item dropdown-footer" onclick="adminOpenNotificationHistory(event)">View Notification History</a>
             </div>
           </li>
-          <!-- Navbar Search -->
-          <!-- <li class="nav-item">
-            <a class="nav-link" data-widget="navbar-search" href="#" role="button">
-            <i class="fas fa-search"></i>
+          <!-- Profile Dropdown Menu -->
+          <li class="nav-item dropdown d-flex align-items-center" style="margin-left: 8px;">
+            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdown" role="button" data-toggle="dropdown" style="padding: 0.5rem 0.75rem; height: 56px;">
+              <img src="<?php echo validate_image($_settings->userdata('avatar')) ?>" class="img-circle elevation-2" style="width: 28px; height: 28px; object-fit: cover; margin-right: 8px;" alt="User Image">
+              <span class="d-none d-md-inline"><?php echo ucwords($_settings->userdata('firstname')) ?></span>
             </a>
-            <div class="navbar-search-block">
-              <form class="form-inline">
-                <div class="input-group input-group-sm">
-                  <input class="form-control form-control-navbar" type="search" placeholder="Search" aria-label="Search">
-                  <div class="input-group-append">
-                    <button class="btn btn-navbar" type="submit">
-                    <i class="fas fa-search"></i>
-                    </button>
-                    <button class="btn btn-navbar" type="button" data-widget="navbar-search">
-                    <i class="fas fa-times"></i>
-                    </button>
-                  </div>
-                </div>
-              </form>
+            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="profileDropdown">
+              <a class="dropdown-item" href="<?php echo base_url.'admin/?page=user' ?>"><i class="fas fa-user"></i> My Account</a>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="<?php echo base_url.'/classes/Login.php?f=logout' ?>"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
-          </li> -->
-          <!-- Messages Dropdown Menu -->
-          <li class="nav-item">
-            <div class="btn-group nav-link">
-                  <button type="button" class="btn btn-rounded badge badge-light dropdown-toggle dropdown-icon" data-toggle="dropdown">
-                    <span><img src="<?php echo validate_image($_settings->userdata('avatar')) ?>" class="img-circle elevation-2 user-img" alt="User Image"></span>
-                    <span class="ml-3"><?php echo ucwords($_settings->userdata('firstname').' '.$_settings->userdata('lastname')) ?></span>
-                    <span class="sr-only">Toggle Dropdown</span>
-                  </button>
-                  <div class="dropdown-menu" role="menu">
-                    <a class="dropdown-item" href="<?php echo base_url.'admin/?page=user' ?>"><span class="fa fa-user"></span> My Account</a>
-                    <div class="dropdown-divider"></div>
-                    <a class="dropdown-item" href="<?php echo base_url.'/classes/Login.php?f=logout' ?>"><span class="fas fa-sign-out-alt"></span> Logout</a>
-                  </div>
-              </div>
-          </li>
-          <li class="nav-item">
-            
           </li>
          <!--  <li class="nav-item">
             <a class="nav-link" data-widget="control-sidebar" data-slide="true" href="#" role="button">
@@ -219,7 +253,20 @@
         if(resp && resp.status === 'success'){
           var c = parseInt(resp.count || 0, 10);
           var $badge = $('#admin-notifications-count');
-          $badge.text(c);
+          // Display count, or "99+" if over 99 for very large numbers
+          var displayCount = c > 99 ? '99+' : c;
+          $badge.text(displayCount);
+          // Adjust min-width for multi-digit numbers
+          if(c > 9){
+            $badge.css('min-width', '22px');
+            $badge.css('padding', '2px 6px');
+          } else if(c > 99){
+            $badge.css('min-width', '26px');
+            $badge.css('padding', '2px 6px');
+          } else {
+            $badge.css('min-width', '18px');
+            $badge.css('padding', '2px 6px');
+          }
           if(c > 0){ $badge.show(); } else { $badge.hide(); }
           adminToggleSidebarDot(c);
         }

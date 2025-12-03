@@ -246,23 +246,143 @@
     /* Improve navbar layout */
     .main-header .navbar-nav {
         flex-wrap: nowrap;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .main-header .nav-item {
+        display: flex;
+        align-items: center;
+        height: 56px;
+    }
+
+    .main-header .nav-link {
+        display: flex;
+        align-items: center;
+        height: 56px;
+        padding: 0.5rem 0.75rem !important;
+        white-space: nowrap;
+        transition: all 0.3s ease;
+    }
+
+    .main-header .nav-link:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+    }
+
+    .main-header .nav-link i {
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .main-header .nav-link img {
+        width: 28px;
+        height: 28px;
+        margin-right: 8px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .main-header .nav-link img:hover {
+        border-color: rgba(255, 255, 255, 0.5);
     }
 
     .main-header .navbar-nav .nav-link {
-        padding: 0.5rem 0.75rem;
+        padding: 0.5rem 0.75rem !important;
         white-space: nowrap;
     }
 
+    /* Notification and profile dropdown alignment */
+    #admin-notifications-dropdown,
+    #profileDropdown {
+        padding: 0.5rem 0.75rem !important;
+        height: 56px;
+        display: flex;
+        align-items: center;
+    }
+
+    /* Dashboard Cards - Proper Alignment */
+    .info-box {
+        display: flex;
+        align-items: stretch;
+        height: 100%;
+        transition: all 0.3s ease;
+        margin-bottom: 1.5rem;
+    }
+
+    .info-box:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .info-box-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100px;
+        min-width: 100px;
+        font-size: 1.8rem;
+    }
+
+    .info-box-content {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 0 1rem;
+        flex: 1;
+    }
+
     /* Better mobile handling */
+    @media (max-width: 991px) {
+        .main-header .navbar-nav {
+            gap: 0.1rem;
+        }
+
+        .main-header .navbar-nav .nav-link {
+            padding: 0.5rem 0.5rem !important;
+            font-size: 0.9rem;
+        }
+
+        .main-header .navbar-nav .nav-link span {
+            display: none;
+        }
+
+        .main-header .nav-link img {
+            width: 26px;
+            height: 26px;
+            margin-right: 0;
+        }
+
+        .info-box {
+            margin-bottom: 1.2rem;
+        }
+
+        .info-box-icon {
+            width: 80px;
+            min-width: 80px;
+            font-size: 1.6rem;
+        }
+    }
+
     @media (max-width: 576px) {
         .main-header .navbar-nav .nav-link {
-            padding: 0.25rem 0.5rem;
+            padding: 0.35rem 0.5rem !important;
             font-size: 0.875rem;
         }
         
         .main-header .navbar-nav .badge {
-            font-size: 0.7rem;
-            padding: 0.2rem 0.4rem;
+            font-size: 0.65rem;
+            padding: 0.15rem 0.3rem;
+        }
+
+        .main-header .nav-link img {
+            width: 24px;
+            height: 24px;
+            margin-right: 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
         
         /* Mobile sidebar improvements */

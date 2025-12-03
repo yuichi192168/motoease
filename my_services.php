@@ -17,11 +17,11 @@
                             <i class="fa fa-tools"></i> Service Requests
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <!-- <li class="nav-item">
                         <a class="nav-link" id="appointments-tab" data-toggle="tab" href="#appointments" role="tab" aria-controls="appointments" aria-selected="false">
                             <i class="fa fa-calendar"></i> Appointments
                         </a>
-                    </li>
+                    </li> -->
                 </ul>
             </div>
         </div>
@@ -35,14 +35,15 @@
                     <div class="row">
                             <?php 
                                 // Get all service requests and appointments combined
-                                $mechanic = $conn->query("SELECT * FROM mechanics_list where id in (SELECT mechanic_id FROM `service_requests` where client_id = '{$_settings->userdata('id')}') OR id in (SELECT mechanic_id FROM `appointments` where client_id = '{$_settings->userdata('id')}')");
+                                // $mechanic = $conn->query("SELECT * FROM mechanics_list where id in (SELECT mechanic_id FROM `service_requests` where client_id = '{$_settings->userdata('id')}') OR id in (SELECT mechanic_id FROM `appointments` where client_id = '{$_settings->userdata('id')}')");
+                                $mechanic = $conn->query("SELECT * FROM mechanics_list where id in (SELECT mechanic_id FROM `service_requests` where client_id = '{$_settings->userdata('id')}')");
                         $mechanic_arr = $mechanic && $mechanic->num_rows>0 ? array_column($mechanic->fetch_all(MYSQLI_ASSOC),'name','id') : [];
                                 
                                 // Get service requests
                                 $service_requests = $conn->query("SELECT *, 'service_request' as type, date_created as sort_date FROM `service_requests` where client_id = '{$_settings->userdata('id')}'");
                                 
-                                // Get appointments
-                                $appointments = $conn->query("SELECT *, 'appointment' as type, date_created as sort_date FROM `appointments` where client_id = '{$_settings->userdata('id')}'");
+                                // Get appointments - COMMENTED OUT
+                                // $appointments = $conn->query("SELECT *, 'appointment' as type, date_created as sort_date FROM `appointments` where client_id = '{$_settings->userdata('id')}'");
                                 
                                 // Combine and sort by date
                                 $all_services = [];
@@ -52,10 +53,10 @@
                                     $all_services[] = $row;
                                 }
                                 
-                                // Add appointments
-                                while($row = $appointments->fetch_assoc()) {
-                                    $all_services[] = $row;
-                                }
+                                // Add appointments - COMMENTED OUT
+                                // while($row = $appointments->fetch_assoc()) {
+                                //     $all_services[] = $row;
+                                // }
                                 
                                 // Sort by date (newest first)
                                 usort($all_services, function($a, $b) {
@@ -112,10 +113,18 @@
                                                 <div class="text-muted small">Mechanic</div>
                                                 <div><?= isset($mechanic_arr[$row['mechanic_id']]) ? $mechanic_arr[$row['mechanic_id']] : 'Not Assigned' ?></div>
                                             </div>
-                                            <div class="mb-3">
+                                            <div class="mb-2">
                                                 <div class="text-muted small">Status</div>
                                                 <div><?= $status_badge ?></div>
                                             </div>
+                                            <?php if(isset($row['amount_to_pay']) && $row['amount_to_pay'] > 0): ?>
+                                            <div class="mb-3">
+                                                <div class="text-muted small">Amount to Pay</div>
+                                                <div class="font-weight-bold text-success" style="font-size: 1.1rem;">
+                                                    <i class="fa fa-peso-sign"></i> ₱<?= number_format($row['amount_to_pay'], 2) ?>
+                                                </div>
+                                            </div>
+                                            <?php endif; ?>
                                         </div>
                                         <div class="card-footer bg-light text-right">
                                             <small class="text-muted">Service ID: <?= $row['id'] ?></small>
@@ -132,76 +141,12 @@
                                         </div>
                                     </div>
                                 </div>
-                                <?php else: ?>
-                                        <!-- Appointment Display -->
-                                        <?php
-                                        $status_badge = '<span class="badge badge-secondary rounded-pill px-3">Pending</span>';
-                                        if($row['status'] == 'confirmed') $status_badge = '<span class="badge badge-primary rounded-pill px-3">Confirmed</span>';
-                                        elseif($row['status'] == 'in_progress') $status_badge = '<span class="badge badge-warning rounded-pill px-3">In Progress</span>';
-                                        elseif($row['status'] == 'completed') $status_badge = '<span class="badge badge-success rounded-pill px-3">Completed</span>';
-                                        elseif($row['status'] == 'cancelled') $status_badge = '<span class="badge badge-danger rounded-pill px-3">Cancelled</span>';
-                                        
-                                        // Get service name
-                                        $service = $conn->query("SELECT service FROM service_list WHERE id = '{$row['service_type']}'")->fetch_assoc();
-                                        $service_name = $service ? $service['service'] : 'N/A';
-                                        ?>
-                                <div class="col-md-6 mb-3">
-                                    <div class="card border rounded shadow-sm h-100">
-                                        <div class="card-header bg-warning text-white">
-                                            <h6 class="mb-0">
-                                                <i class="fa fa-calendar"></i> Appointment #<?= $row['id'] ?>
-                                            </h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <div class="text-muted small">Appointment Date</div>
-                                                <div class="font-weight-bold"><?= date("M d, Y", strtotime($row['appointment_date'])) ?></div>
-                                            </div>
-                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <div class="text-muted small">Appointment Time</div>
-                                                <div class="font-weight-bold"><?= $row['appointment_time'] ?></div>
-                                            </div>
-                                            <div class="mb-2">
-                                                <div class="text-muted small">Service Type</div>
-                                                <div class="font-weight-bold"><?= htmlspecialchars($service_name) ?></div>
-                                            </div>
-                                            <?php if(!empty($row['vehicle_info'])): ?>
-                                            <div class="mb-2">
-                                                <div class="text-muted small">Vehicle Information</div>
-                                                <div><?= htmlspecialchars($row['vehicle_info']) ?></div>
-                                            </div>
-                                            <?php endif; ?>
-                                            <?php if(!empty($row['notes'])): ?>
-                                            <div class="mb-2">
-                                                <div class="text-muted small">Notes</div>
-                                                <div><?= htmlspecialchars($row['notes']) ?></div>
-                                            </div>
-                                            <?php endif; ?>
-                                            <div class="mb-2">
-                                                <div class="text-muted small">Assigned Mechanic</div>
-                                                <div><?= isset($mechanic_arr[$row['mechanic_id']]) ? $mechanic_arr[$row['mechanic_id']] : 'Not Assigned' ?></div>
-                                            </div>
-                                            <div class="mb-3">
-                                                <div class="text-muted small">Status</div>
-                                                <div><?= $status_badge ?></div>
-                                            </div>
-                                        </div>
-                                        <div class="card-footer bg-light text-right">
-                                            <small class="text-muted">Appointment ID: <?= $row['id'] ?></small>
-                                            <div class="mt-2">
-                                                <button class="btn btn-sm btn-primary view_appointment" data-id="<?= $row['id'] ?>">
-                                                    <i class="fa fa-eye"></i> View Details
-                                                </button>
-                                                <?php if($row['status'] == 'pending'): ?>
-                                                    <button class="btn btn-sm btn-outline-danger cancel_appointment" data-id="<?= $row['id'] ?>">
-                                                        <i class="fa fa-times"></i> Cancel
-                                                    </button>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                                 <?php endif; ?>
+                                <?php 
+                                // Appointment Display - COMMENTED OUT
+                                // else:
+                                //     Appointment display code removed
+                                ?>
                                 <?php endforeach; ?>
                                 <?php if(!$has_services): ?>
                                 <div class="col-12 text-center text-muted">No services found.</div>
@@ -264,10 +209,18 @@
                                         <div class="text-muted small">Mechanic</div>
                                         <div><?= isset($mechanic_arr[$row['mechanic_id']]) ? $mechanic_arr[$row['mechanic_id']] : 'Not Assigned' ?></div>
                                     </div>
-                                    <div class="mb-3">
+                                    <div class="mb-2">
                                         <div class="text-muted small">Status</div>
                                         <div><?= $status_badge ?></div>
                                     </div>
+                                    <?php if(isset($row['amount_to_pay']) && $row['amount_to_pay'] > 0): ?>
+                                    <div class="mb-3">
+                                        <div class="text-muted small">Amount to Pay</div>
+                                        <div class="font-weight-bold text-success" style="font-size: 1.1rem;">
+                                            <i class="fa fa-peso-sign"></i> ₱<?= number_format($row['amount_to_pay'], 2) ?>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="card-footer bg-light text-right">
                                     <small class="text-muted">Service ID: <?= $row['id'] ?></small>
@@ -294,7 +247,8 @@
                 </div>
             </div>
             
-            <!-- Appointments Tab -->
+            <!-- Appointments Tab - COMMENTED OUT -->
+            <?php /*
             <div class="tab-pane fade" id="appointments" role="tabpanel" aria-labelledby="appointments-tab">
                 <div class="card card-outline card-warning shadow rounded-0">
                     <div class="card-body">
@@ -376,6 +330,7 @@
                     </div>
                 </div>
             </div>
+            */ ?>
         </div>
     </div>
 </div>
@@ -398,19 +353,21 @@
             _conf("Are you sure you want to cancel this service request?","cancel_service",[req_id]);
         });
         
-        // Handle view appointment button clicks
-        $('.view_appointment').click(function(){
-            var appt_id = $(this).data('id');
-            uni_modal("Appointment Details","view_appointment.php?id="+appt_id,'modal-lg');
-        });
+        // Handle view appointment button clicks - COMMENTED OUT
+        // $('.view_appointment').click(function(){
+        //     var appt_id = $(this).data('id');
+        //     uni_modal("Appointment Details","view_appointment.php?id="+appt_id,'modal-lg');
+        // });
 
-        // Handle cancel appointment button clicks
-        $('.cancel_appointment').click(function(){
-            var appt_id = parseInt($(this).data('id'), 10) || 0;
-            _conf("Are you sure you want to cancel this appointment?","cancel_appointment",[appt_id]);
-        });
+        // Handle cancel appointment button clicks - COMMENTED OUT
+        // $('.cancel_appointment').click(function(){
+        //     var appt_id = parseInt($(this).data('id'), 10) || 0;
+        //     _conf("Are you sure you want to cancel this appointment?","cancel_appointment",[appt_id]);
+        // });
     });
     
+    // Function cancel_appointment - COMMENTED OUT
+    /*
     function cancel_appointment($appt_id){
         $appt_id = parseInt($appt_id, 10) || 0;
         if($appt_id <= 0){
@@ -441,6 +398,7 @@
             }
         });
     }
+    */
 </script>
 
 <!-- Modal Structure -->
