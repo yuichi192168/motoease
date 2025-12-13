@@ -1,8 +1,8 @@
-# MotoEase :A Client-Focused Web-Based System for Motorcycle Sales and Service
+﻿# MotoEase :A Client-Focused Web-Based System for Motorcycle Sales and Service
 
 MotoEase is a comprehensive web-based management system designed for Star Honda Calamba, providing end-to-end solutions for motorcycle dealership operations including sales, service management, customer accounts, and administration.
 
-## 🚀 Quick Start
+## ðŸš€ Quick Start
 
 ### Prerequisites
 - PHP 7.4+ or PHP 8.0+
@@ -37,11 +37,11 @@ MotoEase is a comprehensive web-based management system designed for Star Honda 
    - Open: `http://localhost/motoease/`
    - Default login: `admin` / `admin123`
 
-> **⚠️ Important:** Change the default password immediately after first login!
+> **âš ï¸ Important:** Change the default password immediately after first login!
 
 For detailed installation instructions, see [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md).
 
-## 📋 Features
+## ðŸ“‹ Features
 
 ### Core Features
 - **Product & Inventory Management** - Complete product catalog with stock tracking
@@ -64,7 +64,7 @@ For detailed installation instructions, see [INSTALLATION_GUIDE.md](INSTALLATION
 
 See [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md#user-roles-and-permissions) for detailed role permissions.
 
-## 🛠️ Technology Stack
+## ðŸ› ï¸ Technology Stack
 
 - **Backend:** PHP 7.4+ / PHP 8.0+
 - **Database:** MySQL/MariaDB
@@ -72,32 +72,32 @@ See [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md#user-roles-and-permissions) fo
 - **Dependencies:** PHPMailer 6.5+
 - **Server:** Apache 2.4+ (mod_rewrite required)
 
-## 📁 Project Structure
+## ðŸ“ Project Structure
 
 ```
 motoease/
-├── admin/                 # Admin panel
-│   ├── clients/          # Customer management
-│   ├── inventory/        # Inventory management
-│   ├── orders/           # Order management
-│   ├── service_requests/ # Service management
-│   └── ...
-├── assets/               # CSS, JS, images
-├── classes/              # PHP classes
-│   ├── DBConnection.php
-│   ├── Master.php
-│   ├── Users.php
-│   └── ...
-├── database/             # Database files
-│   └── motoease_db.sql     # Main database schema
-├── migrations/           # Database migrations
-├── uploads/              # User uploaded files
-├── config.php           # Main configuration
-├── initialize.php       # Database & base config
-└── index.php            # Entry point
+â”œâ”€â”€ admin/                 # Admin panel
+â”‚   â”œâ”€â”€ clients/          # Customer management
+â”‚   â”œâ”€â”€ inventory/        # Inventory management
+â”‚   â”œâ”€â”€ orders/           # Order management
+â”‚   â”œâ”€â”€ service_requests/ # Service management
+â”‚   â””â”€â”€ ...
+â”œâ”€â”€ assets/               # CSS, JS, images
+â”œâ”€â”€ classes/              # PHP classes
+â”‚   â”œâ”€â”€ DBConnection.php
+â”‚   â”œâ”€â”€ Master.php
+â”‚   â”œâ”€â”€ Users.php
+â”‚   â””â”€â”€ ...
+â”œâ”€â”€ database/             # Database files
+â”‚   â””â”€â”€ motoease_db.sql     # Main database schema
+â”œâ”€â”€ migrations/           # Database migrations
+â”œâ”€â”€ uploads/              # User uploaded files
+â”œâ”€â”€ config.php           # Main configuration
+â”œâ”€â”€ initialize.php       # Database & base config
+â””â”€â”€ index.php            # Entry point
 ```
 
-## 🔧 Configuration
+## ðŸ”§ Configuration
 
 ### Database Configuration
 Edit `initialize.php`:
@@ -125,13 +125,13 @@ define('SMTP_PASS', 'your_password');
 
 See [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md#environment-configuration) for complete configuration details.
 
-## 📚 Documentation
+## ðŸ“š Documentation
 
 - **[Installation Guide](INSTALLATION_GUIDE.md)** - Complete setup instructions
 - **Database Schema** - See `database/motoease_db.sql`
 - **Code Documentation** - Inline comments in PHP files
 
-## 🔐 Security
+## ðŸ” Security
 
 ### Default Credentials
 
@@ -157,7 +157,7 @@ This is the default username and password for each role:
 - Username: `karen_service`
 - Password: `karen`
 
-**⚠️ CHANGE THESE IMMEDIATELY AFTER INSTALLATION!**
+**âš ï¸ CHANGE THESE IMMEDIATELY AFTER INSTALLATION!**
 
 ### Security Features
 - Password hashing (MD5 - consider upgrading to bcrypt)
@@ -175,7 +175,7 @@ This is the default username and password for each role:
 - [ ] Disable error display
 - [ ] Set up regular backups
 
-## 🧪 Testing
+## ðŸ§ª Testing
 
 ### Test Scenarios
 1. **User Authentication**
@@ -202,7 +202,7 @@ This is the default username and password for each role:
    - Record payments
    - Verify balance calculations
 
-## 🐛 Troubleshooting
+## ðŸ› Troubleshooting
 
 ### Common Issues
 
@@ -227,10 +227,10 @@ This is the default username and password for each role:
 
 See [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md#troubleshooting) for detailed troubleshooting.
 
-## 📊 Key System Features
+## ðŸ“Š Key System Features
 
 ### 1. Advance Orders
-Customers can place advance orders for products. Orders are tracked through multiple statuses: Pending → Packed → For Delivery → On the Way → Delivered.
+Customers can place advance orders for products. Orders are tracked through multiple statuses: Pending â†’ Packed â†’ For Delivery â†’ On the Way â†’ Delivered.
 
 ### 2. Invoice & Receipt Generation
 Automated PDF invoice generation with order details, customer information, and payment terms. Receipts generated upon payment recording.
@@ -244,7 +244,7 @@ Advanced account management with installment plan support, payment tracking, and
 ### 5. ABC Inventory Classification
 Automated inventory analysis classifying products into A (high-value), B (medium-value), and C (low-value) categories for optimization.
 
-## 👥 User Roles & Permissions
+## ðŸ‘¥ User Roles & Permissions
 
 | Role | Key Permissions |
 |------|----------------|
@@ -258,7 +258,7 @@ Automated inventory analysis classifying products into A (high-value), B (medium
 
 See [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md#user-roles-and-permissions) for complete permission matrix.
 
-## 🔄 Database Schema
+## ðŸ”„ Database Schema
 
 ### Main Tables
 - `users` - System users and administrators
@@ -274,11 +274,11 @@ See [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md#user-roles-and-permissions) fo
 
 See `database/motoease_db.sql` for complete schema.
 
-## 📝 License
+## ðŸ“ License
 
 This project is developed for academic/capstone purposes. Please refer to your institution's guidelines for usage and distribution.
 
-## 🤝 Contributing
+## ðŸ¤ Contributing
 
 This is a capstone project. For contributions or modifications, please follow:
 1. Code style guidelines (PSR-12 recommended)
@@ -286,14 +286,14 @@ This is a capstone project. For contributions or modifications, please follow:
 3. Testing requirements
 4. Documentation standards
 
-## 📞 Support
+## ðŸ“ž Support
 
 For installation and setup issues, refer to:
 - [Installation Guide](INSTALLATION_GUIDE.md)
 - Database schema: `database/motoease_db.sql`
 - Code comments in PHP files
 
-## 🗺️ Roadmap
+## ðŸ—ºï¸ Roadmap
 
 Potential future enhancements:
 - [ ] Multi-branch support expansion
@@ -304,7 +304,7 @@ Potential future enhancements:
 - [ ] Barcode scanning
 - [ ] Advanced inventory forecasting
 
-## 📄 Version History
+## ðŸ“„ Version History
 
 - **v1.0** (2025) - Initial release
   - Core features implemented

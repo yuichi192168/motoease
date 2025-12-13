@@ -1,4 +1,4 @@
-# System Installation and Setup Guide
+﻿# System Installation and Setup Guide
 
 ## Star Honda Motorcycle Service Management System
 
@@ -154,7 +154,7 @@ See [Database Setup](#database-setup) section below.
 
 #### For Windows:
 - Ensure the `uploads/` folder exists and is writable
-- Right-click `uploads/` folder → Properties → Security → Allow "Modify" for your user
+- Right-click `uploads/` folder â†’ Properties â†’ Security â†’ Allow "Modify" for your user
 
 #### For Linux/macOS:
 ```bash
@@ -192,7 +192,7 @@ This is the default username and password for each role:
 - Username: `karen_service`
 - Password: `karen`
 
-> **⚠️ Security Note:** Change the default passwords immediately after first login!
+> **âš ï¸ Security Note:** Change the default passwords immediately after first login!
 
 ---
 
@@ -472,7 +472,7 @@ The system implements a comprehensive Role-Based Access Control (RBAC) system wi
 - Username: `karen_service`
 - Password: `karen`
 
-> **⚠️ Security Note:** Change these default passwords immediately after first login!
+> **âš ï¸ Security Note:** Change these default passwords immediately after first login!
 
 ---
 
@@ -481,15 +481,15 @@ The system implements a comprehensive Role-Based Access Control (RBAC) system wi
 **Purpose:** Manages system users, customer accounts, and administrative functions.
 
 **Access Permissions:**
-- ✅ **User Management:** Create, edit, delete system users
-- ✅ **Customer Management:** View and manage customer accounts
-- ✅ **Customer Account Balances:** View and manage customer account balances
-- ✅ **Invoice Management:** View and generate invoices
-- ✅ **OR/CR Documents:** Manage OR/CR document tracking
-- ❌ **Inventory Management:** No access
-- ❌ **Service Management:** No access
-- ❌ **Order Management:** No access
-- ❌ **Reports:** No access
+- âœ… **User Management:** Create, edit, delete system users
+- âœ… **Customer Management:** View and manage customer accounts
+- âœ… **Customer Account Balances:** View and manage customer account balances
+- âœ… **Invoice Management:** View and generate invoices
+- âœ… **OR/CR Documents:** Manage OR/CR document tracking
+- âŒ **Inventory Management:** No access
+- âŒ **Service Management:** No access
+- âŒ **Order Management:** No access
+- âŒ **Reports:** No access
 
 **Use Cases:**
 - Managing staff accounts
@@ -511,16 +511,16 @@ The system implements a comprehensive Role-Based Access Control (RBAC) system wi
 **Purpose:** Handles daily operations including orders, inventory, services, and reports.
 
 **Access Permissions:**
-- ✅ **Product Management:** View and manage products
-- ✅ **Inventory Management:** Stock management and ABC analysis
-- ✅ **Service Requests:** Manage service requests and mechanics
-- ✅ **Order Management:** Process and manage customer orders
-- ✅ **Reports:** Access to order, service, and invoice reports
-- ✅ **System Settings:** Basic system configuration
-- ✅ **Categories & Services:** Manage product categories and services
-- ✅ **OR/CR Documents:** Manage OR/CR documents
-- ❌ **User Management:** No access
-- ❌ **Customer Management:** Limited access (view only)
+- âœ… **Product Management:** View and manage products
+- âœ… **Inventory Management:** Stock management and ABC analysis
+- âœ… **Service Requests:** Manage service requests and mechanics
+- âœ… **Order Management:** Process and manage customer orders
+- âœ… **Reports:** Access to order, service, and invoice reports
+- âœ… **System Settings:** Basic system configuration
+- âœ… **Categories & Services:** Manage product categories and services
+- âœ… **OR/CR Documents:** Manage OR/CR documents
+- âŒ **User Management:** No access
+- âŒ **Customer Management:** Limited access (view only)
 
 **Use Cases:**
 - Processing daily orders
@@ -547,12 +547,12 @@ The system implements a comprehensive Role-Based Access Control (RBAC) system wi
 **Purpose:** Manages promotional content, customer images, and marketing materials.
 
 **Access Permissions:**
-- ✅ **Promo Images:** Upload and manage promotional images
-- ✅ **Customer Images:** Manage customer gallery images
-- ✅ **Reviews Management:** Manage customer reviews (if enabled)
-- ✅ **Announcements:** Manage system announcements (if enabled)
-- ✅ **Content Management:** Manage website content (if enabled)
-- ❌ **All Other Modules:** No access
+- âœ… **Promo Images:** Upload and manage promotional images
+- âœ… **Customer Images:** Manage customer gallery images
+- âœ… **Reviews Management:** Manage customer reviews (if enabled)
+- âœ… **Announcements:** Manage system announcements (if enabled)
+- âœ… **Content Management:** Manage website content (if enabled)
+- âŒ **All Other Modules:** No access
 
 **Use Cases:**
 - Managing promotional campaigns
@@ -573,10 +573,10 @@ The system implements a comprehensive Role-Based Access Control (RBAC) system wi
 **Purpose:** Specialized role for inventory and product management.
 
 **Access Permissions:**
-- ✅ **Product Management:** Full product catalog management
-- ✅ **Stock Management:** Add, edit, and track stock movements
-- ✅ **ABC Analysis:** Access ABC inventory classification
-- ❌ **All Other Modules:** No access
+- âœ… **Product Management:** Full product catalog management
+- âœ… **Stock Management:** Add, edit, and track stock movements
+- âœ… **ABC Analysis:** Access ABC inventory classification
+- âŒ **All Other Modules:** No access
 
 **Use Cases:**
 - Product catalog maintenance
@@ -596,10 +596,10 @@ The system implements a comprehensive Role-Based Access Control (RBAC) system wi
 **Purpose:** Handles service requests and customer service interactions.
 
 **Access Permissions:**
-- ✅ **Service Requests:** Create, view, and update service requests
-- ✅ **Mechanics:** View mechanic list (read-only)
-- ❌ **Image Management:** No access (hard-blocked)
-- ❌ **All Other Modules:** No access
+- âœ… **Service Requests:** Create, view, and update service requests
+- âœ… **Mechanics:** View mechanic list (read-only)
+- âŒ **Image Management:** No access (hard-blocked)
+- âŒ **All Other Modules:** No access
 
 **Use Cases:**
 - Receiving service requests from customers
@@ -620,11 +620,11 @@ The system implements a comprehensive Role-Based Access Control (RBAC) system wi
 **Purpose:** Extended service management with image management capabilities.
 
 **Access Permissions:**
-- ✅ **Service Requests:** Full service request management
-- ✅ **Promo Images:** Manage promotional images
-- ✅ **Customer Images:** Manage customer gallery images
-- ✅ **Mechanics:** Manage mechanic information
-- ❌ **All Other Modules:** No access
+- âœ… **Service Requests:** Full service request management
+- âœ… **Promo Images:** Manage promotional images
+- âœ… **Customer Images:** Manage customer gallery images
+- âœ… **Mechanics:** Manage mechanic information
+- âŒ **All Other Modules:** No access
 
 **Use Cases:**
 - Complete service management
@@ -644,16 +644,16 @@ The system implements a comprehensive Role-Based Access Control (RBAC) system wi
 **Purpose:** End-user role for customers accessing the public-facing website.
 
 **Access Permissions:**
-- ✅ **View Products:** Browse product catalog
-- ✅ **Shopping Cart:** Add products to cart
-- ✅ **Place Orders:** Create advance orders
-- ✅ **View Orders:** View order history and status
-- ✅ **Service Requests:** Request services
-- ✅ **View Services:** View service history
-- ✅ **Account Balance:** View account balance and payment history
-- ✅ **Invoices:** View and download invoices
-- ✅ **Profile Management:** Update personal information
-- ❌ **Admin Panel:** No access
+- âœ… **View Products:** Browse product catalog
+- âœ… **Shopping Cart:** Add products to cart
+- âœ… **Place Orders:** Create advance orders
+- âœ… **View Orders:** View order history and status
+- âœ… **Service Requests:** Request services
+- âœ… **View Services:** View service history
+- âœ… **Account Balance:** View account balance and payment history
+- âœ… **Invoices:** View and download invoices
+- âœ… **Profile Management:** Update personal information
+- âŒ **Admin Panel:** No access
 
 **Use Cases:**
 - Shopping for motorcycle parts
@@ -668,10 +668,10 @@ The system implements a comprehensive Role-Based Access Control (RBAC) system wi
 **Purpose:** Full system access with all permissions.
 
 **Access Permissions:**
-- ✅ **All Modules:** Complete access to all system features
-- ✅ **System Settings:** Full system configuration
-- ✅ **User Management:** Create and manage all user roles
-- ✅ **Permission Management:** Assign custom permissions
+- âœ… **All Modules:** Complete access to all system features
+- âœ… **System Settings:** Full system configuration
+- âœ… **User Management:** Create and manage all user roles
+- âœ… **Permission Management:** Assign custom permissions
 
 **Note:** The `admin` role bypasses all permission checks and has access to everything.
 
@@ -699,7 +699,7 @@ The system uses a granular permission-based access control system. Each role can
 - `orcr_documents` - OR/CR document management
 
 **Assigning Permissions:**
-1. Navigate to: **Admin Panel → User Management → System Users**
+1. Navigate to: **Admin Panel â†’ User Management â†’ System Users**
 2. Edit a user
 3. Select permissions from the permission list
 4. Save changes
@@ -834,7 +834,7 @@ The system uses a granular permission-based access control system. Each role can
 
 **Account Balance Formula:**
 ```
-Total Cost = Downpayment + (Monthly Payment × Installment Months)
+Total Cost = Downpayment + (Monthly Payment Ã— Installment Months)
 Paid Amount = Sum of all recorded transactions
 Remaining Balance = Total Cost - Paid Amount
 ```
