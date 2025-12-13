@@ -83,7 +83,7 @@
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="profileDropdownMenuLink">
                         <a class="dropdown-item" href="./?p=my_orders"><i class="fas fa-shopping-bag me-2"></i>My Orders</a>
-                        <a class="dropdown-item" href="./?p=my_services"><i class="fas fa-tools me-2"></i>My Service History</a>
+                        <a class="dropdown-item" href="./?p=my_services"><i class="fas fa-tools me-2"></i>My Service Requests</a>
                         <a class="dropdown-item" href="./?p=my_invoices"><i class="fas fa-file-invoice me-2"></i>My Invoices & Receipts</a>
                         <a class="dropdown-item" href="./?p=manage_account"><i class="fas fa-user-cog me-2"></i>Manage Account</a>
                         <div class="dropdown-divider"></div>
@@ -216,7 +216,7 @@
                     <li class="nav-item">
                         <a class="nav-link" href="./?p=my_services">
                             <i class="fas fa-tools"></i>
-                            <span>My Service History</span>
+                            <span>My Service Requests</span>
                         </a>
                     </li>
                     <li class="nav-item">
