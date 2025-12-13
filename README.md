@@ -1,6 +1,6 @@
-# Motorcycle Parts & Services Shop Management System (MPSSMS)
+# MotoEase :A Client-Focused Web-Based System for Motorcycle Sales and Service
 
-A comprehensive web-based management system designed for motorcycle parts and service shops. This system facilitates product management, order processing, service requests, customer account management, and inventory control with advanced features like ABC inventory classification.
+MotoEase is a comprehensive web-based management system designed for Star Honda Calamba, providing end-to-end solutions for motorcycle dealership operations including sales, service management, customer accounts, and administration.
 
 ## 🚀 Quick Start
 
@@ -299,4 +299,5 @@ Potential future enhancements:
 **Last Updated:** 2025
 
 For detailed installation and setup instructions, please refer to [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md).
+
 
