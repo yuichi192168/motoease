@@ -294,10 +294,11 @@ Potential future enhancements:
 
 ---
 
-**System Name:** Motorcycle Parts & Services Shop Management System  
+**System Name:** Star Honda Motorcycle Service Management System 
 **Version:** 1.0  
 **Last Updated:** 2025
 
 For detailed installation and setup instructions, please refer to [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md).
+
 
 
