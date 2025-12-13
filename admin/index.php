@@ -50,7 +50,15 @@
           'customer_account_balances' => 'customer_accounts',
           'orcr_documents' => 'orcr_documents',
           'report' => 'reports',
+          'report/orders' => 'reports',
+          'report/service_requests' => 'reports',
+          'report/invoices' => 'reports',
+          'user_log_history' => 'reports',
           'system_info' => 'system_settings',
+          'maintenance/category' => 'system_settings',
+          'maintenance/services' => 'system_settings',
+          'maintenance/manage_category' => 'system_settings',
+          'maintenance/manage_service' => 'system_settings',
           'mechanics' => 'mechanics'
         ];
          
@@ -64,16 +72,25 @@
          
         // Fallback to role-based access for backward compatibility
         if ($role === 'system_admin') {
-          // System Admin: Full access to user and customer management
-          if (in_array($page, ['user', 'user/list', 'user/manage_user', 'clients']) || 
-              strpos($page, 'user/') === 0 || strpos($page, 'clients') === 0) {
+          // System Admin: Full access to user, customer management, and customer accounts
+          if (in_array($page, ['user', 'user/list', 'user/manage_user', 'clients', 'customer_account_balances', 'customer_accounts', 'invoices', 'orcr_documents']) ||
+              strpos($page, 'user/') === 0 || 
+              strpos($page, 'clients') === 0 ||
+              strpos($page, 'customer_account') === 0) {
             return true;
           }
           return false;
         }
         if ($role === 'desk_staff') {
-          // Desk/Staff: Daily transactions (inventory and service appointments)
-          $desk_allowed_pages = ['products', 'inventory', 'inventory/abc_analysis', 'service_requests', 'mechanics', 'orders'];
+          // Desk/Staff: Daily transactions, reports, system settings, management, and OR/CR documents
+          $desk_allowed_pages = [
+            'products', 'inventory', 'inventory/abc_analysis', 
+            'service_requests', 'mechanics', 'orders',
+            'report', 'report/orders', 'report/service_requests', 'report/invoices', 'user_log_history',
+            'system_info',
+            'maintenance/category', 'maintenance/services', 'maintenance/manage_category', 'maintenance/manage_service',
+            'orcr_documents'
+          ];
           foreach ($desk_allowed_pages as $p) {
             if ($page === $p || strpos($page, $p.'/') === 0) return true;
           }

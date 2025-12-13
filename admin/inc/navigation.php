@@ -11,6 +11,10 @@ $is_service_admin = ($role_type === 'service_admin');
 $is_service_receptionist = ($role_type === 'service_receptionist');
 $data_admin_roles = ['data_admin'];
 $is_data_admin = in_array($role_type, $data_admin_roles);
+// Role flags for cleaner navigation conditions
+$is_system_admin = ($role_type === 'system_admin');
+$is_desk_staff = ($role_type === 'desk_staff');
+$is_inventory = ($role_type === 'inventory');
 
 // Role display names
 $role_display_names = [
@@ -67,7 +71,7 @@ $role_display = isset($role_display_names[$role_type]) ? $role_display_names[$ro
                 <!-- Notifications removed: using per-section indicators instead -->
                 
                 <!-- Role-based Menu Items -->
-                <?php if($is_admin || hasPermission('user_management') || hasPermission('customer_management')): ?>
+                <?php if($is_admin || $is_system_admin || hasPermission('user_management') || hasPermission('customer_management')): ?>
                 <!-- User Management -->
                 <li class="nav-item <?php echo in_array($page, ['user','clients']) ? 'menu-open' : '' ?>">
                     <a href="#" class="nav-link <?php echo in_array($page, ['user','clients']) ? 'active' : '' ?>">
@@ -78,7 +82,7 @@ $role_display = isset($role_display_names[$role_type]) ? $role_display_names[$ro
                         </p>
                     </a>
                     <ul class="nav nav-treeview">
-                        <?php if($is_admin || hasPermission('user_management')): ?>
+                        <?php if($is_admin || $is_system_admin || hasPermission('user_management')): ?>
                         <li class="nav-item">
                             <a href="./?page=user/list" class="nav-link <?php echo ($page == 'user' || $page == 'user/list') ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
@@ -86,7 +90,7 @@ $role_display = isset($role_display_names[$role_type]) ? $role_display_names[$ro
                             </a>
                         </li>
                         <?php endif; ?>
-                        <?php if($is_admin || hasPermission('customer_management')): ?>
+                        <?php if($is_admin || $is_system_admin || hasPermission('customer_management')): ?>
                         <li class="nav-item">
                             <a href="./?page=clients" class="nav-link <?php echo $page == 'clients' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
@@ -259,8 +263,8 @@ $role_display = isset($role_display_names[$role_type]) ? $role_display_names[$ro
                 <?php endif; ?>
                 
                 <!-- Reports -->
-                <?php if($is_admin || hasPermission('reports')): ?>
-                <li class="nav-item <?php echo in_array($page, ['report', 'user_log_history']) ? 'menu-open' : '' ?>">
+                <?php if($is_admin || $is_desk_staff || hasPermission('reports')): ?>
+                <li class="nav-item <?php echo in_array($page, ['report', 'report/orders', 'report/service_requests', 'report/invoices', 'user_log_history']) ? 'menu-open' : '' ?>">
                     <a href="#" class="nav-link <?php echo in_array($page, ['report', 'user_log_history']) ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-chart-bar"></i>
                         <p>
@@ -275,7 +279,7 @@ $role_display = isset($role_display_names[$role_type]) ? $role_display_names[$ro
                                 <p>Service Reports</p>
                             </a>
                         </li> -->
-                        <?php if($is_admin || hasPermission('reports')): ?>
+                        <?php if($is_admin || $is_desk_staff || hasPermission('reports')): ?>
                         <li class="nav-item">
                             <a href="./?page=report/orders" class="nav-link <?php echo $page == 'report/orders' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
@@ -309,7 +313,7 @@ $role_display = isset($role_display_names[$role_type]) ? $role_display_names[$ro
                 <?php endif; ?>
                 
                 <!-- Services & Categories Management -->
-                <?php if($is_admin || hasPermission('system_settings')): ?>
+                <?php if($is_admin || $role_type === 'desk_staff' || hasPermission('system_settings')): ?>
                 <li class="nav-item <?php echo in_array($page, ['maintenance/category','maintenance/services','maintenance/manage_category','maintenance/manage_service']) ? 'menu-open' : '' ?>">
                     <a href="#" class="nav-link <?php echo in_array($page, ['maintenance/category','maintenance/services','maintenance/manage_category','maintenance/manage_service']) ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-cogs"></i>
@@ -336,9 +340,9 @@ $role_display = isset($role_display_names[$role_type]) ? $role_display_names[$ro
                 <?php endif; ?>
 
                  <!-- Customer Account Management -->
-                 <?php if($is_admin || hasPermission('customer_accounts') || hasPermission('invoice_management') || hasPermission('orcr_documents')): ?>
-                <li class="nav-item <?php echo in_array($page, ['customer_accounts', 'customer_account_balances']) ? 'menu-open' : '' ?>">
-                    <a href="#" class="nav-link <?php echo in_array($page, ['customer_accounts', 'customer_account_balances']) ? 'active' : '' ?>">
+                 <?php if($is_admin || $is_system_admin || $is_desk_staff || hasPermission('customer_accounts') || hasPermission('invoice_management') || hasPermission('orcr_documents')): ?>
+                <li class="nav-item <?php echo in_array($page, ['customer_accounts', 'customer_account_balances', 'invoices', 'orcr_documents']) ? 'menu-open' : '' ?>">
+                    <a href="#" class="nav-link <?php echo in_array($page, ['customer_accounts', 'customer_account_balances', 'invoices', 'orcr_documents']) ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-user-cog"></i>
                         <p>
                             Customer Accounts
@@ -346,7 +350,7 @@ $role_display = isset($role_display_names[$role_type]) ? $role_display_names[$ro
                         </p>
                     </a>
                     <ul class="nav nav-treeview">
-                        <?php if($is_admin || hasPermission('customer_accounts')): ?>
+                        <?php if($is_admin || $is_system_admin || hasPermission('customer_accounts')): ?>
                         <li class="nav-item">
                             <a href="./?page=customer_account_balances" class="nav-link <?php echo $page == 'customer_account_balances' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
@@ -368,7 +372,7 @@ $role_display = isset($role_display_names[$role_type]) ? $role_display_names[$ro
                             </a>
                         </li>
                         <?php endif; ?>
-                        <?php if($is_admin || hasPermission('orcr_documents')): ?>
+                        <?php if($is_admin || $is_desk_staff || hasPermission('orcr_documents')): ?>
                         <li class="nav-item">
                             <a href="./?page=orcr_documents" class="nav-link <?php echo $page == 'orcr_documents' ? 'active' : '' ?>">
                                 <i class="far fa-circle nav-icon"></i>
@@ -381,7 +385,7 @@ $role_display = isset($role_display_names[$role_type]) ? $role_display_names[$ro
                 <?php endif; ?>
                 
                 <!-- System Settings -->
-                <?php if($is_admin || hasPermission('system_settings')): ?>
+                <?php if($is_admin || $role_type === 'desk_staff' || hasPermission('system_settings')): ?>
                 <li class="nav-item">
                     <a href="./?page=system_info" class="nav-link <?php echo $page == 'system_info' ? 'active' : '' ?>">
                         <i class="nav-icon fas fa-cog"></i>
