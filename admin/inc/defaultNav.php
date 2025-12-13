@@ -56,7 +56,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'home';
                 // Create a shorter version if no short name is set
                 $full_name = $_settings->info('name');
                 if(strlen($full_name) > 20) {
-                    echo "Star Honda BPSMS";
+                    echo "Star Honda MotoEase";
                 } else {
                     echo $full_name;
                 }

@@ -311,7 +311,7 @@
                   </div>
                   <div class="form-group col-md-6">
                     <label for="email" class="small">Email *</label>
-                    <input type="email" name="email" id="email" class="form-control form-control-sm" placeholder="bpsms@gmail.com" required>
+                    <input type="email" name="email" id="email" class="form-control form-control-sm" placeholder="motoease@gmail.com" required>
                     <div class="error-msg" id="email-error"></div>
                   </div>
                   <div class="form-group col-md-6">

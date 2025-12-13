@@ -108,16 +108,16 @@ sudo apt-get install apache2 mysql-server php php-mysqli php-mbstring php-gd
 
 1. **If using Git:**
    ```bash
-   git clone <repository-url> bpsms
-   cd bpsms
+   git clone <repository-url> motoease
+   cd motoease
    ```
 
 2. **If using ZIP file:**
    - Extract the ZIP file to your web server root:
-     - **XAMPP:** `C:\xampp\htdocs\bpsms\`
-     - **WAMP:** `C:\wamp64\www\bpsms\`
-     - **MAMP:** `/Applications/MAMP/htdocs/bpsms/`
-     - **Linux:** `/var/www/html/bpsms/`
+     - **XAMPP:** `C:\xampp\htdocs\motoease\`
+     - **WAMP:** `C:\wamp64\www\motoease\`
+     - **MAMP:** `/Applications/MAMP/htdocs/motoease/`
+     - **Linux:** `/var/www/html/motoease/`
 
 ### Step 3: Install PHP Dependencies
 
@@ -143,7 +143,7 @@ sudo apt-get install apache2 mysql-server php php-mysqli php-mbstring php-gd
 
 3. Update the base URL:
    ```php
-   if(!defined('base_url')) define('base_url','http://localhost/bpsms/');
+   if(!defined('base_url')) define('base_url','http://localhost/motoease/');
    ```
 
 ### Step 5: Create Database
@@ -165,7 +165,7 @@ chmod -R 755 admin/uploads/
 ### Step 7: Access the Application
 
 1. Open your web browser
-2. Navigate to: `http://localhost/bpsms/`
+2. Navigate to: `http://localhost/motoease/`
 3. You should see the login page
 
 **Default Admin Credentials:**
@@ -200,23 +200,23 @@ chmod -R 755 admin/uploads/
 **Option A: Using Git (Recommended)**
 ```bash
 cd /var/www/html
-git clone <repository-url> bpsms
-cd bpsms
+git clone <repository-url> motoease
+cd motoease
 composer install
 ```
 
 **Option B: Using FTP/SFTP**
-1. Upload all project files to `/var/www/html/bpsms/` or your web root
+1. Upload all project files to `/var/www/html/motoease/` or your web root
 2. Ensure file ownership is correct:
    ```bash
-   sudo chown -R www-data:www-data /var/www/html/bpsms
+   sudo chown -R www-data:www-data /var/www/html/motoease
    ```
 
 ### Step 3: Configure Apache Virtual Host
 
 1. Create virtual host configuration:
    ```bash
-   sudo nano /etc/apache2/sites-available/bpsms.conf
+   sudo nano /etc/apache2/sites-available/motoease.conf
    ```
 
 2. Add the following configuration:
@@ -224,22 +224,22 @@ composer install
    <VirtualHost *:80>
        ServerName yourdomain.com
        ServerAlias www.yourdomain.com
-       DocumentRoot /var/www/html/bpsms
+       DocumentRoot /var/www/html/motoease
        
-       <Directory /var/www/html/bpsms>
+       <Directory /var/www/html/motoease>
            Options Indexes FollowSymLinks
            AllowOverride All
            Require all granted
        </Directory>
        
-       ErrorLog ${APACHE_LOG_DIR}/bpsms_error.log
-       CustomLog ${APACHE_LOG_DIR}/bpsms_access.log combined
+       ErrorLog ${APACHE_LOG_DIR}/motoease_error.log
+       CustomLog ${APACHE_LOG_DIR}/motoease_access.log combined
    </VirtualHost>
    ```
 
 3. Enable the site and restart Apache:
    ```bash
-   sudo a2ensite bpsms.conf
+   sudo a2ensite motoease.conf
    sudo a2enmod rewrite
    sudo systemctl restart apache2
    ```
@@ -249,8 +249,8 @@ composer install
 1. Create MySQL database and user:
    ```sql
    CREATE DATABASE motoease_final_db CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-   CREATE USER 'bpsms_user'@'localhost' IDENTIFIED BY 'strong_password_here';
-   GRANT ALL PRIVILEGES ON motoease_final_db.* TO 'bpsms_user'@'localhost';
+   CREATE USER 'motoease_user'@'localhost' IDENTIFIED BY 'strong_password_here';
+   GRANT ALL PRIVILEGES ON motoease_final_db.* TO 'motoease_user'@'localhost';
    FLUSH PRIVILEGES;
    ```
 
@@ -300,12 +300,12 @@ if(!defined('base_url')) define('base_url','https://yourdomain.com/');
 1. **Using phpMyAdmin:**
    - Select the `motoease_final_db` database
    - Click "Import" tab
-   - Choose file: `database/bpsms_db.sql`
+   - Choose file: `database/motoease_db.sql`
    - Click "Go"
 
 2. **Using MySQL Command Line:**
    ```bash
-   mysql -u root -p motoease_final_db < database/bpsms_db.sql
+   mysql -u root -p motoease_final_db < database/motoease_db.sql
    ```
 
 ### Step 3: Run Additional Migrations (If Any)
@@ -374,7 +374,7 @@ if(!defined('DB_PORT')) define('DB_PORT',"3306");
 #### Base URL Configuration
 
 ```php
-if(!defined('base_url')) define('base_url','http://localhost/bpsms/');
+if(!defined('base_url')) define('base_url','http://localhost/motoease/');
 ```
 
 **For Production:**
@@ -913,7 +913,7 @@ Warning: mysqli_connect(): (HY000/2002): No connection could be made
 
 **Error Message:**
 ```
-Permission denied: /var/www/html/bpsms/uploads/
+Permission denied: /var/www/html/motoease/uploads/
 ```
 
 **Solutions:**
@@ -1124,7 +1124,7 @@ SMTP Error: Could not authenticate
 ### Support and Documentation
 
 - **System Documentation:** See README.md for additional information
-- **Database Schema:** Refer to `database/bpsms_db.sql` for table structures
+- **Database Schema:** Refer to `database/motoease_db.sql` for table structures
 - **Code Documentation:** Check inline comments in PHP files
 
 ### Useful Commands

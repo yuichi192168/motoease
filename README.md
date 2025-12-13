@@ -14,8 +14,8 @@ A comprehensive web-based management system designed for motorcycle parts and se
 
 1. **Clone or extract the project:**
    ```bash
-   git clone <repository-url> bpsms
-   cd bpsms
+   git clone <repository-url> motoease
+   cd motoease
    ```
 
 2. **Install dependencies:**
@@ -26,7 +26,7 @@ A comprehensive web-based management system designed for motorcycle parts and se
 3. **Configure database:**
    - Edit `initialize.php` with your database credentials
    - Create database: `motoease_final_db`
-   - Import schema: `database/bpsms_db.sql`
+   - Import schema: `database/motoease_db.sql`
 
 4. **Set permissions:**
    ```bash
@@ -34,7 +34,7 @@ A comprehensive web-based management system designed for motorcycle parts and se
    ```
 
 5. **Access the system:**
-   - Open: `http://localhost/bpsms/`
+   - Open: `http://localhost/motoease/`
    - Default login: `admin` / `admin123`
 
 > **⚠️ Important:** Change the default password immediately after first login!
@@ -75,7 +75,7 @@ See [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md#user-roles-and-permissions) fo
 ## 📁 Project Structure
 
 ```
-bpsms/
+motoease/
 ├── admin/                 # Admin panel
 │   ├── clients/          # Customer management
 │   ├── inventory/        # Inventory management
@@ -89,7 +89,7 @@ bpsms/
 │   ├── Users.php
 │   └── ...
 ├── database/             # Database files
-│   └── bpsms_db.sql     # Main database schema
+│   └── motoease_db.sql     # Main database schema
 ├── migrations/           # Database migrations
 ├── uploads/              # User uploaded files
 ├── config.php           # Main configuration
@@ -111,7 +111,7 @@ define('DB_PORT', '3306');
 
 ### Base URL Configuration
 ```php
-define('base_url', 'http://localhost/bpsms/');
+define('base_url', 'http://localhost/motoease/');
 ```
 
 ### Email Configuration
@@ -128,7 +128,7 @@ See [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md#environment-configuration) for
 ## 📚 Documentation
 
 - **[Installation Guide](INSTALLATION_GUIDE.md)** - Complete setup instructions
-- **Database Schema** - See `database/bpsms_db.sql`
+- **Database Schema** - See `database/motoease_db.sql`
 - **Code Documentation** - Inline comments in PHP files
 
 ## 🔐 Security
@@ -252,7 +252,7 @@ See [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md#user-roles-and-permissions) fo
 - `customer_transactions` - Payment records
 - `invoices` - Generated invoices
 
-See `database/bpsms_db.sql` for complete schema.
+See `database/motoease_db.sql` for complete schema.
 
 ## 📝 License
 
@@ -270,7 +270,7 @@ This is a capstone project. For contributions or modifications, please follow:
 
 For installation and setup issues, refer to:
 - [Installation Guide](INSTALLATION_GUIDE.md)
-- Database schema: `database/bpsms_db.sql`
+- Database schema: `database/motoease_db.sql`
 - Code comments in PHP files
 
 ## 🗺️ Roadmap
